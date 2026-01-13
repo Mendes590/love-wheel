@@ -33,9 +33,7 @@ function normalizeBaseUrl(input: string) {
 
 const baseUrl = normalizeBaseUrl(baseUrlRaw);
 
-const stripe = new Stripe(stripeSecret, {
-  apiVersion: "2024-06-20", // pode remover se preferir, mas é bom fixar
-});
+const stripe = new Stripe(stripeSecret);
 
 export async function POST(req: Request) {
   try {
