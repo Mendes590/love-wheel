@@ -1192,28 +1192,97 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     return () => unsub();
   }, [rotationMV, spinning, audio, prefersReducedMotion]);
 
-  React.useEffect(() => {
+    React.useEffect(() => {
     let alive = true;
+
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    async function fetchGift() {
+      const res = await fetch(`/api/gifts/${slug}`, { cache: "no-store" });
+
+      if (res.status === 402) {
+        return { kind: "locked" as const, data: null as any };
+      }
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "Failed to load gift.");
+      return { kind: "ok" as const, data };
+    }
+
+    async function getGiftIdForCheckout() {
+      // esse resolve SEM session_id deve devolver { id } (pra checkout)
+      const r = await fetch(`/api/resolve/${slug}`, { cache: "no-store" });
+      const d = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(d?.error ?? "Failed to prepare checkout.");
+      return d?.id as string | undefined;
+    }
+
+    async function confirmPayment(sessionId: string) {
+      // tenta algumas vezes porque pode ter delay entre Stripe -> confirmar -> Supabase
+      const maxTries = 12;
+
+      for (let i = 0; i < maxTries; i++) {
+        const r = await fetch(
+          `/api/resolve/${slug}?session_id=${encodeURIComponent(sessionId)}`,
+          { cache: "no-store" }
+        );
+
+        if (r.status === 200) return true; // confirmou e marcou paid
+        if (r.status === 202) {
+          await sleep(900);
+          continue;
+        }
+
+        const d = await r.json().catch(() => null);
+        throw new Error(d?.error ?? "Resolve failed.");
+      }
+
+      return false;
+    }
 
     (async () => {
       try {
-        const res = await fetch(`/api/gifts/${slug}`, { cache: "no-store" });
+        if (!alive) return;
+        setLoading(true);
 
-        if (res.status === 402) {
-          if (alive) setPaymentRequired(true);
+        // ✅ 1) Se voltou do Stripe, confirma antes de buscar o gift
+        const url = new URL(window.location.href);
+        const sessionId = url.searchParams.get("session_id");
 
-          const r2 = await fetch(`/api/resolve/${slug}`, { cache: "no-store" });
-          const d2 = await r2.json();
-          if (r2.ok && alive) setGiftIdForPay(d2.id);
+        if (sessionId) {
+          const ok = await confirmPayment(sessionId);
 
-          if (alive) setLoading(false);
+          // limpa o session_id da URL para não ficar reconfirmando
+          if (ok) {
+            url.searchParams.delete("session_id");
+            const next =
+              url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : "");
+            window.history.replaceState({}, "", next);
+          }
+        }
+
+        // ✅ 2) Agora busca o gift (já deve vir paid se confirmou)
+        const out = await fetchGift();
+        if (!alive) return;
+
+        if (out.kind === "locked") {
+          setGift(null);
+          setPaymentRequired(true);
+
+          // prepara o id pra checkout
+          const id = await getGiftIdForCheckout();
+          if (!alive) return;
+
+          setGiftIdForPay(id ?? null);
           return;
         }
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error ?? "Failed to load gift.");
-        if (alive) setGift(data);
+        // ✅ 3) Desbloqueia UI
+        setPaymentRequired(false);
+        setGiftIdForPay(null);
+        setGift(out.data);
       } catch (e: any) {
+        if (!alive) return;
         toast.error(e?.message ?? "Could not load this link.");
       } finally {
         if (alive) setLoading(false);
@@ -1224,6 +1293,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
       alive = false;
     };
   }, [slug]);
+
 
   React.useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-export async function GET(
-  _req: Request,
-  ctx: { params: Promise<{ slug: string }> }
-) {
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type Ctx = { params: Promise<{ slug: string }> | { slug: string } };
+
+export async function GET(_req: Request, ctx: Ctx) {
   const { slug } = await ctx.params;
 
   if (!slug) {
@@ -27,10 +29,15 @@ export async function GET(
     return NextResponse.json({ error: "Not available" }, { status: 410 });
   }
 
-  // ✅ Bloqueia acesso se não pagou
+  // Bloqueia acesso se não pagou
   if (data.status !== "paid") {
     return NextResponse.json({ error: "Payment required" }, { status: 402 });
   }
 
-  return NextResponse.json(data);
+  // Evita cache de respostas pagas/lock
+  return NextResponse.json(data, {
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
 }
