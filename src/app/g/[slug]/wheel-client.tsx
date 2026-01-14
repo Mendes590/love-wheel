@@ -127,7 +127,6 @@ function colorDotClass(k: SliceKey) {
 }
 
 function sliceThemeGradient(k: SliceKey) {
-  // softer, more “premium”
   return k === "red"
     ? "from-rose-500/22 via-pink-500/10 to-transparent"
     : k === "green"
@@ -138,7 +137,6 @@ function sliceThemeGradient(k: SliceKey) {
 }
 
 function sliceFillRGBA(k: SliceKey) {
-  // slightly muted saturation (less “toy-like”)
   if (k === "blue") return "rgba(56,189,248,.70)";
   if (k === "red") return "rgba(244,114,182,.70)";
   if (k === "green") return "rgba(52,211,153,.68)";
@@ -171,7 +169,6 @@ function buildConicGradient(keys: SliceKey[]) {
     const p1 = ((i + 1) / n) * 100;
     return `${sliceFillRGBA(k)} ${p0}% ${p1}%`;
   });
-  // subtle base for “glass”
   return `conic-gradient(from 0deg, ${stops.join(",")})`;
 }
 
@@ -186,10 +183,7 @@ function angleFromTopClockwiseFromEvent(
   const x = e.clientX - cx;
   const y = e.clientY - cy;
 
-  // atan2 gives angle from +X (right), CCW positive
   const degFromRightCCW = (Math.atan2(y, x) * 180) / Math.PI;
-
-  // convert to: 0 at top, clockwise positive
   const degTopCW = mod360(90 - degFromRightCCW);
   return degTopCW;
 }
@@ -284,7 +278,6 @@ function useTickAudio(enabled: boolean) {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        // softer, less “arcade”
         const freq = kind === "tick" ? 560 : 360;
         osc.type = "sine";
         osc.frequency.setValueAtTime(freq, now);
@@ -483,7 +476,10 @@ function RevealOverlay({
       ? "Press Reveal to open the letter."
       : "Press Reveal to uncover the photo.";
 
-  const letterLines = React.useMemo(() => safeSplitLines(gift.love_letter), [gift.love_letter]);
+  const letterLines = React.useMemo(
+    () => safeSplitLines(gift.love_letter),
+    [gift.love_letter]
+  );
 
   React.useEffect(() => {
     if (!open) return;
@@ -498,7 +494,6 @@ function RevealOverlay({
         setStage("reveal");
       }
 
-      // very light focus trap
       if (e.key === "Tab") {
         const root = dialogRef.current;
         if (!root) return;
@@ -560,9 +555,17 @@ function RevealOverlay({
 
           <motion.div
             ref={dialogRef}
-            initial={{ y: prefersReducedMotion ? 0 : 18, scale: 0.99, opacity: 0 }}
+            initial={{
+              y: prefersReducedMotion ? 0 : 18,
+              scale: 0.99,
+              opacity: 0,
+            }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: prefersReducedMotion ? 0 : 10, scale: 0.995, opacity: 0 }}
+            exit={{
+              y: prefersReducedMotion ? 0 : 10,
+              scale: 0.995,
+              opacity: 0,
+            }}
             transition={{ type: "spring", stiffness: 150, damping: 18, mass: 0.9 }}
             className="relative w-full max-w-2xl"
           >
@@ -767,7 +770,7 @@ function RevealOverlay({
 
                           <div className="mt-6 flex items-center justify-between gap-3">
                             <div className="text-xs text-muted-foreground">
-                              Tip: after the last one, hit replay.
+                              Tip: after the last one, there’s a final message.
                             </div>
                             <Button className="rounded-full px-6" onClick={onClose}>
                               Continue
@@ -778,6 +781,168 @@ function RevealOverlay({
                     </AnimatePresence>
                   </div>
                 </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ------------------------------ NEW: Final Popup Overlay ------------------------------ */
+
+function EndOverlay({
+  open,
+  onClose,
+  onReplay,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onReplay: () => void;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const primaryBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const lastActiveEl = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    lastActiveEl.current = document.activeElement as HTMLElement | null;
+    window.setTimeout(() => primaryBtnRef.current?.focus(), 0);
+    return () => lastActiveEl.current?.focus?.();
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+
+      if (e.key === "Tab") {
+        const root = dialogRef.current;
+        if (!root) return;
+
+        const focusables = Array.from(
+          root.querySelectorAll<HTMLElement>(
+            'button,[href],[tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute("disabled"));
+
+        if (!focusables.length) return;
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+
+        if (e.shiftKey) {
+          if (active === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prev;
+    };
+  }, [open]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[80] grid place-items-center px-5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          aria-modal="true"
+          role="dialog"
+          aria-label="Final message"
+        >
+          <motion.button
+            type="button"
+            aria-label="Close"
+            className="absolute inset-0 bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_10%,rgba(244,114,182,0.22),transparent_55%),radial-gradient(900px_circle_at_85%_15%,rgba(251,191,36,0.14),transparent_55%),radial-gradient(1000px_circle_at_50%_90%,rgba(56,189,248,0.10),transparent_60%)]" />
+
+          <motion.div
+            ref={dialogRef}
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.99 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.995 }}
+            transition={{ type: "spring", stiffness: 190, damping: 18 }}
+            className="relative w-full max-w-2xl"
+          >
+            <div className="rounded-[30px] border border-border/60 bg-background/75 shadow-[0_50px_180px_-110px_rgba(0,0,0,0.90)] backdrop-blur-xl overflow-hidden">
+              <div className="pointer-events-none absolute inset-0 opacity-[0.55] bg-[radial-gradient(900px_circle_at_25%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
+
+              <div className="relative p-6 md:p-10 text-center">
+                <div className="mx-auto w-fit">
+                  <Pill dotClassName="bg-rose-500/80">Complete</Pill>
+                </div>
+
+                <h2 className="mt-4 text-2xl font-semibold tracking-tight md:text-3xl">
+                  We hope you loved this experience.
+                </h2>
+                <p className="mt-3 text-sm text-muted-foreground md:text-base">
+                  Wishing the couple a lifetime of joy, warmth, and beautiful moments together.
+                </p>
+
+                <div className="mt-7 flex flex-wrap justify-center gap-2">
+                  <Button
+                    ref={primaryBtnRef as any}
+                    onClick={() => {
+                      onClose();
+                      onReplay();
+                    }}
+                    className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 shadow-[0_16px_70px_-45px_rgba(244,114,182,0.55)]"
+                  >
+                    Replay the experience
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
+                    onClick={() => (window.location.href = "/create")}
+                  >
+                    Create Yours
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
+                    onClick={onClose}
+                    title="Close"
+                  >
+                    Close
+                  </Button>
+                </div>
+
+                <div className="mt-5 text-[11px] text-muted-foreground">
+                  Tip: press <span className="font-medium text-foreground/80">Esc</span> to close.
+                </div>
               </div>
             </div>
           </motion.div>
@@ -916,7 +1081,7 @@ function PressToSpinButton({
   );
 }
 
-/* ------------------------------ FIXED: Choice Modal (centered, never “torto”) ------------------------------ */
+/* ------------------------------ FIXED: Choice Modal (centered) ------------------------------ */
 
 function ChoiceModal({
   open,
@@ -954,7 +1119,6 @@ function ChoiceModal({
         onClose();
       }
 
-      // tiny focus trap
       if (e.key === "Tab") {
         const root = dialogRef.current;
         if (!root) return;
@@ -989,7 +1153,6 @@ function ChoiceModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // prevent background scroll while open (feels more “premium”)
   React.useEffect(() => {
     if (!open) return;
     const prev = document.documentElement.style.overflow;
@@ -1011,7 +1174,6 @@ function ChoiceModal({
           role="dialog"
           aria-label="Pick your color"
         >
-          {/* backdrop */}
           <motion.button
             type="button"
             aria-label="Close"
@@ -1022,21 +1184,14 @@ function ChoiceModal({
             onClick={onClose}
           />
 
-          {/* centered shell (desktop) + bottom sheet feel (mobile) */}
           <div className="absolute inset-0 grid place-items-end sm:place-items-center p-3 sm:p-6">
             <motion.div
               ref={dialogRef}
               initial={
-                prefersReducedMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: 18, scale: 0.99 }
+                prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.99 }
               }
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={
-                prefersReducedMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: 16, scale: 0.995 }
-              }
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.995 }}
               transition={{ type: "spring", stiffness: 220, damping: 20 }}
               className={[
                 "w-full sm:max-w-lg",
@@ -1046,17 +1201,18 @@ function ChoiceModal({
               style={{ maxHeight: "min(82vh, 720px)" }}
             >
               <div className="relative">
-                <div className="pointer-events-none absolute inset-0 opacity-[0.60]" style={{
-                  background:
-                    "radial-gradient(900px circle at 20% 0%, rgba(244,114,182,0.14), transparent 55%), radial-gradient(900px circle at 95% 10%, rgba(251,191,36,0.10), transparent 55%), radial-gradient(1000px circle at 40% 110%, rgba(56,189,248,0.09), transparent 60%)",
-                }} />
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-[0.60]"
+                  style={{
+                    background:
+                      "radial-gradient(900px circle at 20% 0%, rgba(244,114,182,0.14), transparent 55%), radial-gradient(900px circle at 95% 10%, rgba(251,191,36,0.10), transparent 55%), radial-gradient(1000px circle at 40% 110%, rgba(56,189,248,0.09), transparent 60%)",
+                  }}
+                />
 
                 <div className="relative px-5 pb-4 pt-5 sm:px-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold tracking-tight">
-                        Pick your color
-                      </div>
+                      <div className="text-sm font-semibold tracking-tight">Pick your color</div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         This is your “I hope it’s this one.” The spin stays random.
                       </div>
@@ -1124,11 +1280,7 @@ function ChoiceModal({
                     <div className="text-[11px] text-muted-foreground">
                       Press <span className="font-medium text-foreground/80">Esc</span> to close.
                     </div>
-                    <Button
-                      className="rounded-full px-6"
-                      variant="secondary"
-                      onClick={onClose}
-                    >
+                    <Button className="rounded-full px-6" variant="secondary" onClick={onClose}>
                       Done
                     </Button>
                   </div>
@@ -1192,7 +1344,6 @@ function Wheel({
     mass: 0.7,
   });
 
-  // FIXED: open centered modal, not anchored (prevents “opening in the corner”)
   const [choiceOpen, setChoiceOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -1209,7 +1360,6 @@ function Wheel({
     [canPick, setBet]
   );
 
-  // click directly on wheel to choose a slice
   const wheelRef = React.useRef<HTMLDivElement | null>(null);
 
   const onWheelClick = React.useCallback(
@@ -1218,13 +1368,11 @@ function Wheel({
       const el = wheelRef.current;
       if (!el) return;
 
-      // Avoid center CTA "Spin" intercept: if user clicked inside the CTA area, do nothing here
       const t = e.target as HTMLElement | null;
       if (t && t.closest?.("[data-wheel-cta]")) return;
 
       const degTopCW = angleFromTopClockwiseFromEvent(e, el);
 
-      // Un-rotate the click angle by current wheel rotation (so we map to slice layout)
       const currentRot = mod360(rotationMV.get());
       const wheelSpaceDeg = mod360(degTopCW - currentRot);
 
@@ -1234,7 +1382,6 @@ function Wheel({
 
       if (!key) return;
 
-      // Toggle behavior: click the same slice again to clear
       if (bet === key) {
         setBet(null);
         toast.message("Choice cleared.", { description: "Pick another one." });
@@ -1247,7 +1394,6 @@ function Wheel({
 
   return (
     <div className="mx-auto grid place-items-center">
-      {/* centered modal (fixed) */}
       <ChoiceModal
         open={choiceOpen}
         remaining={remaining}
@@ -1258,7 +1404,6 @@ function Wheel({
       />
 
       <div className="relative w-full max-w-[920px]">
-        {/* Header */}
         <div className="mb-6 text-center">
           <div className="text-base font-semibold tracking-tight">
             {spinning
@@ -1266,7 +1411,9 @@ function Wheel({
               : disabled
               ? "All surprises revealed."
               : bet
-              ? "Choice set."
+              ? remaining.length === 1
+                ? "Final choice."
+                : "Choice set."
               : "Choose a color to begin."}
           </div>
 
@@ -1276,11 +1423,12 @@ function Wheel({
               : disabled
               ? "Replay anytime to relive the moment."
               : bet
-              ? `You chose ${SLICE_PUBLIC[bet].colorName}. (The outcome remains random.)`
+              ? remaining.length === 1
+                ? `You chose ${SLICE_PUBLIC[bet].colorName}. The final reveal is next.`
+                : `You chose ${SLICE_PUBLIC[bet].colorName}. (The outcome remains random.)`
               : "Pick a chip, tap the wheel, or click the choice pill. Then spin."}
           </div>
 
-          {/* Bet slot (CLICKABLE) */}
           <div className="mt-4 flex items-center justify-center">
             <div className="relative">
               <button
@@ -1341,7 +1489,6 @@ function Wheel({
             </div>
           </div>
 
-          {/* Chips */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             {remaining.map((k) => (
               <BetChip
@@ -1400,10 +1547,8 @@ function Wheel({
           </AnimatePresence>
         </div>
 
-        {/* soft halo */}
         <div className="pointer-events-none absolute left-1/2 top-[290px] h-[72%] w-[72%] -translate-x-1/2 rounded-full bg-gradient-to-r from-rose-500/12 via-pink-500/8 to-amber-500/12 blur-2xl" />
 
-        {/* pointer */}
         <motion.div
           className="absolute left-1/2 top-[364px] z-30 -translate-x-1/2"
           animate={spinning && !prefersReducedMotion ? { y: [0, -2, 0] } : { y: 0 }}
@@ -1414,7 +1559,6 @@ function Wheel({
           <div className="mx-auto mt-1 h-3 w-3 rounded-full bg-foreground/70 shadow-[0_12px_34px_-20px_rgba(0,0,0,0.85)]" />
         </motion.div>
 
-        {/* wheel */}
         <div className="relative mx-auto mt-6 aspect-square w-full max-w-[560px]">
           <div className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-b from-white/12 to-transparent blur-[2px]" />
           <div className="pointer-events-none absolute -inset-2 rounded-full border border-white/10" />
@@ -1433,7 +1577,6 @@ function Wheel({
             }}
           />
 
-          {/* CLICKABLE WHEEL SURFACE */}
           <motion.div
             ref={wheelRef}
             onClick={onWheelClick}
@@ -1473,7 +1616,6 @@ function Wheel({
                 })}
             </div>
 
-            {/* gentle hover cue when user can pick */}
             {canPick && (
               <motion.div
                 className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/0"
@@ -1486,15 +1628,28 @@ function Wheel({
             )}
           </motion.div>
 
-          {/* CTA */}
           <div className="absolute inset-0 grid place-items-center" data-wheel-cta>
             <div data-wheel-cta>
               <PressToSpinButton
                 enabled={!disabled && !spinning && remaining.length > 0 && !!bet}
                 spinning={spinning}
                 onPress={onSpin}
-                label={disabled ? "All revealed" : !bet ? "Choose a color" : "Spin"}
-                helper={!bet ? "tap the wheel or click your choice" : undefined}
+                label={
+                  disabled
+                    ? "All revealed"
+                    : !bet
+                    ? "Choose a color"
+                    : remaining.length === 1
+                    ? "Reveal the last one"
+                    : "Spin"
+                }
+                helper={
+                  !bet
+                    ? "tap the wheel or click your choice"
+                    : remaining.length === 1
+                    ? "no spin—just the reveal"
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -1580,6 +1735,14 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
   const audio = useTickAudio(audioOn);
 
   const [burst, setBurst] = React.useState(false);
+
+  // ✅ NEW: final popup after last reveal closes
+  const [endOpen, setEndOpen] = React.useState(false);
+  const endShownRef = React.useRef(false);
+  const remainingRef = React.useRef<SliceKey[]>(remaining);
+  React.useEffect(() => {
+    remainingRef.current = remaining;
+  }, [remaining]);
 
   // tick detection for “feel”
   const boundaryStepRef = React.useRef(90);
@@ -1744,7 +1907,23 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     setPointerPulse(0);
     setBurst(false);
 
+    // ✅ reset final popup state
+    setEndOpen(false);
+    endShownRef.current = false;
+
     toast.message("Replayed.", { description: "Spin again to relive it." });
+  });
+
+  // ✅ Close reveal, and if it was the last one, open the final popup right after
+  const closeReveal = useEvent(() => {
+    setRevealOpen(false);
+
+    // open final message AFTER the last reveal closes
+    const isDone = remainingRef.current.length === 0;
+    if (isDone && !endShownRef.current) {
+      endShownRef.current = true;
+      window.setTimeout(() => setEndOpen(true), prefersReducedMotion ? 0 : 140);
+    }
   });
 
   const spin = useEvent(async () => {
@@ -1763,40 +1942,99 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
       return;
     }
 
+    // ✅ LAST ONE: no “lonely spin” — go straight to the reveal.
+    if (remaining.length === 1) {
+      const chosen = remaining[0];
+      setSpinning(false);
+      setRevealOpen(false);
+
+      setSpotlight(chosen);
+
+      const guessedRight = bet === chosen;
+      setLastResult({ slice: chosen, guessedRight });
+
+      toast.message("Final reveal.", {
+        description: `It’s ${SLICE_PUBLIC[chosen].colorName} — ${SLICE_PUBLIC[chosen].title}.`,
+      });
+
+      if (guessedRight && !prefersReducedMotion) {
+        setBurst(false);
+        window.setTimeout(() => setBurst(true), 10);
+        window.setTimeout(() => setBurst(false), 900);
+      }
+
+      setRemaining([]);
+      setActive(chosen);
+      setRevealOpen(true);
+      setBet(null);
+      return;
+    }
+
     setSpinning(true);
     setRevealOpen(false);
+    setEndOpen(false);
 
     const chosen = pickRandom(remaining);
     setSpotlight(chosen);
 
-    const { map } = buildWheelLayout(remaining);
-    const center = map.get(chosen)?.center ?? 0;
+    const { map, step } = buildWheelLayout(remaining);
 
-    const baseTarget = mod360(360 - center);
-    const jitter = prefersReducedMotion ? 0 : Math.random() * 14 - 7;
-    const targetMod = mod360(baseTarget + jitter);
+    // ✅ NEW: stop at a RANDOM point inside the slice (not always center)
+    const seg = map.get(chosen);
+    const start = seg?.start ?? 0;
+    const end = seg?.end ?? step;
+
+    // avoid landing too close to borders (feels "off")
+    const edgeMargin = prefersReducedMotion ? 0 : Math.min(8, step * 0.14);
+    const lo = start + edgeMargin;
+    const hi = end - edgeMargin;
+
+    const targetInWheelSpace = prefersReducedMotion
+      ? (seg?.center ?? start + step / 2)
+      : lo + Math.random() * Math.max(1, hi - lo);
+
+    // wheel rotation needed so that pointer (top) points to that angle:
+    const baseTarget = mod360(360 - targetInWheelSpace);
 
     const currentMod = mod360(rotationMV.get());
-    const deltaToTarget = mod360(targetMod - currentMod);
+    const deltaToTarget = mod360(baseTarget - currentMod);
 
-    const extraTurns = prefersReducedMotion
-      ? 3
-      : remaining.length === 4
-      ? 9
-      : remaining.length === 3
-      ? 8
-      : remaining.length === 2
-      ? 7
-      : 6;
+    // ✅ NEW: vary turns + a tiny flourish so it feels less "samey"
+    const extraTurns =
+      prefersReducedMotion
+        ? 3
+        : remaining.length === 4
+        ? 8 + Math.floor(Math.random() * 4) // 8..11
+        : remaining.length === 3
+        ? 7 + Math.floor(Math.random() * 4) // 7..10
+        : remaining.length === 2
+        ? 6 + Math.floor(Math.random() * 4) // 6..9
+        : 6;
 
     const nextRotation = rotationMV.get() + extraTurns * 360 + deltaToTarget;
 
-    const dur = prefersReducedMotion ? 0.9 : 3.6;
+    // optional micro-overshoot for premium "settle"
+    const overshoot =
+      prefersReducedMotion ? 0 : (Math.random() * 12 + 10) * (Math.random() > 0.5 ? 1 : -1);
+
+    const dur = prefersReducedMotion ? 0.9 : 3.35;
+
     await new Promise<void>((resolve) => {
-      animate(rotationMV, nextRotation, {
+      animate(rotationMV, nextRotation + overshoot, {
         duration: dur,
         ease: prefersReducedMotion ? "easeOut" : [0.06, 0.92, 0.12, 1],
-        onComplete: () => resolve(),
+        onComplete: () => {
+          // settle back quickly (makes it feel alive)
+          if (!prefersReducedMotion && Math.abs(overshoot) > 0.1) {
+            animate(rotationMV, nextRotation, {
+              duration: 0.32,
+              ease: "easeOut",
+              onComplete: () => resolve(),
+            });
+          } else {
+            resolve();
+          }
+        },
       });
     });
 
@@ -1849,7 +2087,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
         if (e.key === "4" && remaining.includes("yellow")) setBet("yellow");
       }
 
-      if ((e.key === " " || e.key === "Enter") && !revealOpen) {
+      if ((e.key === " " || e.key === "Enter") && !revealOpen && !endOpen) {
         e.preventDefault();
         if (!bet) {
           toast.message("Choose a color first.", {
@@ -1860,14 +2098,15 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
         spin();
       }
 
-      if ((e.key === "r" || e.key === "R") && !revealOpen) reset();
+      if ((e.key === "r" || e.key === "R") && !revealOpen && !endOpen) reset();
       if (e.key === "m" || e.key === "M") setAudioOn((v) => !v);
-      if (e.key === "Escape" && revealOpen) setRevealOpen(false);
+      if (e.key === "Escape" && revealOpen) closeReveal();
+      if (e.key === "Escape" && endOpen) setEndOpen(false);
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [spin, reset, revealOpen, spinning, remaining, bet, setAudioOn]);
+  }, [spin, reset, revealOpen, spinning, remaining, bet, setAudioOn, endOpen, closeReveal]);
 
   if (loading) return <Skeleton />;
 
@@ -1950,9 +2189,16 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
       <RevealOverlay
         open={revealOpen}
         slice={active}
-        onClose={() => setRevealOpen(false)}
+        onClose={closeReveal}
         gift={gift}
         parts={parts}
+      />
+
+      {/* ✅ NEW: final message popup (after last reveal closes) */}
+      <EndOverlay
+        open={endOpen}
+        onClose={() => setEndOpen(false)}
+        onReplay={reset}
       />
 
       <div className="mx-auto max-w-5xl px-5 py-10 md:py-14">
@@ -1988,7 +2234,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
             <span className="bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">
               choose
             </span>{" "}
-            → spin → reveal.
+            → {remaining.length === 0 ? "relive" : "spin"} → reveal.
           </h1>
 
           <p className="mt-3 max-w-2xl text-sm text-muted-foreground md:text-base">
