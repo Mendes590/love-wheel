@@ -25,7 +25,7 @@ type Gift = {
 };
 
 type SliceKey = "blue" | "red" | "green" | "yellow";
-const SLICE_ORDER: SliceKey[] = ["blue", "red", "green", "yellow"];
+const ALL_SLICES: SliceKey[] = ["blue", "red", "green", "yellow"];
 
 const SLICE_LABEL: Record<SliceKey, string> = {
   blue: "Photo",
@@ -35,10 +35,10 @@ const SLICE_LABEL: Record<SliceKey, string> = {
 };
 
 const SLICE_HINT: Record<SliceKey, string> = {
-  blue: "That “oh wow” moment.",
-  red: "A sentence that hits.",
-  green: "Every second counts.",
-  yellow: "Read it slowly.",
+  blue: "A single frame that says everything.",
+  red: "A sentence you’ll want to keep.",
+  green: "Proof that time can be tender.",
+  yellow: "Read it slowly—like a secret.",
 };
 
 const SLICE_PUBLIC: Record<
@@ -48,17 +48,17 @@ const SLICE_PUBLIC: Record<
   blue: {
     colorName: "Blue",
     title: "A photo",
-    preview: "A saved moment — instant “aww”.",
-    vibe: "Visual + emotional hit",
+    preview: "A saved moment—instant warmth.",
+    vibe: "Visual + emotional",
   },
   red: {
-    colorName: "Red",
+    colorName: "Rose",
     title: "A short line",
-    preview: "One sentence that lands hard.",
+    preview: "One sentence that lands softly… then stays.",
     vibe: "Quick + powerful",
   },
   green: {
-    colorName: "Green",
+    colorName: "Emerald",
     title: "Time together",
     preview: "Days / hours / minutes since it began.",
     vibe: "Nostalgia + goosebumps",
@@ -66,13 +66,21 @@ const SLICE_PUBLIC: Record<
   yellow: {
     colorName: "Gold",
     title: "A love letter",
-    preview: "A longer message — read slowly.",
+    preview: "A longer message—read it like a vow.",
     vibe: "Deep + romantic",
   },
 };
 
+/* --------------------------------- Utils --------------------------------- */
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
+}
+function mod360(n: number) {
+  return ((n % 360) + 360) % 360;
+}
+function pickRandom<T>(arr: T[]) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 function msToParts(ms: number) {
   const s = Math.floor(ms / 1000);
@@ -82,11 +90,16 @@ function msToParts(ms: number) {
   const secs = s % 60;
   return { days, hours, mins, secs };
 }
-function pickRandom<T>(arr: T[]) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-function mod360(n: number) {
-  return ((n % 360) + 360) % 360;
+function formatDate(d: Date) {
+  try {
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  } catch {
+    return d.toLocaleDateString();
+  }
 }
 function useEvent<T extends (...args: any[]) => any>(fn: T) {
   const ref = React.useRef(fn);
@@ -94,12 +107,126 @@ function useEvent<T extends (...args: any[]) => any>(fn: T) {
   return React.useCallback((...args: Parameters<T>) => ref.current(...args), []);
 }
 
+function safeSplitLines(text: string) {
+  return text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/* ------------------------------ Visual theme ------------------------------ */
+
+function colorDotClass(k: SliceKey) {
+  return k === "blue"
+    ? "bg-sky-500/90"
+    : k === "red"
+    ? "bg-rose-500/90"
+    : k === "green"
+    ? "bg-emerald-500/90"
+    : "bg-amber-500/90";
+}
+
+function sliceThemeGradient(k: SliceKey) {
+  // softer, more “premium”
+  return k === "red"
+    ? "from-rose-500/22 via-pink-500/10 to-transparent"
+    : k === "green"
+    ? "from-emerald-500/18 via-emerald-500/10 to-transparent"
+    : k === "yellow"
+    ? "from-amber-500/18 via-amber-500/10 to-transparent"
+    : "from-sky-500/18 via-sky-500/10 to-transparent";
+}
+
+function sliceFillRGBA(k: SliceKey) {
+  // slightly muted saturation (less “toy-like”)
+  if (k === "blue") return "rgba(56,189,248,.70)";
+  if (k === "red") return "rgba(244,114,182,.70)";
+  if (k === "green") return "rgba(52,211,153,.68)";
+  return "rgba(251,191,36,.68)";
+}
+
+function buildWheelLayout(keys: SliceKey[]) {
+  const safe = keys.length ? keys : (["blue"] as SliceKey[]);
+  const n = safe.length;
+  const step = 360 / n;
+
+  const map = new Map<
+    SliceKey,
+    { start: number; end: number; center: number; index: number }
+  >();
+  safe.forEach((k, i) => {
+    const start = i * step;
+    const end = (i + 1) * step;
+    const center = start + step / 2;
+    map.set(k, { start, end, center, index: i });
+  });
+
+  return { step, map, keys: safe };
+}
+
+function buildConicGradient(keys: SliceKey[]) {
+  const n = Math.max(1, keys.length);
+  const stops = keys.map((k, i) => {
+    const p0 = (i / n) * 100;
+    const p1 = ((i + 1) / n) * 100;
+    return `${sliceFillRGBA(k)} ${p0}% ${p1}%`;
+  });
+  // subtle base for “glass”
+  return `conic-gradient(from 0deg, ${stops.join(",")})`;
+}
+
+function angleFromTopClockwiseFromEvent(
+  e: React.MouseEvent,
+  el: HTMLElement
+): number {
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  const x = e.clientX - cx;
+  const y = e.clientY - cy;
+
+  // atan2 gives angle from +X (right), CCW positive
+  const degFromRightCCW = (Math.atan2(y, x) * 180) / Math.PI;
+
+  // convert to: 0 at top, clockwise positive
+  const degTopCW = mod360(90 - degFromRightCCW);
+  return degTopCW;
+}
+
+/* ------------------------------ Storage helpers ------------------------------ */
+
+function useLocalStorageBoolean(key: string, initial: boolean) {
+  const [value, setValue] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return initial;
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw === null) return initial;
+      return raw === "true";
+    } catch {
+      return initial;
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(key, String(value));
+    } catch {
+      // ignore
+    }
+  }, [key, value]);
+
+  return [value, setValue] as const;
+}
+
+/* ------------------------------ Background ------------------------------ */
+
 function GlowBg() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_12%_10%,rgba(244,114,182,0.30),transparent_55%),radial-gradient(1100px_circle_at_86%_18%,rgba(251,191,36,0.18),transparent_55%),radial-gradient(1000px_circle_at_55%_92%,rgba(56,189,248,0.12),transparent_60%),radial-gradient(900px_circle_at_50%_45%,rgba(236,72,153,0.12),transparent_55%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_50%_50%,transparent_35%,rgba(0,0,0,0.22)_100%)] dark:bg-[radial-gradient(1200px_circle_at_50%_50%,transparent_35%,rgba(0,0,0,0.68)_100%)]" />
-      <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1px)] [background-size:7px_7px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_12%_10%,rgba(244,114,182,0.22),transparent_55%),radial-gradient(1100px_circle_at_86%_18%,rgba(251,191,36,0.14),transparent_55%),radial-gradient(1000px_circle_at_55%_92%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(900px_circle_at_50%_45%,rgba(236,72,153,0.10),transparent_55%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_50%_50%,transparent_35%,rgba(0,0,0,0.24)_100%)] dark:bg-[radial-gradient(1200px_circle_at_50%_50%,transparent_35%,rgba(0,0,0,0.72)_100%)]" />
+      <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1px)] [background-size:7px_7px]" />
       <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_bottom,rgba(255,255,255,0.55),transparent,rgba(255,255,255,0.25))]" />
     </div>
   );
@@ -131,75 +258,6 @@ function Pill({
   );
 }
 
-function formatDate(d: Date) {
-  try {
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    });
-  } catch {
-    return d.toLocaleDateString();
-  }
-}
-
-function colorDotClass(k: SliceKey) {
-  return k === "blue"
-    ? "bg-sky-500/90"
-    : k === "red"
-    ? "bg-rose-500/90"
-    : k === "green"
-    ? "bg-emerald-500/90"
-    : "bg-amber-500/90";
-}
-
-function sliceThemeGradient(k: SliceKey) {
-  return k === "red"
-    ? "from-rose-500/30 via-pink-500/14 to-transparent"
-    : k === "green"
-    ? "from-emerald-500/26 via-emerald-500/12 to-transparent"
-    : k === "yellow"
-    ? "from-amber-500/26 via-amber-500/12 to-transparent"
-    : "from-sky-500/26 via-sky-500/12 to-transparent";
-}
-
-function sliceFillRGBA(k: SliceKey) {
-  if (k === "blue") return "rgba(56,189,248,.78)";
-  if (k === "red") return "rgba(244,114,182,.78)";
-  if (k === "green") return "rgba(52,211,153,.78)";
-  return "rgba(251,191,36,.78)";
-}
-
-function buildWheelLayout(keys: SliceKey[]) {
-  const safe = keys.length ? keys : (["blue"] as SliceKey[]);
-  const n = safe.length;
-  const step = 360 / n;
-
-  const map = new Map<
-    SliceKey,
-    { start: number; end: number; center: number; index: number }
-  >();
-  safe.forEach((k, i) => {
-    const start = i * step;
-    const end = (i + 1) * step;
-    const center = start + step / 2;
-    map.set(k, { start, end, center, index: i });
-  });
-
-  return { step, map, keys: safe };
-}
-
-function buildConicGradient(keys: SliceKey[]) {
-  const n = Math.max(1, keys.length);
-  const stops = keys.map((k, i) => {
-    const p0 = (i / n) * 100;
-    const p1 = ((i + 1) / n) * 100;
-    return `${sliceFillRGBA(k)} ${p0}% ${p1}%`;
-  });
-
-  return `conic-gradient(from 0deg, ${stops.join(",")})`;
-}
-
 /* ------------------------------ Audio FX ------------------------------ */
 
 function useTickAudio(enabled: boolean) {
@@ -212,10 +270,9 @@ function useTickAudio(enabled: boolean) {
       if (!enabled || prefersReducedMotion) return;
 
       try {
-        const AudioCtx = (window.AudioContext ||
-          (window as any).webkitAudioContext) as
-          | typeof AudioContext
-          | undefined;
+        const AudioCtx = (
+          window.AudioContext || (window as any).webkitAudioContext
+        ) as typeof AudioContext | undefined;
         if (!AudioCtx) return;
 
         if (!ctxRef.current) ctxRef.current = new AudioCtx();
@@ -227,12 +284,13 @@ function useTickAudio(enabled: boolean) {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        const freq = kind === "tick" ? 640 : 420;
+        // softer, less “arcade”
+        const freq = kind === "tick" ? 560 : 360;
         osc.type = "sine";
         osc.frequency.setValueAtTime(freq, now);
 
-        const dur = kind === "tick" ? 0.022 : 0.13;
-        const peak = kind === "tick" ? 0.05 : 0.1;
+        const dur = kind === "tick" ? 0.02 : 0.12;
+        const peak = kind === "tick" ? 0.035 : 0.085;
 
         gain.gain.setValueAtTime(0.0001, now);
         gain.gain.exponentialRampToValueAtTime(peak, now + 0.01);
@@ -252,7 +310,7 @@ function useTickAudio(enabled: boolean) {
 
   const tickThrottled = React.useCallback(() => {
     const t = performance.now();
-    if (t - lastRef.current < 55) return;
+    if (t - lastRef.current < 60) return;
     lastRef.current = t;
     beep("tick");
   }, [beep]);
@@ -299,7 +357,7 @@ function IconSparkle() {
   );
 }
 
-/* ------------------------------ Simple Valentine Confetti ------------------------------ */
+/* ------------------------------ Premium Confetti ------------------------------ */
 
 function HeartBurst({ fire }: { fire: boolean }) {
   const prefersReducedMotion = useReducedMotion();
@@ -321,13 +379,13 @@ function HeartBurst({ fire }: { fire: boolean }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {Array.from({ length: 20 }).map((_, i) => {
-              const left = 50 + (Math.random() * 30 - 15);
-              const top = 52 + (Math.random() * 18 - 9);
-              const dx = (Math.random() * 260 - 130);
-              const dy = -(220 + Math.random() * 220);
-              const rot = Math.random() * 180 - 90;
-              const delay = i * 0.01;
+            {Array.from({ length: 18 }).map((_, i) => {
+              const left = 50 + (Math.random() * 26 - 13);
+              const top = 52 + (Math.random() * 16 - 8);
+              const dx = Math.random() * 240 - 120;
+              const dy = -(210 + Math.random() * 210);
+              const rot = Math.random() * 160 - 80;
+              const delay = i * 0.012;
 
               return (
                 <motion.div
@@ -344,7 +402,7 @@ function HeartBurst({ fire }: { fire: boolean }) {
                   }}
                   transition={{ duration: 0.95, delay, ease: "easeOut" }}
                 >
-                  <div className="grid h-7 w-7 place-items-center rounded-full border border-white/14 bg-black/18 backdrop-blur">
+                  <div className="grid h-7 w-7 place-items-center rounded-full border border-white/12 bg-black/16 backdrop-blur">
                     <HeartIcon className="opacity-95" />
                   </div>
                 </motion.div>
@@ -374,11 +432,23 @@ function RevealOverlay({
 }) {
   const prefersReducedMotion = useReducedMotion();
   const [stage, setStage] = React.useState<"intro" | "reveal">("intro");
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const closeBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const lastActiveEl = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     if (!open) return;
     setStage("intro");
   }, [open, slice]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    lastActiveEl.current = document.activeElement as HTMLElement | null;
+    window.setTimeout(() => closeBtnRef.current?.focus(), 0);
+    return () => {
+      lastActiveEl.current?.focus?.();
+    };
+  }, [open]);
 
   const theme = slice
     ? sliceThemeGradient(slice)
@@ -388,46 +458,77 @@ function RevealOverlay({
 
   const headline =
     slice === "red"
-      ? "A line for your heart."
+      ? "A line, just for you."
       : slice === "green"
-      ? "Your love in numbers…"
+      ? "Your love, measured gently."
       : slice === "yellow"
-      ? "A letter, just for you."
-      : "A moment you can replay.";
+      ? "A letter sealed in time."
+      : "A moment you can revisit.";
 
   const introCopy =
     slice === "red"
-      ? "Short. Sweet. Dangerous (in the best way)."
+      ? "Short. Soft. Unforgettable."
       : slice === "green"
-      ? "Because every second together counts."
+      ? "Because every second carries meaning."
       : slice === "yellow"
-      ? "Take your time. Read it like a secret."
-      : "The kind of photo that makes you smile instantly.";
+      ? "Slow down—this one deserves your full attention."
+      : "A photo that brings you right back.";
 
   const readyLine =
     slice === "red"
-      ? "Press Reveal to open it."
+      ? "Press Reveal when you’re ready."
       : slice === "green"
-      ? "Press Reveal to see it."
+      ? "Press Reveal to see your timeline."
       : slice === "yellow"
-      ? "Press Reveal to break the seal."
+      ? "Press Reveal to open the letter."
       : "Press Reveal to uncover the photo.";
 
-  const letterLines = React.useMemo(
-    () =>
-      gift.love_letter
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    [gift.love_letter]
-  );
+  const letterLines = React.useMemo(() => safeSplitLines(gift.love_letter), [gift.love_letter]);
 
   React.useEffect(() => {
     if (!open) return;
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "Enter" && stage === "intro") setStage("reveal");
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+      if (e.key === "Enter" && stage === "intro") {
+        e.preventDefault();
+        setStage("reveal");
+      }
+
+      // very light focus trap
+      if (e.key === "Tab") {
+        const root = dialogRef.current;
+        if (!root) return;
+
+        const focusables = Array.from(
+          root.querySelectorAll<HTMLElement>(
+            'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute("disabled"));
+
+        if (!focusables.length) return;
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+
+        if (e.shiftKey) {
+          if (active === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose, stage]);
@@ -443,10 +544,11 @@ function RevealOverlay({
           exit={{ opacity: 0 }}
           aria-modal="true"
           role="dialog"
+          aria-label="Surprise reveal dialog"
         >
           <motion.button
             type="button"
-            aria-label="Close"
+            aria-label="Close overlay"
             className="absolute inset-0 bg-black/70"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -454,26 +556,17 @@ function RevealOverlay({
             onClick={onClose}
           />
 
-          <div
-            className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${theme}`}
-          />
+          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${theme}`} />
 
           <motion.div
-            initial={{
-              y: prefersReducedMotion ? 0 : 22,
-              scale: 0.98,
-              opacity: 0,
-            }}
+            ref={dialogRef}
+            initial={{ y: prefersReducedMotion ? 0 : 18, scale: 0.99, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{
-              y: prefersReducedMotion ? 0 : 12,
-              scale: 0.99,
-              opacity: 0,
-            }}
-            transition={{ type: "spring", stiffness: 140, damping: 18, mass: 0.9 }}
+            exit={{ y: prefersReducedMotion ? 0 : 10, scale: 0.995, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 150, damping: 18, mass: 0.9 }}
             className="relative w-full max-w-2xl"
           >
-            <div className="rounded-[32px] border border-border/60 bg-background/70 shadow-[0_40px_140px_-80px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+            <div className="rounded-[30px] border border-border/60 bg-background/70 shadow-[0_40px_140px_-80px_rgba(0,0,0,0.85)] backdrop-blur-xl">
               <div className="flex items-start justify-between gap-4 px-6 pb-2 pt-6 md:px-8">
                 <div>
                   <div className="flex items-center gap-2">
@@ -483,12 +576,11 @@ function RevealOverlay({
                   <div className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
                     {headline}
                   </div>
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    {SLICE_HINT[slice]}
-                  </div>
+                  <div className="mt-2 text-sm text-muted-foreground">{SLICE_HINT[slice]}</div>
                 </div>
 
                 <Button
+                  ref={closeBtnRef as any}
                   variant="secondary"
                   className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
                   onClick={onClose}
@@ -501,20 +593,14 @@ function RevealOverlay({
 
               <div className="px-6 pb-6 md:px-8 md:pb-8">
                 <motion.div
-                  className="relative overflow-hidden rounded-[28px] border border-border/60 bg-background/60 shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]"
-                  initial={
-                    prefersReducedMotion
-                      ? { opacity: 0 }
-                      : { rotateX: 10, y: 10, opacity: 0 }
-                  }
-                  animate={
-                    prefersReducedMotion ? { opacity: 1 } : { rotateX: 0, y: 0, opacity: 1 }
-                  }
-                  transition={{ type: "spring", stiffness: 130, damping: 16 }}
+                  className="relative overflow-hidden rounded-[26px] border border-border/60 bg-background/60 shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]"
+                  initial={prefersReducedMotion ? { opacity: 0 } : { rotateX: 8, y: 8, opacity: 0 }}
+                  animate={prefersReducedMotion ? { opacity: 1 } : { rotateX: 0, y: 0, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 135, damping: 16 }}
                   style={{ transformStyle: "preserve-3d" }}
                 >
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_circle_at_25%_18%,rgba(255,255,255,0.26),transparent_55%)]" />
-                  <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:linear-gradient(to_right,rgba(255,255,255,0.9),transparent)]" />
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_circle_at_25%_18%,rgba(255,255,255,0.22),transparent_55%)]" />
+                  <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(to_right,rgba(255,255,255,0.9),transparent)]" />
 
                   <div className="p-6 md:p-8">
                     <AnimatePresence mode="wait">
@@ -524,10 +610,12 @@ function RevealOverlay({
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 8 }}
-                          transition={{ duration: 0.28 }}
+                          transition={{ duration: 0.26 }}
                           className="space-y-5"
                         >
-                          <div className="text-sm text-muted-foreground">It landed on</div>
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground/90">
+                            It landed on
+                          </div>
 
                           <div className="flex items-start justify-between gap-4">
                             <div>
@@ -551,7 +639,7 @@ function RevealOverlay({
                           <div className="flex items-center justify-between gap-3 pt-1">
                             <div className="text-xs text-muted-foreground">Tip: press Enter to reveal.</div>
                             <Button
-                              className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 shadow-[0_18px_80px_-55px_rgba(244,114,182,0.65)]"
+                              className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 shadow-[0_18px_80px_-55px_rgba(244,114,182,0.55)]"
                               onClick={() => setStage("reveal")}
                             >
                               Reveal
@@ -561,16 +649,18 @@ function RevealOverlay({
                       ) : (
                         <motion.div
                           key="reveal"
-                          initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                          initial={{ opacity: 0, scale: 0.99, y: 10 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.99, y: 6 }}
+                          exit={{ opacity: 0, scale: 0.995, y: 6 }}
                           transition={{ type: "spring", stiffness: 170, damping: 18 }}
                         >
                           {slice === "red" && (
                             <div className="text-center">
-                              <div className="text-xs text-muted-foreground">Short line</div>
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground/90">
+                                Short line
+                              </div>
                               <motion.div
-                                initial={{ opacity: 0, y: 12 }}
+                                initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.06 }}
                                 className="mt-3 text-3xl font-semibold leading-tight tracking-tight md:text-4xl"
@@ -578,7 +668,7 @@ function RevealOverlay({
                                 “{gift.red_phrase}”
                               </motion.div>
                               <div className="mt-4 text-xs text-muted-foreground">
-                                Valentine’s Day energy. Keep it forever.
+                                Save it. Repeat it. Make it yours.
                               </div>
                             </div>
                           )}
@@ -613,14 +703,16 @@ function RevealOverlay({
                               </div>
 
                               <div className="text-xs text-muted-foreground">
-                                Every second, still choosing each other.
+                                Still choosing each other—one second at a time.
                               </div>
                             </div>
                           )}
 
                           {slice === "yellow" && (
                             <div className="space-y-3">
-                              <div className="text-sm text-muted-foreground">Love letter</div>
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground/90">
+                                Love letter
+                              </div>
                               <div className="space-y-2">
                                 {(letterLines.length ? letterLines : [gift.love_letter])
                                   .slice(0, 18)
@@ -629,7 +721,7 @@ function RevealOverlay({
                                       key={i}
                                       initial={{ opacity: 0, y: 8 }}
                                       animate={{ opacity: 1, y: 0 }}
-                                      transition={{ delay: i * 0.03 }}
+                                      transition={{ delay: i * 0.028 }}
                                       className="text-sm leading-relaxed text-foreground/90"
                                     >
                                       {line}
@@ -641,21 +733,23 @@ function RevealOverlay({
 
                           {slice === "blue" && (
                             <div className="space-y-3">
-                              <div className="text-sm text-muted-foreground">Photo</div>
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground/90">
+                                Photo
+                              </div>
 
                               {gift.couple_photo_url ? (
                                 <motion.div
-                                  initial={{ opacity: 0, scale: 0.98 }}
+                                  initial={{ opacity: 0, scale: 0.99 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ duration: 0.35 }}
+                                  transition={{ duration: 0.32 }}
                                   className="relative overflow-hidden rounded-3xl border border-border/60 shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]"
                                 >
-                                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_circle_at_28%_18%,rgba(255,255,255,0.28),transparent_55%)]" />
+                                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_circle_at_28%_18%,rgba(255,255,255,0.24),transparent_55%)]" />
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={gift.couple_photo_url}
                                     alt="Couple photo"
-                                    className="h-[300px] w-full object-cover md:h-[340px]"
+                                    className="h-[300px] w-full object-cover md:h-[360px]"
                                     loading="eager"
                                   />
                                 </motion.div>
@@ -666,7 +760,7 @@ function RevealOverlay({
                               )}
 
                               <div className="text-xs text-muted-foreground">
-                                A little “us” moment — perfect for Valentine’s.
+                                A little “us”—kept beautifully.
                               </div>
                             </div>
                           )}
@@ -693,7 +787,7 @@ function RevealOverlay({
   );
 }
 
-/* ------------------------------ Orbit Bet Picker (FUN + SIMPLE) ------------------------------ */
+/* ------------------------------ Bet Chips ------------------------------ */
 
 function BetChip({
   k,
@@ -710,12 +804,12 @@ function BetChip({
 }) {
   const base =
     k === "blue"
-      ? "from-sky-500/30 via-sky-400/10"
+      ? "from-sky-500/20 via-sky-400/8"
       : k === "red"
-      ? "from-rose-500/32 via-pink-500/10"
+      ? "from-rose-500/22 via-pink-500/8"
       : k === "green"
-      ? "from-emerald-500/30 via-emerald-400/10"
-      : "from-amber-500/30 via-amber-300/10";
+      ? "from-emerald-500/20 via-emerald-400/8"
+      : "from-amber-500/20 via-amber-300/8";
 
   return (
     <motion.button
@@ -723,16 +817,16 @@ function BetChip({
       disabled={disabled}
       onClick={onPick}
       className={[
-        "relative inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/20 px-3 py-2 text-xs text-white/85 backdrop-blur",
-        "shadow-[0_22px_90px_-70px_rgba(0,0,0,0.8)]",
+        "relative inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/18 px-3 py-2 text-xs text-white/85 backdrop-blur",
+        "shadow-[0_22px_90px_-70px_rgba(0,0,0,0.75)]",
         "transition active:scale-[0.98] disabled:cursor-not-allowed",
-        selected ? "ring-2 ring-white/20" : "hover:border-white/18",
+        selected ? "ring-2 ring-white/18" : "hover:border-white/18",
         disabled ? "opacity-45" : "opacity-100",
       ].join(" ")}
-      animate={pulse && !selected && !disabled ? { y: [0, -3, 0] } : { y: 0 }}
+      animate={pulse && !selected && !disabled ? { y: [0, -2, 0] } : { y: 0 }}
       transition={
         pulse && !selected && !disabled
-          ? { duration: 1.15, repeat: Infinity, ease: "easeInOut" }
+          ? { duration: 1.25, repeat: Infinity, ease: "easeInOut" }
           : {}
       }
       aria-pressed={selected}
@@ -740,44 +834,51 @@ function BetChip({
     >
       <span className={["h-2.5 w-2.5 rounded-full", colorDotClass(k)].join(" ")} />
       <span className="font-semibold tracking-tight">{SLICE_PUBLIC[k].colorName}</span>
-      <span className="text-white/60">•</span>
-      <span className="text-white/75">{SLICE_PUBLIC[k].title}</span>
+      <span className="text-white/55">•</span>
+      <span className="text-white/72">{SLICE_PUBLIC[k].title}</span>
       <span className={`pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b ${base} to-transparent`} />
     </motion.button>
   );
 }
+
+/* ------------------------------ Primary Spin CTA ------------------------------ */
 
 function PressToSpinButton({
   enabled,
   spinning,
   onPress,
   label,
+  helper,
 }: {
   enabled: boolean;
   spinning: boolean;
   onPress: () => void;
   label: string;
+  helper?: string;
 }) {
   const prefersReducedMotion = useReducedMotion();
 
   return (
     <motion.div
       className={[
-        "relative rounded-full border border-white/16 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 p-[2px]",
-        "shadow-[0_28px_120px_-85px_rgba(244,114,182,0.75)]",
+        "relative rounded-full border border-white/14 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 p-[2px]",
+        "shadow-[0_28px_120px_-90px_rgba(244,114,182,0.70)]",
         enabled ? "opacity-100" : "opacity-60",
       ].join(" ")}
       animate={!enabled && !spinning ? { y: [0, -2, 0] } : { y: 0 }}
-      transition={!enabled && !spinning ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" } : {}}
+      transition={
+        !enabled && !spinning ? { duration: 1.25, repeat: Infinity, ease: "easeInOut" } : {}
+      }
     >
       <motion.button
         type="button"
         disabled={!enabled || spinning}
         className={[
-          "group relative flex items-center justify-center gap-2 rounded-full px-8 py-4 text-sm font-semibold text-white",
-          "bg-black/18 backdrop-blur",
-          "shadow-[0_1px_0_rgba(255,255,255,0.22)_inset]",
+          "group relative flex flex-col items-center justify-center gap-1 rounded-full px-10 py-5 text-sm font-semibold text-white",
+          "bg-black/16 backdrop-blur",
+          "shadow-[0_1px_0_rgba(255,255,255,0.18)_inset]",
           "transition active:scale-[0.98] disabled:cursor-not-allowed",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25",
         ].join(" ")}
         onClick={() => {
           if (enabled && !spinning) onPress();
@@ -791,32 +892,257 @@ function PressToSpinButton({
         aria-label={label}
         title={enabled ? "Press to spin" : "Pick a color first"}
       >
-        <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(520px_circle_at_30%_25%,rgba(255,255,255,0.28),transparent_58%)] opacity-90" />
+        <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(520px_circle_at_30%_25%,rgba(255,255,255,0.24),transparent_58%)] opacity-90" />
         <span className="relative inline-flex items-center gap-2">
           <IconSparkle />
           {spinning ? "Spinning…" : label}
         </span>
-        <span className="ml-1 inline-flex items-center text-[11px] font-medium text-white/75">
-          press
+        <span className="relative text-[11px] font-medium text-white/70">
+          {helper ?? (spinning ? "listen for the ticks" : "press Enter / Space")}
         </span>
       </motion.button>
 
-      {/* tiny pulse shine for Valentine vibe */}
       <motion.div
-        className="pointer-events-none absolute -inset-2 rounded-full opacity-50"
-        animate={prefersReducedMotion ? {} : { opacity: [0.35, 0.65, 0.35] }}
-        transition={prefersReducedMotion ? {} : { duration: 1.8, repeat: Infinity }}
+        className="pointer-events-none absolute -inset-2 rounded-full opacity-40"
+        animate={prefersReducedMotion ? {} : { opacity: [0.28, 0.52, 0.28] }}
+        transition={prefersReducedMotion ? {} : { duration: 2.1, repeat: Infinity }}
         style={{
           background:
-            "radial-gradient(600px circle at 30% 30%, rgba(255,255,255,0.18), transparent 60%)",
-          filter: "blur(8px)",
+            "radial-gradient(600px circle at 30% 30%, rgba(255,255,255,0.16), transparent 60%)",
+          filter: "blur(10px)",
         }}
       />
     </motion.div>
   );
 }
 
-/* ------------------------------ Wheel (NEW UX: PRESS) ------------------------------ */
+/* ------------------------------ FIXED: Choice Modal (centered, never “torto”) ------------------------------ */
+
+function ChoiceModal({
+  open,
+  remaining,
+  bet,
+  canPick,
+  onPick,
+  onClose,
+}: {
+  open: boolean;
+  remaining: SliceKey[];
+  bet: SliceKey | null;
+  canPick: boolean;
+  onPick: (k: SliceKey) => void;
+  onClose: () => void;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const closeRef = React.useRef<HTMLButtonElement | null>(null);
+  const lastActiveEl = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    lastActiveEl.current = document.activeElement as HTMLElement | null;
+    window.setTimeout(() => closeRef.current?.focus(), 0);
+    return () => lastActiveEl.current?.focus?.();
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+
+      // tiny focus trap
+      if (e.key === "Tab") {
+        const root = dialogRef.current;
+        if (!root) return;
+
+        const focusables = Array.from(
+          root.querySelectorAll<HTMLElement>(
+            'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute("disabled"));
+
+        if (!focusables.length) return;
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+
+        if (e.shiftKey) {
+          if (active === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  // prevent background scroll while open (feels more “premium”)
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prev;
+    };
+  }, [open]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[70]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          aria-modal="true"
+          role="dialog"
+          aria-label="Pick your color"
+        >
+          {/* backdrop */}
+          <motion.button
+            type="button"
+            aria-label="Close"
+            className="absolute inset-0 bg-black/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+
+          {/* centered shell (desktop) + bottom sheet feel (mobile) */}
+          <div className="absolute inset-0 grid place-items-end sm:place-items-center p-3 sm:p-6">
+            <motion.div
+              ref={dialogRef}
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 18, scale: 0.99 }
+              }
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 16, scale: 0.995 }
+              }
+              transition={{ type: "spring", stiffness: 220, damping: 20 }}
+              className={[
+                "w-full sm:max-w-lg",
+                "rounded-[28px] border border-border/60 bg-background/80 shadow-[0_40px_160px_-90px_rgba(0,0,0,0.85)] backdrop-blur-xl",
+                "overflow-hidden",
+              ].join(" ")}
+              style={{ maxHeight: "min(82vh, 720px)" }}
+            >
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-0 opacity-[0.60]" style={{
+                  background:
+                    "radial-gradient(900px circle at 20% 0%, rgba(244,114,182,0.14), transparent 55%), radial-gradient(900px circle at 95% 10%, rgba(251,191,36,0.10), transparent 55%), radial-gradient(1000px circle at 40% 110%, rgba(56,189,248,0.09), transparent 60%)",
+                }} />
+
+                <div className="relative px-5 pb-4 pt-5 sm:px-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold tracking-tight">
+                        Pick your color
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        This is your “I hope it’s this one.” The spin stays random.
+                      </div>
+                    </div>
+
+                    <Button
+                      ref={closeRef as any}
+                      variant="secondary"
+                      className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
+                      onClick={onClose}
+                    >
+                      Close
+                    </Button>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-border/60 bg-muted/10 p-3 text-[11px] text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]">
+                    Tip: you can also tap <span className="font-medium text-foreground/80">directly on the wheel</span>.
+                    This menu is just a comfy shortcut.
+                  </div>
+
+                  <div className="mt-4 grid gap-2">
+                    {remaining.map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        disabled={!canPick}
+                        onClick={() => onPick(k)}
+                        className={[
+                          "group relative flex w-full items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/60 px-4 py-3 text-left",
+                          "shadow-[0_18px_70px_-60px_rgba(0,0,0,0.55)] backdrop-blur",
+                          "transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55",
+                          bet === k ? "ring-2 ring-foreground/15" : "hover:border-border/80",
+                        ].join(" ")}
+                        aria-pressed={bet === k}
+                        title={`Select ${SLICE_PUBLIC[k].colorName}`}
+                      >
+                        <span className="flex items-center gap-3">
+                          <span className={["h-3 w-3 rounded-full", colorDotClass(k)].join(" ")} />
+                          <span>
+                            <div className="text-sm font-semibold tracking-tight">
+                              {SLICE_PUBLIC[k].colorName}{" "}
+                              <span className="text-muted-foreground font-medium">— {SLICE_PUBLIC[k].title}</span>
+                            </div>
+                            <div className="mt-0.5 text-[11px] text-muted-foreground">
+                              {SLICE_PUBLIC[k].preview}
+                            </div>
+                          </span>
+                        </span>
+
+                        <span className="shrink-0 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] text-muted-foreground">
+                          {bet === k ? "Selected" : "Choose"}
+                        </span>
+
+                        <span
+                          className={[
+                            "pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition group-hover:opacity-100",
+                            "bg-[radial-gradient(520px_circle_at_30%_30%,rgba(255,255,255,0.14),transparent_55%)]",
+                          ].join(" ")}
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <div className="text-[11px] text-muted-foreground">
+                      Press <span className="font-medium text-foreground/80">Esc</span> to close.
+                    </div>
+                    <Button
+                      className="rounded-full px-6"
+                      variant="secondary"
+                      onClick={onClose}
+                    >
+                      Done
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ------------------------------ Wheel ------------------------------ */
 
 function Wheel({
   rotationMV,
@@ -848,99 +1174,174 @@ function Wheel({
 
   const ringAccent =
     spotlight === "blue"
-      ? "from-sky-500/30 via-sky-400/10"
+      ? "from-sky-500/18 via-sky-400/8"
       : spotlight === "red"
-      ? "from-rose-500/32 via-pink-500/10"
+      ? "from-rose-500/18 via-pink-500/8"
       : spotlight === "green"
-      ? "from-emerald-500/30 via-emerald-400/10"
+      ? "from-emerald-500/16 via-emerald-400/8"
       : spotlight === "yellow"
-      ? "from-amber-500/30 via-amber-300/10"
+      ? "from-amber-500/16 via-amber-300/8"
       : "from-white/10 via-white/5";
 
   const layout = React.useMemo(() => buildWheelLayout(remaining), [remaining]);
   const wheelBg = React.useMemo(() => buildConicGradient(remaining), [remaining]);
 
   const spinScale = useSpring(spinning && !prefersReducedMotion ? 1.01 : 1, {
-    stiffness: 210,
+    stiffness: 220,
     damping: 18,
     mass: 0.7,
   });
 
+  // FIXED: open centered modal, not anchored (prevents “opening in the corner”)
+  const [choiceOpen, setChoiceOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!canPick) setChoiceOpen(false);
+  }, [canPick]);
+
+  const pick = React.useCallback(
+    (k: SliceKey) => {
+      if (!canPick) return;
+      setBet(k);
+      setChoiceOpen(false);
+      toast.message("Choice set.", { description: `You chose ${SLICE_PUBLIC[k].colorName}.` });
+    },
+    [canPick, setBet]
+  );
+
+  // click directly on wheel to choose a slice
+  const wheelRef = React.useRef<HTMLDivElement | null>(null);
+
+  const onWheelClick = React.useCallback(
+    (e: React.MouseEvent) => {
+      if (!canPick) return;
+      const el = wheelRef.current;
+      if (!el) return;
+
+      // Avoid center CTA "Spin" intercept: if user clicked inside the CTA area, do nothing here
+      const t = e.target as HTMLElement | null;
+      if (t && t.closest?.("[data-wheel-cta]")) return;
+
+      const degTopCW = angleFromTopClockwiseFromEvent(e, el);
+
+      // Un-rotate the click angle by current wheel rotation (so we map to slice layout)
+      const currentRot = mod360(rotationMV.get());
+      const wheelSpaceDeg = mod360(degTopCW - currentRot);
+
+      const step = 360 / Math.max(1, remaining.length);
+      const idx = Math.floor(wheelSpaceDeg / step);
+      const key = remaining[clamp(idx, 0, remaining.length - 1)] ?? remaining[0];
+
+      if (!key) return;
+
+      // Toggle behavior: click the same slice again to clear
+      if (bet === key) {
+        setBet(null);
+        toast.message("Choice cleared.", { description: "Pick another one." });
+      } else {
+        pick(key);
+      }
+    },
+    [canPick, remaining, rotationMV, bet, setBet, pick]
+  );
+
   return (
     <div className="mx-auto grid place-items-center">
-      <div className="relative w-full max-w-[900px]">
-        {/* Top: Bet slot + microcopy */}
+      {/* centered modal (fixed) */}
+      <ChoiceModal
+        open={choiceOpen}
+        remaining={remaining}
+        bet={bet}
+        canPick={canPick}
+        onPick={pick}
+        onClose={() => setChoiceOpen(false)}
+      />
+
+      <div className="relative w-full max-w-[920px]">
+        {/* Header */}
         <div className="mb-6 text-center">
           <div className="text-base font-semibold tracking-tight">
             {spinning
-              ? "Fate is turning…"
+              ? "Let it unfold…"
               : disabled
-              ? "All surprises opened."
+              ? "All surprises revealed."
               : bet
-              ? "Bet locked in."
-              : "Pick a color (quick + fun)."}
+              ? "Choice set."
+              : "Choose a color to begin."}
           </div>
 
           <div className="mt-1 text-xs text-muted-foreground">
             {spinning
-              ? "Listen for the ticks…"
+              ? "A soft tick for every passing slice."
               : disabled
-              ? "Replay to experience it again."
+              ? "Replay anytime to relive the moment."
               : bet
-              ? `You picked ${SLICE_PUBLIC[bet].colorName}. (It never changes the outcome.)`
-              : "Tap a floating chip to set your bet. Then press to spin."}
+              ? `You chose ${SLICE_PUBLIC[bet].colorName}. (The outcome remains random.)`
+              : "Pick a chip, tap the wheel, or click the choice pill. Then spin."}
           </div>
 
-          {/* Bet slot */}
+          {/* Bet slot (CLICKABLE) */}
           <div className="mt-4 flex items-center justify-center">
-            <div className="relative inline-flex items-center gap-3 rounded-full border border-border/60 bg-background/55 px-4 py-2 text-xs text-muted-foreground shadow-[0_18px_80px_-60px_rgba(0,0,0,0.55)] backdrop-blur">
-              <span className="inline-flex items-center gap-2">
-                <span className="grid h-7 w-7 place-items-center rounded-full border border-white/14 bg-black/18">
-                  <HeartIcon className="opacity-90" />
+            <div className="relative">
+              <button
+                type="button"
+                disabled={!canPick}
+                onClick={() => setChoiceOpen(true)}
+                className={[
+                  "relative inline-flex items-center gap-3 rounded-full border border-border/60 bg-background/55 px-4 py-2 text-xs text-muted-foreground",
+                  "shadow-[0_18px_80px_-60px_rgba(0,0,0,0.55)] backdrop-blur",
+                  "transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20",
+                ].join(" ")}
+                aria-haspopup="dialog"
+                aria-expanded={choiceOpen}
+                title={canPick ? "Click to pick your choice" : "You can pick after the reveal"}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-full border border-white/12 bg-black/16">
+                    <HeartIcon className="opacity-90" />
+                  </span>
+                  <span className="font-medium text-foreground/85">Your choice</span>
                 </span>
-                <span className="font-medium text-foreground/85">Your bet</span>
-              </span>
 
-              <span className="text-muted-foreground">—</span>
+                <span className="text-muted-foreground">—</span>
 
-              <AnimatePresence mode="wait">
-                {bet ? (
-                  <motion.span
-                    key={`bet-${bet}`}
-                    initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.99 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 18 }}
-                    className="inline-flex items-center gap-2"
-                  >
-                    <span className={["h-2.5 w-2.5 rounded-full", colorDotClass(bet)].join(" ")} />
-                    <span className="font-semibold text-foreground">{SLICE_PUBLIC[bet].colorName}</span>
-                    <button
-                      type="button"
-                      onClick={() => setBet(null)}
-                      disabled={!canPick}
-                      className="ml-1 inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-1 text-[11px] text-muted-foreground transition hover:text-foreground disabled:opacity-60"
-                      title="Clear bet"
+                <AnimatePresence mode="wait">
+                  {bet ? (
+                    <motion.span
+                      key={`bet-${bet}`}
+                      initial={{ opacity: 0, y: 6, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.99 }}
+                      transition={{ type: "spring", stiffness: 220, damping: 18 }}
+                      className="inline-flex items-center gap-2"
                     >
-                      Clear
-                    </button>
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="bet-empty"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 6 }}
-                    className="text-muted-foreground"
-                  >
-                    Choose a color chip below
-                  </motion.span>
-                )}
-              </AnimatePresence>
+                      <span className={["h-2.5 w-2.5 rounded-full", colorDotClass(bet)].join(" ")} />
+                      <span className="font-semibold text-foreground">{SLICE_PUBLIC[bet].colorName}</span>
+
+                      <span className="ml-1 inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-1 text-[11px] text-muted-foreground">
+                        click to change
+                      </span>
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="bet-empty"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      className="text-muted-foreground"
+                    >
+                      Click here to choose
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+
+                <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(520px_circle_at_30%_25%,rgba(255,255,255,0.14),transparent_60%)]" />
+              </button>
             </div>
           </div>
 
-          {/* Floating chips row */}
+          {/* Chips */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             {remaining.map((k) => (
               <BetChip
@@ -949,87 +1350,97 @@ function Wheel({
                 selected={bet === k}
                 disabled={!canPick}
                 pulse={mustPick}
-                onPick={() => setBet(bet === k ? null : k)}
+                onPick={() => {
+                  if (!canPick) return;
+                  if (bet === k) {
+                    setBet(null);
+                    toast.message("Choice cleared.", { description: "Pick another one." });
+                    return;
+                  }
+                  pick(k);
+                }}
               />
             ))}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            <Pill dotClassName={mustPick ? "bg-rose-500/85" : "bg-foreground/50"}>
+            <Pill dotClassName={mustPick ? "bg-rose-500/80" : "bg-foreground/50"}>
               {mustPick ? (
-                <>Pick a chip to unlock the spin</>
+                <>Pick a color to unlock the spin</>
               ) : (
                 <>
-                  Outcome is always{" "}
-                  <span className="font-medium text-foreground">random</span>
-                  <span className="text-muted-foreground"> — the bet is just for drama.</span>
+                  Outcome stays <span className="font-medium text-foreground">random</span>
+                  <span className="text-muted-foreground"> — your choice is the romance.</span>
                 </>
               )}
             </Pill>
-            <Pill dotClassName="bg-emerald-500/85">
+            <Pill dotClassName="bg-emerald-500/80">
               Remaining <span className="font-medium text-foreground">{remaining.length}</span>/4
             </Pill>
+            <Pill dotClassName="bg-sky-500/75">Tap the wheel to choose</Pill>
           </div>
 
           <AnimatePresence>
             {lastResult && !spinning && !prefersReducedMotion && (
               <motion.div
                 key="resultBadge"
-                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                initial={{ opacity: 0, y: 8, scale: 0.99 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 6, scale: 0.99 }}
+                exit={{ opacity: 0, y: 6, scale: 0.995 }}
                 transition={{ type: "spring", stiffness: 180, damping: 18 }}
                 className="mt-4 mx-auto w-fit inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/55 px-4 py-2 text-xs shadow-[0_18px_80px_-60px_rgba(0,0,0,0.65)] backdrop-blur"
               >
                 <span className={["h-2 w-2 rounded-full", colorDotClass(lastResult.slice)].join(" ")} />
-                <span className="font-semibold">
-                  {lastResult.guessedRight ? "Nice pick." : "Close."}
-                </span>
+                <span className="font-semibold">{lastResult.guessedRight ? "Well chosen." : "Almost."}</span>
                 <span className="text-muted-foreground">
-                  Landed on {SLICE_PUBLIC[lastResult.slice].colorName}.
+                  It landed on {SLICE_PUBLIC[lastResult.slice].colorName}.
                 </span>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Halo behind */}
-        <div className="pointer-events-none absolute left-1/2 top-[290px] h-[72%] w-[72%] -translate-x-1/2 rounded-full bg-gradient-to-r from-rose-500/16 via-pink-500/10 to-amber-500/16 blur-2xl" />
+        {/* soft halo */}
+        <div className="pointer-events-none absolute left-1/2 top-[290px] h-[72%] w-[72%] -translate-x-1/2 rounded-full bg-gradient-to-r from-rose-500/12 via-pink-500/8 to-amber-500/12 blur-2xl" />
 
         {/* pointer */}
         <motion.div
           className="absolute left-1/2 top-[364px] z-30 -translate-x-1/2"
           animate={spinning && !prefersReducedMotion ? { y: [0, -2, 0] } : { y: 0 }}
           transition={{ duration: 0.25, repeat: spinning && !prefersReducedMotion ? Infinity : 0 }}
-          style={{
-            scale: prefersReducedMotion ? 1 : 1 + Math.min(0.08, pointerPulse * 0.012),
-          }}
+          style={{ scale: prefersReducedMotion ? 1 : 1 + Math.min(0.07, pointerPulse * 0.010) }}
         >
-          <div className="h-0 w-0 border-l-[14px] border-r-[14px] border-b-[22px] border-l-transparent border-r-transparent border-b-foreground/90 drop-shadow-sm" />
-          <div className="mx-auto mt-1 h-3 w-3 rounded-full bg-foreground/75 shadow-[0_12px_34px_-20px_rgba(0,0,0,0.85)]" />
+          <div className="h-0 w-0 border-l-[14px] border-r-[14px] border-b-[22px] border-l-transparent border-r-transparent border-b-foreground/85 drop-shadow-sm" />
+          <div className="mx-auto mt-1 h-3 w-3 rounded-full bg-foreground/70 shadow-[0_12px_34px_-20px_rgba(0,0,0,0.85)]" />
         </motion.div>
 
         {/* wheel */}
         <div className="relative mx-auto mt-6 aspect-square w-full max-w-[560px]">
-          <div className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-b from-white/14 to-transparent blur-[2px]" />
-          <div className="pointer-events-none absolute -inset-2 rounded-full border border-white/12" />
-          <div className={`pointer-events-none absolute -inset-10 rounded-full bg-gradient-to-b ${ringAccent} to-transparent blur-2xl`} />
-
-          <motion.div
-            className="pointer-events-none absolute -inset-8 rounded-full opacity-[0.55]"
-            animate={prefersReducedMotion ? {} : { rotate: 360 }}
-            transition={prefersReducedMotion ? {} : { duration: 18, ease: "linear", repeat: Infinity }}
-            style={{
-              background:
-                "conic-gradient(from 0deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02), rgba(255,255,255,0.14), rgba(255,255,255,0.02), rgba(255,255,255,0.10))",
-              filter: "blur(10px)",
-            }}
+          <div className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-b from-white/12 to-transparent blur-[2px]" />
+          <div className="pointer-events-none absolute -inset-2 rounded-full border border-white/10" />
+          <div
+            className={`pointer-events-none absolute -inset-10 rounded-full bg-gradient-to-b ${ringAccent} to-transparent blur-2xl`}
           />
 
           <motion.div
+            className="pointer-events-none absolute -inset-8 rounded-full opacity-[0.45]"
+            animate={prefersReducedMotion ? {} : { rotate: 360 }}
+            transition={prefersReducedMotion ? {} : { duration: 20, ease: "linear", repeat: Infinity }}
+            style={{
+              background:
+                "conic-gradient(from 0deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02), rgba(255,255,255,0.10), rgba(255,255,255,0.02), rgba(255,255,255,0.08))",
+              filter: "blur(12px)",
+            }}
+          />
+
+          {/* CLICKABLE WHEEL SURFACE */}
+          <motion.div
+            ref={wheelRef}
+            onClick={onWheelClick}
             className={[
               "absolute inset-0 rounded-full border border-border/60 bg-background/65 backdrop-blur",
               "shadow-[0_60px_190px_-130px_rgba(0,0,0,0.85)] transform-gpu",
+              canPick ? "cursor-pointer" : "cursor-default",
             ].join(" ")}
             style={{
               transformOrigin: "50% 50%",
@@ -1037,13 +1448,16 @@ function Wheel({
               rotate: rotationMV,
               scale: spinScale,
             }}
-            aria-label="Wheel"
+            role="button"
+            aria-label="Wheel (click a slice to choose)"
+            aria-disabled={!canPick}
+            title={canPick ? "Click a slice to choose your color" : "Wheel is locked right now"}
           >
-            <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(900px_circle_at_28%_18%,rgba(255,255,255,0.52),transparent_50%)]" />
-            <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/12" />
+            <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(900px_circle_at_28%_18%,rgba(255,255,255,0.46),transparent_50%)]" />
+            <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/10" />
 
-            <div className="pointer-events-none absolute inset-[7%] rounded-full ring-1 ring-white/10" />
-            <div className="pointer-events-none absolute inset-[10%] rounded-full bg-[radial-gradient(400px_circle_at_50%_30%,rgba(255,255,255,0.10),transparent_60%)]" />
+            <div className="pointer-events-none absolute inset-[7%] rounded-full ring-1 ring-white/8" />
+            <div className="pointer-events-none absolute inset-[10%] rounded-full bg-[radial-gradient(420px_circle_at_50%_30%,rgba(255,255,255,0.09),transparent_60%)]" />
 
             <div className="pointer-events-none absolute inset-0 rounded-full">
               {remaining.length > 1 &&
@@ -1052,22 +1466,37 @@ function Wheel({
                   return (
                     <div
                       key={`sep-${i}`}
-                      className="absolute left-1/2 top-1/2 h-[54%] w-px origin-bottom -translate-x-1/2 bg-white/16"
+                      className="absolute left-1/2 top-1/2 h-[54%] w-px origin-bottom -translate-x-1/2 bg-white/14"
                       style={{ transform: `rotate(${ang}deg)` }}
                     />
                   );
                 })}
             </div>
+
+            {/* gentle hover cue when user can pick */}
+            {canPick && (
+              <motion.div
+                className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/0"
+                animate={prefersReducedMotion ? {} : { opacity: [0.12, 0.26, 0.12] }}
+                transition={prefersReducedMotion ? {} : { duration: 2.4, repeat: Infinity }}
+                style={{
+                  boxShadow: "0 0 0 1px rgba(255,255,255,0.08) inset",
+                }}
+              />
+            )}
           </motion.div>
 
-          {/* center: PRESS TO SPIN */}
-          <div className="absolute inset-0 grid place-items-center">
-            <PressToSpinButton
-              enabled={!disabled && !spinning && remaining.length > 0 && !!bet}
-              spinning={spinning}
-              onPress={onSpin}
-              label={disabled ? "All revealed" : !bet ? "Pick a color" : "Spin"}
-            />
+          {/* CTA */}
+          <div className="absolute inset-0 grid place-items-center" data-wheel-cta>
+            <div data-wheel-cta>
+              <PressToSpinButton
+                enabled={!disabled && !spinning && remaining.length > 0 && !!bet}
+                spinning={spinning}
+                onPress={onSpin}
+                label={disabled ? "All revealed" : !bet ? "Choose a color" : "Spin"}
+                helper={!bet ? "tap the wheel or click your choice" : undefined}
+              />
+            </div>
           </div>
 
           <AnimatePresence>
@@ -1079,14 +1508,14 @@ function Wheel({
                 exit={{ opacity: 0, y: 8 }}
                 className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] text-muted-foreground shadow-[0_18px_80px_-60px_rgba(0,0,0,0.65)] backdrop-blur"
               >
-                Tap a color chip above
+                Click the choice pill • tap the wheel • or pick a chip
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        <div className="mt-4 text-center text-xs text-muted-foreground">
-          Keyboard: 1/2/3/4 to pick • Enter/Space to spin • R to replay • Esc closes the modal • M toggles sound
+        <div className="mt-4 text-center text-[11px] text-muted-foreground">
+          Keyboard: 1/2/3/4 choose • Enter/Space spin • R replay • Esc close • M sound
         </div>
       </div>
     </div>
@@ -1126,12 +1555,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
   const [gift, setGift] = React.useState<Gift | null>(null);
   const [loading, setLoading] = React.useState(true);
 
-  const [remaining, setRemaining] = React.useState<SliceKey[]>([
-    "blue",
-    "red",
-    "green",
-    "yellow",
-  ]);
+  const [remaining, setRemaining] = React.useState<SliceKey[]>(ALL_SLICES);
   const [active, setActive] = React.useState<SliceKey | null>(null);
 
   const [spinning, setSpinning] = React.useState(false);
@@ -1146,14 +1570,13 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
   const [spotlight, setSpotlight] = React.useState<SliceKey | null>(null);
 
   const [bet, setBet] = React.useState<SliceKey | null>(null);
-  const [lastResult, setLastResult] = React.useState<{
-    slice: SliceKey;
-    guessedRight: boolean;
-  } | null>(null);
+  const [lastResult, setLastResult] = React.useState<{ slice: SliceKey; guessedRight: boolean } | null>(
+    null
+  );
 
   const [pointerPulse, setPointerPulse] = React.useState(0);
 
-  const [audioOn, setAudioOn] = React.useState(true);
+  const [audioOn, setAudioOn] = useLocalStorageBoolean("lw_audio_on", true);
   const audio = useTickAudio(audioOn);
 
   const [burst, setBurst] = React.useState(false);
@@ -1192,7 +1615,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     return () => unsub();
   }, [rotationMV, spinning, audio, prefersReducedMotion]);
 
-    React.useEffect(() => {
+  React.useEffect(() => {
     let alive = true;
 
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -1210,7 +1633,6 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     }
 
     async function getGiftIdForCheckout() {
-      // esse resolve SEM session_id deve devolver { id } (pra checkout)
       const r = await fetch(`/api/resolve/${slug}`, { cache: "no-store" });
       const d = await r.json().catch(() => null);
       if (!r.ok) throw new Error(d?.error ?? "Failed to prepare checkout.");
@@ -1218,16 +1640,14 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     }
 
     async function confirmPayment(sessionId: string) {
-      // tenta algumas vezes porque pode ter delay entre Stripe -> confirmar -> Supabase
       const maxTries = 12;
 
       for (let i = 0; i < maxTries; i++) {
-        const r = await fetch(
-          `/api/resolve/${slug}?session_id=${encodeURIComponent(sessionId)}`,
-          { cache: "no-store" }
-        );
+        const r = await fetch(`/api/resolve/${slug}?session_id=${encodeURIComponent(sessionId)}`, {
+          cache: "no-store",
+        });
 
-        if (r.status === 200) return true; // confirmou e marcou paid
+        if (r.status === 200) return true;
         if (r.status === 202) {
           await sleep(900);
           continue;
@@ -1245,14 +1665,11 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
         if (!alive) return;
         setLoading(true);
 
-        // ✅ 1) Se voltou do Stripe, confirma antes de buscar o gift
         const url = new URL(window.location.href);
         const sessionId = url.searchParams.get("session_id");
 
         if (sessionId) {
           const ok = await confirmPayment(sessionId);
-
-          // limpa o session_id da URL para não ficar reconfirmando
           if (ok) {
             url.searchParams.delete("session_id");
             const next =
@@ -1261,7 +1678,6 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
           }
         }
 
-        // ✅ 2) Agora busca o gift (já deve vir paid se confirmou)
         const out = await fetchGift();
         if (!alive) return;
 
@@ -1269,7 +1685,6 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
           setGift(null);
           setPaymentRequired(true);
 
-          // prepara o id pra checkout
           const id = await getGiftIdForCheckout();
           if (!alive) return;
 
@@ -1277,7 +1692,6 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
           return;
         }
 
-        // ✅ 3) Desbloqueia UI
         setPaymentRequired(false);
         setGiftIdForPay(null);
         setGift(out.data);
@@ -1294,16 +1708,13 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     };
   }, [slug]);
 
-
   React.useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
   const startAt = gift ? new Date(gift.relationship_start_at) : null;
-  const elapsed = startAt
-    ? clamp(now.getTime() - startAt.getTime(), 0, 10 ** 15)
-    : 0;
+  const elapsed = startAt ? clamp(now.getTime() - startAt.getTime(), 0, 10 ** 15) : 0;
   const parts = msToParts(elapsed);
 
   const payAndUnlock = useEvent(async () => {
@@ -1322,7 +1733,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
   });
 
   const reset = useEvent(() => {
-    setRemaining(["blue", "red", "green", "yellow"]);
+    setRemaining(ALL_SLICES);
     setActive(null);
     rotationMV.set(0);
     setRevealOpen(false);
@@ -1346,8 +1757,8 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     }
 
     if (!bet) {
-      toast.message("Pick a color first.", {
-        description: "Tap a color chip to lock your bet (outcome stays random).",
+      toast.message("Choose a color first.", {
+        description: "Tap the wheel, click the choice pill, or pick a chip.",
       });
       return;
     }
@@ -1362,7 +1773,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     const center = map.get(chosen)?.center ?? 0;
 
     const baseTarget = mod360(360 - center);
-    const jitter = prefersReducedMotion ? 0 : Math.random() * 16 - 8;
+    const jitter = prefersReducedMotion ? 0 : Math.random() * 14 - 7;
     const targetMod = mod360(baseTarget + jitter);
 
     const currentMod = mod360(rotationMV.get());
@@ -1380,11 +1791,11 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
 
     const nextRotation = rotationMV.get() + extraTurns * 360 + deltaToTarget;
 
-    const dur = prefersReducedMotion ? 0.9 : 3.75;
+    const dur = prefersReducedMotion ? 0.9 : 3.6;
     await new Promise<void>((resolve) => {
       animate(rotationMV, nextRotation, {
         duration: dur,
-        ease: prefersReducedMotion ? "easeOut" : [0.05, 0.92, 0.10, 1],
+        ease: prefersReducedMotion ? "easeOut" : [0.06, 0.92, 0.12, 1],
         onComplete: () => resolve(),
       });
     });
@@ -1393,7 +1804,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
 
     if (!prefersReducedMotion) {
       try {
-        if (navigator.vibrate) navigator.vibrate([18, 30, 24]);
+        if (navigator.vibrate) navigator.vibrate([16, 28, 22]);
       } catch {
         // ignore
       }
@@ -1402,7 +1813,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     const guessedRight = bet === chosen;
     setLastResult({ slice: chosen, guessedRight });
 
-    toast.message(guessedRight ? "Nice pick." : "Not this time.", {
+    toast.message(guessedRight ? "Well chosen." : "Not this time.", {
       description: `It landed on ${SLICE_PUBLIC[chosen].colorName} — ${SLICE_PUBLIC[chosen].title}.`,
     });
 
@@ -1428,8 +1839,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
-      const isTyping =
-        tag === "input" || tag === "textarea" || (e.target as any)?.isContentEditable;
+      const isTyping = tag === "input" || tag === "textarea" || (e.target as any)?.isContentEditable;
       if (isTyping) return;
 
       if (!spinning && !revealOpen && remaining.length > 0) {
@@ -1442,8 +1852,8 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
       if ((e.key === " " || e.key === "Enter") && !revealOpen) {
         e.preventDefault();
         if (!bet) {
-          toast.message("Pick a color first.", {
-            description: "Tap a chip (bet) to unlock spin.",
+          toast.message("Choose a color first.", {
+            description: "Tap the wheel, click the choice pill, or pick a chip.",
           });
           return;
         }
@@ -1452,10 +1862,12 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
 
       if ((e.key === "r" || e.key === "R") && !revealOpen) reset();
       if (e.key === "m" || e.key === "M") setAudioOn((v) => !v);
+      if (e.key === "Escape" && revealOpen) setRevealOpen(false);
     };
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [spin, reset, revealOpen, spinning, remaining, bet]);
+  }, [spin, reset, revealOpen, spinning, remaining, bet, setAudioOn]);
 
   if (loading) return <Skeleton />;
 
@@ -1465,18 +1877,18 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
         <GlowBg />
         <Card className="w-full max-w-xl border border-border/60 bg-background/60 shadow-[0_30px_120px_-70px_rgba(0,0,0,0.55)] backdrop-blur-xl">
           <CardContent className="p-6 md:p-8">
-            <Pill dotClassName="bg-amber-500/85">Locked Gift</Pill>
+            <Pill dotClassName="bg-amber-500/80">Locked</Pill>
 
             <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
               Unlock the{" "}
               <span className="bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">
-                Valentine
-              </span>{" "}
-              moment.
+                moment
+              </span>
+              .
             </h1>
 
             <p className="mt-3 text-sm text-muted-foreground">
-              Pay once to reveal the wheel and the surprises. The link stays permanent.
+              One-time payment to reveal the wheel and the surprises. The link stays permanent.
             </p>
 
             <SoftDivider />
@@ -1485,7 +1897,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
               <Button
                 onClick={payAndUnlock}
                 disabled={!giftIdForPay}
-                className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 shadow-[0_16px_70px_-45px_rgba(244,114,182,0.65)]"
+                className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 shadow-[0_16px_70px_-45px_rgba(244,114,182,0.55)]"
               >
                 Pay & Unlock
               </Button>
@@ -1498,11 +1910,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
               </Button>
             </div>
 
-            {!giftIdForPay && (
-              <div className="mt-4 text-xs text-muted-foreground">
-                Preparing checkout…
-              </div>
-            )}
+            {!giftIdForPay && <div className="mt-4 text-xs text-muted-foreground">Preparing checkout…</div>}
           </CardContent>
         </Card>
       </div>
@@ -1515,7 +1923,7 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
         <GlowBg />
         <Card className="w-full max-w-lg border border-border/60 bg-background/60 shadow-[0_30px_120px_-75px_rgba(0,0,0,0.55)] backdrop-blur-xl">
           <CardContent className="p-6 md:p-8">
-            <Pill dotClassName="bg-sky-500/85">Link Issue</Pill>
+            <Pill dotClassName="bg-sky-500/80">Link Issue</Pill>
             <div className="mt-4 text-xl font-semibold tracking-tight">Link Not Found</div>
             <div className="mt-2 text-sm text-muted-foreground">
               This gift may have been removed, or the link is incorrect.
@@ -1530,6 +1938,8 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
       </div>
     );
   }
+
+  const isPaid = gift.status === "paid";
 
   return (
     <div className="min-h-screen">
@@ -1548,23 +1958,25 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
       <div className="mx-auto max-w-5xl px-5 py-10 md:py-14">
         <div className="flex flex-col items-center text-center">
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Pill dotClassName={gift.status === "paid" ? "bg-rose-500/85" : "bg-sky-500/85"}>
-              {gift.status === "paid" ? "Valentine Surprise" : "Draft Preview"}
+            <Pill dotClassName={isPaid ? "bg-rose-500/80" : "bg-sky-500/80"}>
+              {isPaid ? "Surprise" : "Preview"}
             </Pill>
-            <Pill dotClassName="bg-emerald-500/85">
+
+            <Pill dotClassName="bg-emerald-500/80">
               Remaining <span className="font-medium text-foreground">{remaining.length}</span>/4
             </Pill>
+
             <button
               type="button"
               onClick={() => setAudioOn((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/55 px-3 py-1 text-xs text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.35)_inset] backdrop-blur transition hover:border-border/80"
+              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/55 px-3 py-1 text-xs text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.35)_inset] backdrop-blur transition hover:border-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
               aria-pressed={audioOn}
               title="Toggle sound (M)"
             >
               <span
                 className={[
                   "h-1.5 w-1.5 rounded-full",
-                  audioOn ? "bg-emerald-500/85" : "bg-muted-foreground/50",
+                  audioOn ? "bg-emerald-500/80" : "bg-muted-foreground/45",
                 ].join(" ")}
               />
               Sound {audioOn ? "On" : "Off"}
@@ -1572,16 +1984,15 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
           </div>
 
           <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
-            Pick a chip →{" "}
+            A quiet ritual:{" "}
             <span className="bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">
-              press
+              choose
             </span>{" "}
-            → reveal.
+            → spin → reveal.
           </h1>
 
           <p className="mt-3 max-w-2xl text-sm text-muted-foreground md:text-base">
-            Valentine’s Day edition: four little surprises, one cozy spin at a time. The bet never changes the outcome —
-            it just makes the moment sweeter.
+            Four surprises, one at a time. Your choice never changes the outcome—it just makes the moment feel personal.
           </p>
 
           <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -1599,12 +2010,12 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
         <div className="mt-10">
           <Card className="relative overflow-hidden border border-border/60 bg-background/60 shadow-[0_30px_120px_-85px_rgba(0,0,0,0.60)] backdrop-blur-xl">
             <motion.div
-              className="pointer-events-none absolute inset-0 opacity-[0.55]"
-              animate={prefersReducedMotion ? {} : { opacity: [0.42, 0.58, 0.42] }}
-              transition={prefersReducedMotion ? {} : { duration: 5.4, repeat: Infinity }}
+              className="pointer-events-none absolute inset-0 opacity-[0.50]"
+              animate={prefersReducedMotion ? {} : { opacity: [0.40, 0.54, 0.40] }}
+              transition={prefersReducedMotion ? {} : { duration: 6, repeat: Infinity }}
               style={{
                 background:
-                  "radial-gradient(900px circle at 20% 15%, rgba(244,114,182,0.16), transparent 55%), radial-gradient(900px circle at 85% 25%, rgba(251,191,36,0.12), transparent 55%), radial-gradient(1000px circle at 50% 90%, rgba(56,189,248,0.10), transparent 60%)",
+                  "radial-gradient(900px circle at 20% 15%, rgba(244,114,182,0.13), transparent 55%), radial-gradient(900px circle at 85% 25%, rgba(251,191,36,0.10), transparent 55%), radial-gradient(1000px circle at 50% 90%, rgba(56,189,248,0.09), transparent 60%)",
               }}
             />
             <CardContent className="relative p-6 md:p-10">
@@ -1624,8 +2035,8 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
           </Card>
         </div>
 
-        <div className="mt-8 text-center text-xs text-muted-foreground">
-          Keyboard: 1/2/3/4 to pick • Space/Enter to spin • R to replay • Esc closes the modal • M toggles sound
+        <div className="mt-8 text-center text-[11px] text-muted-foreground">
+          Keyboard: 1/2/3/4 choose • Enter/Space spin • R replay • Esc close • M sound
         </div>
       </div>
     </div>
