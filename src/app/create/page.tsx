@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import * as QRCode from "qrcode";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,24 +15,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 /**
- * Apple-like romantic single-page builder:
- * - Hero + Builder (no route change)
- * - Steps with cinematic, subtle transitions
- * - Preview only at the end
- * - Keyboard-first: Enter / Ctrl+Enter
- * - Photo upload via /api/upload-photo (server uploads to Supabase)
- *
- * Notes:
- * - We CREATE the gift first, then upload the photo using giftId.
- * - We NEVER set Content-Type manually when sending FormData.
- *
- * Requested change:
- * - Popup opens automatically right after "Create gift link" succeeds.
- * - Remove any "keep editing" helper section inside the popup.
- * - No need to click "Close" to open the popup (and we remove that button).
- *
- * New request:
- * - Show price very small: $4.90 (USD).
+ * LoveWheel landing + cinematic builder:
+ * - Dark premium hero + neon glow art
+ * - Primary CTA opens the builder modal
+ * - Link-ready popup after create
+ * - Pricing / QR Reader open popups
+ * - FAQ + How it works NAV scroll to sections (no popup)
+ * - QR code generated in LinkReady popup BEFORE payment (ask user to save it)
+ * - All copy in English
  */
 
 const PRICE_USD = "$4.90";
@@ -92,66 +83,69 @@ function softHaptic(pattern: number | number[] = 10) {
   }
 }
 
+/** ===== Accent system ===== */
+
 function stepAccent(step: StepKey) {
+  // LoveWheel palette: pink → magenta → violet on deep navy
   if (step === "red")
     return {
-      dot: "bg-rose-500",
-      ring: "ring-rose-500/25",
-      glow: "from-rose-500/22 via-pink-500/12 to-amber-500/12",
-      chip: "hover:border-rose-500/30 hover:text-foreground",
-      bar: "from-rose-500 via-pink-500 to-amber-500",
-      stroke: "border-rose-500/15",
-      icon: "text-rose-500/80",
+      dot: "bg-fuchsia-500",
+      ring: "ring-fuchsia-500/20",
+      glow: "from-fuchsia-500/18 via-pink-500/10 to-violet-500/10",
+      chip: "hover:border-fuchsia-500/25 hover:text-foreground",
+      bar: "from-fuchsia-500 via-pink-500 to-violet-500",
+      stroke: "border-fuchsia-500/12",
+      icon: "text-fuchsia-400/85",
     };
   if (step === "green")
     return {
-      dot: "bg-emerald-500",
-      ring: "ring-emerald-500/25",
-      glow: "from-emerald-500/18 via-sky-500/12 to-rose-500/10",
-      chip: "hover:border-emerald-500/30 hover:text-foreground",
-      bar: "from-emerald-500 via-sky-500 to-rose-500",
-      stroke: "border-emerald-500/15",
-      icon: "text-emerald-500/80",
+      dot: "bg-emerald-400",
+      ring: "ring-emerald-400/18",
+      glow: "from-emerald-400/14 via-sky-400/10 to-fuchsia-500/10",
+      chip: "hover:border-emerald-400/25 hover:text-foreground",
+      bar: "from-emerald-400 via-sky-400 to-fuchsia-500",
+      stroke: "border-emerald-400/12",
+      icon: "text-emerald-300/90",
     };
   if (step === "photo")
     return {
-      dot: "bg-sky-500",
-      ring: "ring-sky-500/25",
-      glow: "from-sky-500/18 via-violet-500/10 to-rose-500/10",
-      chip: "hover:border-sky-500/30 hover:text-foreground",
-      bar: "from-sky-500 via-violet-500 to-rose-500",
-      stroke: "border-sky-500/15",
-      icon: "text-sky-500/80",
+      dot: "bg-sky-400",
+      ring: "ring-sky-400/18",
+      glow: "from-sky-400/14 via-violet-500/10 to-fuchsia-500/10",
+      chip: "hover:border-sky-400/25 hover:text-foreground",
+      bar: "from-sky-400 via-violet-500 to-fuchsia-500",
+      stroke: "border-sky-400/12",
+      icon: "text-sky-300/90",
     };
   if (step === "yellow")
     return {
-      dot: "bg-amber-500",
-      ring: "ring-amber-500/25",
-      glow: "from-amber-500/18 via-rose-500/12 to-sky-500/12",
-      chip: "hover:border-amber-500/30 hover:text-foreground",
-      bar: "from-amber-500 via-rose-500 to-sky-500",
-      stroke: "border-amber-500/15",
-      icon: "text-amber-500/80",
+      dot: "bg-amber-300",
+      ring: "ring-amber-300/18",
+      glow: "from-amber-300/12 via-fuchsia-500/10 to-sky-400/10",
+      chip: "hover:border-amber-300/25 hover:text-foreground",
+      bar: "from-amber-300 via-fuchsia-500 to-sky-400",
+      stroke: "border-amber-300/10",
+      icon: "text-amber-200/90",
     };
   if (step === "confirm")
     return {
-      dot: "bg-sky-500",
-      ring: "ring-sky-500/25",
-      glow: "from-sky-500/16 via-rose-500/12 to-amber-500/12",
-      chip: "hover:border-sky-500/30 hover:text-foreground",
-      bar: "from-sky-500 via-rose-500 to-amber-500",
-      stroke: "border-sky-500/15",
-      icon: "text-sky-500/80",
+      dot: "bg-violet-500",
+      ring: "ring-violet-500/18",
+      glow: "from-violet-500/14 via-fuchsia-500/10 to-sky-400/10",
+      chip: "hover:border-violet-500/25 hover:text-foreground",
+      bar: "from-violet-500 via-fuchsia-500 to-sky-400",
+      stroke: "border-violet-500/10",
+      icon: "text-violet-300/90",
     };
 
   return {
-    dot: "bg-rose-500",
-    ring: "ring-foreground/10",
-    glow: "from-rose-500/16 via-amber-500/10 to-sky-500/10",
-    chip: "hover:border-foreground/25 hover:text-foreground",
-    bar: "from-rose-500 via-amber-500 to-sky-500",
-    stroke: "border-foreground/10",
-    icon: "text-rose-500/80",
+    dot: "bg-fuchsia-500",
+    ring: "ring-white/10",
+    glow: "from-fuchsia-500/18 via-pink-500/10 to-violet-500/10",
+    chip: "hover:border-white/15 hover:text-foreground",
+    bar: "from-fuchsia-500 via-pink-500 to-violet-500",
+    stroke: "border-white/10",
+    icon: "text-fuchsia-400/85",
   };
 }
 
@@ -212,149 +206,466 @@ function IconLink({ className }: { className?: string }) {
   );
 }
 
-/** ===== Background ===== */
+function IconTikTok({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-5 w-5", className)}>
+      <path
+        fill="currentColor"
+        d="M16 3c.6 2.6 2.4 4.4 5 5v4c-2.1-.1-3.8-.8-5-1.8V16c0 3.3-2.7 6-6 6s-6-2.7-6-6 2.7-6 6-6c.4 0 .7 0 1 .1v4.2c-.3-.2-.7-.3-1-.3-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2V3h4z"
+      />
+    </svg>
+  );
+}
 
-function PremiumBg({ step }: { step: StepKey }) {
+function IconIG({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-5 w-5", className)}>
+      <path
+        fill="currentColor"
+        d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm10 2H7a3 3 0 00-3 3v10a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3zm-5 4a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6zm6.2-.7a1.1 1.1 0 11-2.2 0 1.1 1.1 0 012.2 0z"
+      />
+    </svg>
+  );
+}
+
+function IconReddit({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-5 w-5", className)}>
+      <path
+        fill="currentColor"
+        d="M14.6 3.2l-1 4.6c1.7.2 3.2.9 4.3 1.9l3-1.4a1.5 1.5 0 11.9 1.8l-2.5 1.2c.5.9.7 1.9.7 3 0 4.1-3.6 7.5-8 7.5s-8-3.4-8-7.5c0-1.1.3-2.2.8-3.1L2.3 10a1.5 1.5 0 11.8-1.7l3 1.4c1.1-1 2.6-1.7 4.2-1.9l1.1-5.3a1.3 1.3 0 011.5-1l3.6.7a1.2 1.2 0 11-.5 2.4l-1.4-.3zm-6.9 12a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4zm8.6 0a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4zm-8 3.4c1 .9 2.3 1.4 3.4 1.4s2.5-.5 3.4-1.4a1 1 0 011.4 1.4c-1.4 1.3-3.1 2-4.8 2s-3.4-.7-4.8-2a1 1 0 011.4-1.4z"
+      />
+    </svg>
+  );
+}
+
+/** ===== Background (dark navy + neon) ===== */
+
+function NeonBg() {
   const reduce = useReducedMotion();
-
-  const pos =
-    step === "hero"
-      ? "18% 18%"
-      : step === "red"
-      ? "22% 30%"
-      : step === "green"
-      ? "80% 22%"
-      : step === "photo"
-      ? "70% 55%"
-      : step === "yellow"
-      ? "58% 82%"
-      : "52% 44%";
 
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-background" />
-      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_15%_18%,rgba(244,114,182,0.18),transparent_55%),radial-gradient(900px_circle_at_85%_20%,rgba(251,191,36,0.12),transparent_55%),radial-gradient(900px_circle_at_55%_92%,rgba(56,189,248,0.10),transparent_60%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(1100px_circle_at_50%_50%,transparent_38%,rgba(0,0,0,0.22)_100%)] dark:bg-[radial-gradient(1100px_circle_at_50%_50%,transparent_38%,rgba(0,0,0,0.62)_100%)]" />
-      <div className="absolute inset-0 opacity-[0.05] [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1px)] [background-size:8px_8px]" />
-
-      <motion.div
-        className="absolute inset-0"
-        animate={{
-          backgroundImage: `radial-gradient(900px_circle_at_${pos}, rgba(255,255,255,0.10), transparent 62%)`,
-        }}
-        transition={{ duration: 0.75, ease: "easeOut" }}
-      />
+      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_20%_20%,rgba(255,255,255,0.06),transparent_55%),radial-gradient(900px_circle_at_85%_25%,rgba(255,64,169,0.10),transparent_55%),radial-gradient(900px_circle_at_70%_85%,rgba(155,81,224,0.10),transparent_60%),linear-gradient(180deg,#050816_0%,#050816_45%,#040513_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_50%_45%,transparent_40%,rgba(0,0,0,0.70)_100%)]" />
+      <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:10px_10px]" />
 
       {!reduce && (
         <motion.div
-          className="absolute -inset-10 opacity-[0.30]"
-          animate={{ y: [0, -12, 0] }}
-          transition={{ duration: 8, ease: "easeInOut", repeat: Infinity }}
+          className="absolute -inset-14 opacity-[0.35]"
+          animate={{ y: [0, -14, 0], x: [0, 8, 0] }}
+          transition={{ duration: 10, ease: "easeInOut", repeat: Infinity }}
         >
-          <div className="absolute left-[12%] top-[32%] h-16 w-16 rounded-full bg-rose-500/10 blur-2xl" />
-          <div className="absolute left-[76%] top-[18%] h-20 w-20 rounded-full bg-amber-500/10 blur-2xl" />
-          <div className="absolute left-[58%] top-[76%] h-24 w-24 rounded-full bg-sky-500/10 blur-2xl" />
+          <div className="absolute left-[10%] top-[25%] h-28 w-28 rounded-full bg-fuchsia-500/10 blur-3xl" />
+          <div className="absolute left-[72%] top-[18%] h-32 w-32 rounded-full bg-violet-500/12 blur-3xl" />
+          <div className="absolute left-[55%] top-[72%] h-36 w-36 rounded-full bg-pink-500/10 blur-3xl" />
         </motion.div>
       )}
     </div>
   );
 }
 
-function StepWipe({ show }: { show: boolean }) {
+/** ===== Simple Info Modal (Pricing / QR Reader) ===== */
+
+function InfoModal({
+  open,
+  onOpenChange,
+  title,
+  content,
+  ctaLabel,
+  onCta,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  content: React.ReactNode;
+  ctaLabel?: string;
+  onCta?: () => void;
+}) {
   const reduce = useReducedMotion();
-  if (reduce) return null;
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => dialogRef.current?.focus(), 30);
+    return () => window.clearTimeout(t);
+  }, [open]);
 
   return (
     <AnimatePresence>
-      {show && (
+      {open && (
         <motion.div
-          className="pointer-events-none fixed inset-0 z-50"
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onOpenChange(false);
+          }}
         >
           <motion.div
-            className="absolute inset-0 bg-background/10 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/55 backdrop-blur-[10px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
           />
+
           <motion.div
-            className="absolute -inset-24"
-            style={{
-              background:
-                "linear-gradient(115deg, rgba(244,114,182,0.22), rgba(251,191,36,0.14), rgba(56,189,248,0.16))",
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
+            ref={dialogRef}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onOpenChange(false);
             }}
-            initial={{ x: "-70%", rotate: -7, opacity: 0.0 }}
-            animate={{ x: "70%", rotate: -7, opacity: 0.95 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.56, ease: "easeInOut" }}
-          />
+            className={cx(
+              "relative w-full max-w-2xl overflow-hidden rounded-[32px] border border-white/12 bg-[#070A1B]/70 shadow-[0_40px_160px_-70px_rgba(0,0,0,0.85)] backdrop-blur",
+              "focus:outline-none focus:ring-2 focus:ring-white/15"
+            )}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.985, filter: "blur(10px)" }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.985, filter: "blur(10px)" }}
+            transition={{ duration: reduce ? 0.16 : 0.34, ease: "easeOut" }}
+          >
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-10 bg-[radial-gradient(750px_circle_at_20%_15%,rgba(255,64,169,0.26),transparent_55%),radial-gradient(650px_circle_at_85%_20%,rgba(155,81,224,0.22),transparent_58%),radial-gradient(700px_circle_at_55%_85%,rgba(56,189,248,0.14),transparent_60%)]"
+              animate={{ opacity: [0.55, 0.85, 0.55] }}
+              transition={{ duration: 5.0, ease: "easeInOut", repeat: Infinity }}
+            />
+
+            <div className="relative p-6 sm:p-7">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+                    <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                    LoveWheel
+                  </div>
+                  <div className="text-2xl font-semibold tracking-tight text-white/90">{title}</div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className={cx(
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
+                    "hover:bg-white/10 hover:text-white active:scale-[0.98]",
+                    "focus:outline-none focus:ring-2 focus:ring-white/15"
+                  )}
+                  aria-label="Close"
+                >
+                  <IconX className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-white/12 bg-white/6 p-4 text-sm text-white/75 leading-relaxed">
+                {content}
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full border-white/15 bg-white/0 text-white hover:bg-white/10"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Close
+                </Button>
+                {ctaLabel ? (
+                  <Button
+                    type="button"
+                    className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95"
+                    onClick={() => {
+                      softHaptic([8, 12, 8]);
+                      onCta?.();
+                    }}
+                  >
+                    {ctaLabel}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
 
-/** ===== UI bits ===== */
+/** ===== Beautiful mini wheel (hero mock) ===== */
 
-function TopPill({ step }: { step: StepKey }) {
-  const a = stepAccent(step);
+function MiniWheel({ phrase, reduceMotion }: { phrase: string; reduceMotion: boolean }) {
+  const slices = [
+    { label: "Photo", from: "from-sky-400/35", to: "to-violet-500/25" },
+    { label: "Short line", from: "from-fuchsia-500/35", to: "to-pink-500/25" },
+    { label: "Time", from: "from-emerald-400/30", to: "to-sky-400/20" },
+    { label: "Letter", from: "from-amber-300/30", to: "to-fuchsia-500/20" },
+  ];
+
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border bg-background/55 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-      <span className={cx("h-1.5 w-1.5 rounded-full", a.dot)} />
-      Designed to land like a memory
+    <div className="relative">
+      <div className="absolute -inset-10 rounded-[44px] bg-[radial-gradient(closest-side,rgba(255,64,169,0.22),transparent_70%)] blur-2xl" />
+      <div className="absolute -inset-10 rounded-[44px] bg-[radial-gradient(closest-side,rgba(155,81,224,0.18),transparent_72%)] blur-2xl" />
+
+      <div className="relative overflow-hidden rounded-[34px] border border-white/12 bg-white/6 shadow-[0_50px_180px_-90px_rgba(0,0,0,0.85)] backdrop-blur">
+        <div className="p-5">
+          <div className="mb-3 flex items-center justify-between text-[11px] text-white/70">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+              love moment preview
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <IconSpark className="h-4 w-4 text-white/60" />
+              spin → reveal
+            </span>
+          </div>
+
+          <div className="relative mx-auto grid place-items-center">
+            <div className="absolute -top-1 z-10 h-0 w-0 border-l-[10px] border-r-[10px] border-b-[14px] border-l-transparent border-r-transparent border-b-white/80 drop-shadow" />
+
+            <motion.div
+              className="relative h-[230px] w-[230px] rounded-full border border-white/12 bg-black/20 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+              animate={reduceMotion ? undefined : { rotate: [0, 8, 0, -6, 0] }}
+              transition={reduceMotion ? undefined : { duration: 10, ease: "easeInOut", repeat: Infinity }}
+            >
+              <div className="absolute inset-0 rounded-full overflow-hidden">
+                {slices.map((s, i) => {
+                  const rot = i * 90;
+                  return (
+                    <div
+                      key={s.label}
+                      className="absolute inset-0"
+                      style={{
+                        transform: `rotate(${rot}deg)`,
+                      }}
+                    >
+                      <div
+                        className={cx(
+                          "absolute left-1/2 top-0 h-1/2 w-1/2 -translate-x-1/2 origin-bottom",
+                          "bg-gradient-to-b",
+                          s.from,
+                          s.to
+                        )}
+                      />
+                    </div>
+                  );
+                })}
+                <div className="absolute inset-0 bg-[radial-gradient(closest-side,rgba(255,255,255,0.10),transparent_65%)]" />
+              </div>
+
+              <div className="absolute -inset-3 rounded-full bg-[conic-gradient(from_180deg,rgba(255,64,169,0.30),rgba(155,81,224,0.22),rgba(56,189,248,0.20),rgba(255,64,169,0.30))] blur-xl opacity-60" />
+
+              <div className="absolute left-1/2 top-1/2 z-10 h-[92px] w-[92px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12 bg-[#070A1B]/70 backdrop-blur shadow-[0_20px_80px_-40px_rgba(255,64,169,0.55)]">
+                <div className="flex h-full flex-col items-center justify-center gap-1">
+                  <div className="text-white/85">
+                    <IconHeart className="h-6 w-6 text-fuchsia-300" />
+                  </div>
+                  <div className="text-[11px] font-semibold text-white/90 tracking-tight">LoveWheel</div>
+                  <div className="text-[10px] text-white/55">tap to spin</div>
+                </div>
+              </div>
+            </motion.div>
+
+            <div className="mt-4 w-full rounded-2xl border border-white/12 bg-white/6 p-4">
+              <div className="text-[11px] text-white/60">It lands like this:</div>
+              <div className="mt-1 text-lg font-semibold text-white/90">“{phrase}”</div>
+              <div className="mt-1 text-[11px] text-white/60">Then: unlock → reveal the rest.</div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-white/12 bg-white/6 p-3 text-[11px] text-white/70">
+            Tip: the best gifts feel like a memory, not a template.
+          </div>
+        </div>
+
+        <div className="pointer-events-none absolute left-1/2 top-2 h-5 w-24 -translate-x-1/2 rounded-full bg-black/35" />
+      </div>
     </div>
   );
 }
 
-function MinimalProgress({ step, progress }: { step: StepKey; progress: number }) {
-  const label =
-    step === "hero"
-      ? "Home"
-      : step === "red"
-      ? "Your line"
-      : step === "green"
-      ? "Your date"
-      : step === "photo"
-      ? "Your photo"
-      : step === "yellow"
-      ? "Your letter"
-      : "Preview";
+/** ===== Hero art wrapper (QR + wheel mock + neon) ===== */
 
-  const a = stepAccent(step);
+function HeroArt({ phrase }: { phrase: string }) {
+  const reduce = useReducedMotion();
 
   return (
-    <div className="mt-6 flex items-center justify-between gap-4">
-      <div className="text-xs text-muted-foreground">
-        <span className="text-foreground/85">{label}</span> • {progress}%
-      </div>
-
-      <div className="relative h-2 w-44 overflow-hidden rounded-full bg-muted/40">
+    <div className="relative mx-auto w-full max-w-[520px]">
+      <div className="relative">
         <motion.div
-          className={cx("absolute inset-0 opacity-30", "bg-gradient-to-r", a.bar)}
-          animate={{ x: ["-30%", "30%", "-30%"] }}
-          transition={{ duration: 3.8, ease: "easeInOut", repeat: Infinity }}
-        />
-        <div className={cx("relative h-full rounded-full bg-gradient-to-r transition-all", a.bar)} style={{ width: `${progress}%` }} />
+          className="absolute -left-6 -top-10 h-32 w-32 rounded-3xl border border-white/10 bg-white/6 backdrop-blur-md"
+          initial={reduce ? { opacity: 1 } : { opacity: 0, y: 10, rotate: -6, scale: 0.98, filter: "blur(10px)" }}
+          animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, rotate: -6, scale: 1, filter: "blur(0px)" }}
+          transition={{ duration: 0.65, ease: "easeOut" }}
+        >
+          <div className="p-3">
+            <div className="h-full w-full rounded-2xl bg-white/90 p-2">
+              <div className="grid h-full w-full grid-cols-8 gap-[2px]">
+                {Array.from({ length: 64 }).map((_, i) => {
+                  const on = [0, 1, 2, 5, 6, 7].includes(i % 8) ? i % 3 !== 0 : i % 5 === 0 || i % 7 === 0;
+                  return <div key={i} className={cx("rounded-[2px]", on ? "bg-black/85" : "bg-black/10")} />;
+                })}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="relative ml-auto w-[320px]"
+          initial={reduce ? { opacity: 1 } : { opacity: 0, y: 16, rotate: 6, scale: 0.985, filter: "blur(12px)" }}
+          animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, rotate: 6, scale: 1, filter: "blur(0px)" }}
+          transition={{ duration: 0.75, ease: "easeOut" }}
+        >
+          <MiniWheel phrase={phrase} reduceMotion={reduce} />
+        </motion.div>
+
+        {!reduce && (
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute -inset-12"
+            animate={{ rotate: [0, 2, 0, -2, 0] }}
+            transition={{ duration: 8, ease: "easeInOut", repeat: Infinity }}
+          >
+            <div className="absolute left-[18%] top-[10%] h-80 w-80 rounded-full bg-fuchsia-500/10 blur-3xl" />
+            <div className="absolute left-[35%] top-[22%] h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
+          </motion.div>
+        )}
+
+        <div className="pointer-events-none absolute -right-6 -top-8 opacity-90">
+          <div className="relative">
+            <div className="h-10 w-10 rounded-full bg-fuchsia-500/20 blur-xl" />
+            <div className="absolute inset-0 flex items-center justify-center text-fuchsia-300">
+              <IconHeart className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+
+        <div className="pointer-events-none absolute -right-10 bottom-6 opacity-85">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-full bg-violet-500/20 blur-xl" />
+            <div className="absolute inset-0 flex items-center justify-center text-violet-300">
+              <IconHeart className="h-7 w-7" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+/** ===== Builder modal (opens from hero button) ===== */
+
+function BuilderModal({
+  open,
+  onOpenChange,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => dialogRef.current?.focus(), 30);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[60] flex items-start justify-center p-4 sm:p-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onOpenChange(false);
+          }}
+        >
+          <motion.div
+            className="absolute inset-0 bg-black/55 backdrop-blur-[10px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+          />
+
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
+            ref={dialogRef}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onOpenChange(false);
+            }}
+            className={cx(
+              "relative w-full max-w-3xl overflow-hidden rounded-[34px] border border-white/12 bg-[#070A1B]/65 shadow-[0_70px_240px_-120px_rgba(0,0,0,0.95)] backdrop-blur",
+              "focus:outline-none focus:ring-2 focus:ring-white/15"
+            )}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.985, filter: "blur(12px)" }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.985, filter: "blur(12px)" }}
+            transition={{ duration: reduce ? 0.16 : 0.34, ease: "easeOut" }}
+          >
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-10 bg-[radial-gradient(700px_circle_at_20%_15%,rgba(255,64,169,0.22),transparent_55%),radial-gradient(700px_circle_at_85%_20%,rgba(155,81,224,0.18),transparent_58%),radial-gradient(700px_circle_at_55%_85%,rgba(255,255,255,0.06),transparent_65%)]"
+              animate={{ opacity: [0.55, 0.85, 0.55] }}
+              transition={{ duration: 5.0, ease: "easeInOut", repeat: Infinity }}
+            />
+
+            <div className="relative flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-2xl bg-white/8 ring-1 ring-white/12 backdrop-blur flex items-center justify-center">
+                  <span className="text-fuchsia-300">
+                    <IconHeart className="h-5 w-5" />
+                  </span>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-white/90">Create your love moment</div>
+                  <div className="text-[11px] text-white/60">{PRICE_MICROCOPY}</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className={cx(
+                  "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
+                  "hover:bg-white/10 hover:text-white active:scale-[0.98]",
+                  "focus:outline-none focus:ring-2 focus:ring-white/15"
+                )}
+                aria-label="Close"
+              >
+                <IconX className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="relative max-h-[80vh] overflow-auto px-5 py-5 sm:px-6 sm:py-6">{children}</div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** ===== UI bits (builder) ===== */
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-2 text-xs text-rose-500">
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-2 text-xs text-fuchsia-300">
       {msg}
     </motion.div>
   );
 }
 
 function KeyHint({ children }: { children: React.ReactNode }) {
-  return <div className="text-[11px] text-muted-foreground">{children}</div>;
+  return <div className="text-[11px] text-white/55">{children}</div>;
 }
 
 function GhostChip({
@@ -377,87 +688,45 @@ function GhostChip({
         onClick?.();
       }}
       className={cx(
-        "inline-flex items-center gap-2 rounded-full border bg-background/55 px-3 py-1 text-xs text-muted-foreground backdrop-blur transition",
-        "hover:bg-background/75 active:scale-[0.99]",
-        "focus:outline-none focus:ring-2 focus:ring-foreground/15",
+        "inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur transition",
+        "hover:bg-white/10 active:scale-[0.99]",
+        "focus:outline-none focus:ring-2 focus:ring-white/15",
         a.chip
       )}
     >
-      {icon ? <span className={cx("opacity-80", a.icon)}>{icon}</span> : null}
+      {icon ? <span className={cx("opacity-90", a.icon)}>{icon}</span> : null}
       {children}
     </button>
   );
 }
 
-function Sparkles({ step, active }: { step: StepKey; active: boolean }) {
-  const reduce = useReducedMotion();
-  const a = stepAccent(step);
-  if (reduce) return null;
-
-  return (
-    <AnimatePresence>
-      {active && (
-        <motion.div
-          className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <motion.div
-            className={cx("absolute -top-10 left-8 h-24 w-24 rounded-full blur-2xl", a.dot, "opacity-10")}
-            animate={{ y: [0, 16, 0], x: [0, 8, 0] }}
-            transition={{ duration: 2.8, ease: "easeInOut", repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute -bottom-12 right-10 h-28 w-28 rounded-full bg-sky-500/10 blur-2xl"
-            animate={{ y: [0, -16, 0], x: [0, -10, 0] }}
-            transition={{ duration: 3.0, ease: "easeInOut", repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute top-10 right-28 h-20 w-20 rounded-full bg-amber-500/10 blur-2xl"
-            animate={{ y: [0, 10, 0], x: [0, -6, 0] }}
-            transition={{ duration: 2.9, ease: "easeInOut", repeat: Infinity }}
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function LoveScore({
-  redLen,
-  hasDate,
-  hasPhoto,
-  letterLen,
-}: {
-  redLen: number;
-  hasDate: boolean;
-  hasPhoto: boolean;
-  letterLen: number;
-}) {
-  const score =
-    (clamp(redLen, 0, 80) / 80) * 25 + (hasDate ? 20 : 0) + (hasPhoto ? 20 : 0) + (clamp(letterLen, 0, 4000) / 4000) * 35;
-
-  const rounded = Math.round(score);
-
+function MinimalProgress({ step, progress }: { step: StepKey; progress: number }) {
   const label =
-    rounded >= 90 ? "This is going to hit." : rounded >= 75 ? "Almost unforgettable." : rounded >= 55 ? "It’s warming up." : "Start with one true detail.";
+    step === "red"
+      ? "Your line"
+      : step === "green"
+      ? "Your date"
+      : step === "photo"
+      ? "Your photo"
+      : step === "yellow"
+      ? "Your letter"
+      : "Preview";
+
+  const a = stepAccent(step);
 
   return (
-    <div className="rounded-2xl border bg-background/55 p-4 backdrop-blur">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xs text-muted-foreground">Moment strength</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
+    <div className="mt-5 flex items-center justify-between gap-4">
+      <div className="text-xs text-white/60">
+        <span className="text-white/85">{label}</span> • {progress}%
       </div>
-      <div className="mt-2 flex items-end justify-between">
-        <div className="text-3xl font-semibold tracking-tight">{rounded}</div>
-        <div className="text-[11px] text-muted-foreground">/ 100</div>
-      </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted/40">
-        <div className="h-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500" style={{ width: `${rounded}%` }} />
-      </div>
-      <div className="mt-3 text-[11px] text-muted-foreground">
-        Your photo is the “oh wow” moment. Pick the one that says <span className="text-foreground/75">us</span>.
+
+      <div className="relative h-2 w-44 overflow-hidden rounded-full bg-white/10">
+        <motion.div
+          className={cx("absolute inset-0 opacity-30", "bg-gradient-to-r", a.bar)}
+          animate={{ x: ["-30%", "30%", "-30%"] }}
+          transition={{ duration: 3.8, ease: "easeInOut", repeat: Infinity }}
+        />
+        <div className={cx("relative h-full rounded-full bg-gradient-to-r transition-all", a.bar)} style={{ width: `${progress}%` }} />
       </div>
     </div>
   );
@@ -482,62 +751,60 @@ function ConfirmPreview({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border bg-background/65 p-6 shadow-sm backdrop-blur">
-        <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-sm backdrop-blur">
+        <div className="mb-2 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
-            <IconHeart className="h-4 w-4 text-rose-500/80" />
+            <IconHeart className="h-4 w-4 text-fuchsia-300" />
             Your line
           </span>
-          <span className="h-2 w-2 rounded-full bg-rose-500/70" />
+          <span className="h-2 w-2 rounded-full bg-fuchsia-400/80" />
         </div>
-        <div className="text-2xl font-semibold leading-snug tracking-tight">{red.trim() ? `“${red.trim()}”` : "—"}</div>
-        <div className="mt-3 text-[11px] text-muted-foreground">Make it specific. One private detail beats ten generic compliments.</div>
+        <div className="text-2xl font-semibold leading-snug tracking-tight text-white/90">{red.trim() ? `“${red.trim()}”` : "—"}</div>
+        <div className="mt-3 text-[11px] text-white/60">Make it specific. One private detail beats ten generic compliments.</div>
       </div>
 
-      <div className="rounded-3xl border bg-background/65 p-6 shadow-sm backdrop-blur">
-        <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-sm backdrop-blur">
+        <div className="mb-2 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
-            <IconSpark className="h-4 w-4 text-emerald-500/80" />
+            <IconSpark className="h-4 w-4 text-emerald-300" />
             Time together
           </span>
-          <span className="h-2 w-2 rounded-full bg-emerald-500/70" />
+          <span className="h-2 w-2 rounded-full bg-emerald-300/80" />
         </div>
-        <div className="text-xs text-muted-foreground">Since {startDate || "—"}</div>
-        <div className="mt-1 text-4xl font-semibold tracking-tight">{duration}</div>
-        <div className="mt-3 text-[11px] text-muted-foreground">This number is simple — and it lands every time.</div>
+        <div className="text-xs text-white/60">Since {startDate || "—"}</div>
+        <div className="mt-1 text-4xl font-semibold tracking-tight text-white/90">{duration}</div>
+        <div className="mt-3 text-[11px] text-white/60">This number is simple — and it lands every time.</div>
       </div>
 
-      <div className="rounded-3xl border bg-background/65 p-6 shadow-sm backdrop-blur">
-        <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-sm backdrop-blur">
+        <div className="mb-3 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
-            <IconPhoto className="h-4 w-4 text-sky-500/80" />
+            <IconPhoto className="h-4 w-4 text-sky-300" />
             The photo
           </span>
-          <span className="h-2 w-2 rounded-full bg-sky-500/70" />
+          <span className="h-2 w-2 rounded-full bg-sky-300/80" />
         </div>
 
         {photoPreviewUrl ? (
-          <div className="relative overflow-hidden rounded-2xl border bg-muted/10">
+          <div className="relative overflow-hidden rounded-2xl border border-white/12 bg-white/5">
             <img src={photoPreviewUrl} alt="Couple photo preview" className="h-[220px] w-full object-cover" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-            <div className="pointer-events-none absolute bottom-3 left-3 text-xs text-white/85">Choose your most meaningful photo — this is the reveal.</div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute bottom-3 left-3 text-xs text-white/85">Revealed after payment.</div>
           </div>
         ) : (
-          <div className="rounded-2xl border bg-muted/10 p-4 text-sm text-muted-foreground">—</div>
+          <div className="rounded-2xl border border-white/12 bg-white/5 p-4 text-sm text-white/60">—</div>
         )}
 
-        <div className="mt-3 text-xs text-muted-foreground">
-          Tip: pick a photo that instantly brings you back. A laugh. A trip. A night that felt like forever.
-        </div>
+        <div className="mt-3 text-xs text-white/60">Tip: pick a photo that instantly brings you back. A laugh. A trip. A night that felt like forever.</div>
       </div>
 
-      <div className="rounded-3xl border bg-background/65 p-6 shadow-sm backdrop-blur">
-        <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-sm backdrop-blur">
+        <div className="mb-2 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
-            <IconSpark className="h-4 w-4 text-amber-500/80" />
+            <IconSpark className="h-4 w-4 text-amber-200" />
             The letter
           </span>
-          <span className="h-2 w-2 rounded-full bg-amber-500/70" />
+          <span className="h-2 w-2 rounded-full bg-amber-200/80" />
         </div>
 
         <div className="space-y-2">
@@ -547,22 +814,97 @@ function ConfirmPreview({
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.02 }}
-              className="text-sm leading-relaxed text-foreground/90"
+              className="text-sm leading-relaxed text-white/85"
             >
               {l}
             </motion.div>
           ))}
         </div>
 
-        <div className="mt-5 text-xs text-muted-foreground">
-          The premium <span className="text-foreground/75">spin → reveal</span> unlocks after payment.
+        <div className="mt-5 text-xs text-white/60">
+          The premium <span className="text-white/80">spin → reveal</span> unlocks after payment.
         </div>
       </div>
     </div>
   );
 }
 
-/** ===== Premium popup (shows Link Ready dynamically) ===== */
+/** ===== QR generator (for LinkReady popup) ===== */
+
+function QrCodeBlock({ value }: { value: string }) {
+  const [dataUrl, setDataUrl] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!value) return;
+      setLoading(true);
+      try {
+        const url = await QRCode.toDataURL(value, {
+          width: 240,
+          margin: 1,
+          errorCorrectionLevel: "M",
+        });
+        if (!cancelled) setDataUrl(url);
+      } catch {
+        if (!cancelled) setDataUrl(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+
+  function download() {
+    if (!dataUrl) return;
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "LoveWheel-QR.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.success("QR saved.", { description: "Perfect. Now you can print it or place it in a letter." });
+    softHaptic([8, 12, 8]);
+  }
+
+  return (
+    <div className="mt-5 rounded-2xl border border-white/12 bg-white/6 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] text-white/55">Save this QR code before you pay</div>
+          <div className="mt-1 text-sm text-white/80">
+            Print it, tape it into a letter, or keep it for the perfect delivery moment.
+          </div>
+        </div>
+        <Button type="button" variant="secondary" className="rounded-full" onClick={download} disabled={!dataUrl}>
+          {dataUrl ? "Download QR" : loading ? "Generating…" : "QR unavailable"}
+        </Button>
+      </div>
+
+      <div className="mt-4 flex items-center justify-center">
+        {dataUrl ? (
+          <div className="rounded-2xl bg-white p-3">
+            <img src={dataUrl} alt="QR code for your LoveWheel link" className="h-[220px] w-[220px]" />
+          </div>
+        ) : (
+          <div className="w-full rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
+            {loading ? "Generating your QR code…" : "Couldn’t generate QR code on this device."}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 text-[11px] text-white/55">
+        Tip: on iPhone, you can also long-press the QR image after it appears and save it.
+      </div>
+    </div>
+  );
+}
+
+/** ===== Premium popup (shows Link Ready dynamically + QR before pay) ===== */
 
 function LinkReadyPopup({
   open,
@@ -584,6 +926,7 @@ function LinkReadyPopup({
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const path = `/g/${slug}`;
+  const fullLink = origin ? `${origin}${path}` : path;
 
   React.useEffect(() => {
     if (!open) return;
@@ -595,7 +938,7 @@ function LinkReadyPopup({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -604,7 +947,7 @@ function LinkReadyPopup({
           }}
         >
           <motion.div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[8px]"
+            className="absolute inset-0 bg-black/55 backdrop-blur-[10px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -620,8 +963,8 @@ function LinkReadyPopup({
               if (e.key === "Escape") onOpenChange(false);
             }}
             className={cx(
-              "relative w-full max-w-xl overflow-hidden rounded-[32px] border bg-background/70 shadow-[0_40px_160px_-70px_rgba(0,0,0,0.75)] backdrop-blur",
-              "focus:outline-none focus:ring-2 focus:ring-foreground/15"
+              "relative w-full max-w-xl overflow-hidden rounded-[32px] border border-white/12 bg-[#070A1B]/65 shadow-[0_40px_160px_-70px_rgba(0,0,0,0.85)] backdrop-blur",
+              "focus:outline-none focus:ring-2 focus:ring-white/15"
             )}
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.985, filter: "blur(10px)" }}
             animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
@@ -630,7 +973,7 @@ function LinkReadyPopup({
           >
             <motion.div
               aria-hidden="true"
-              className="pointer-events-none absolute -inset-8 bg-[radial-gradient(700px_circle_at_20%_15%,rgba(244,114,182,0.22),transparent_50%),radial-gradient(650px_circle_at_80%_20%,rgba(251,191,36,0.16),transparent_55%),radial-gradient(700px_circle_at_55%_85%,rgba(56,189,248,0.14),transparent_55%)]"
+              className="pointer-events-none absolute -inset-10 bg-[radial-gradient(700px_circle_at_20%_15%,rgba(255,64,169,0.24),transparent_55%),radial-gradient(650px_circle_at_85%_20%,rgba(155,81,224,0.20),transparent_58%),radial-gradient(700px_circle_at_55%_85%,rgba(56,189,248,0.12),transparent_60%)]"
               animate={{ opacity: [0.55, 0.85, 0.55] }}
               transition={{ duration: 5.0, ease: "easeInOut", repeat: Infinity }}
             />
@@ -638,22 +981,24 @@ function LinkReadyPopup({
             <div className="relative p-6 sm:p-7">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <div className="inline-flex items-center gap-2 rounded-full border bg-background/55 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+                    <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
                     Link ready ✨
                   </div>
-                  <div className="mt-2 text-2xl font-semibold tracking-tight">Your moment is live.</div>
-                  <div className="text-sm text-muted-foreground">Pay to unlock the premium wheel + reveal. After payment, it’s locked.</div>
-                  <div className="text-[11px] text-muted-foreground">{PRICE_MICROCOPY}</div>
+                  <div className="mt-2 text-2xl font-semibold tracking-tight text-white/90">Your moment is live.</div>
+                  <div className="text-sm text-white/60">
+                    Before you pay: save your QR code below (for printing / letters). Then unlock the premium wheel + reveal.
+                  </div>
+                  <div className="text-[11px] text-white/55">{PRICE_MICROCOPY}</div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
                   className={cx(
-                    "inline-flex h-10 w-10 items-center justify-center rounded-full border bg-background/55 text-muted-foreground backdrop-blur transition",
-                    "hover:bg-background/75 hover:text-foreground active:scale-[0.98]",
-                    "focus:outline-none focus:ring-2 focus:ring-foreground/15"
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
+                    "hover:bg-white/10 hover:text-white active:scale-[0.98]",
+                    "focus:outline-none focus:ring-2 focus:ring-white/15"
                   )}
                   aria-label="Close"
                 >
@@ -661,14 +1006,14 @@ function LinkReadyPopup({
                 </button>
               </div>
 
-              <div className="mt-5 rounded-2xl border bg-background/70 p-3">
+              <div className="mt-5 rounded-2xl border border-white/12 bg-white/6 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-[11px] text-muted-foreground">Shareable link</div>
-                    <div className="mt-1 flex items-center gap-2 text-sm">
-                      <IconLink className="h-4 w-4 text-muted-foreground" />
+                    <div className="text-[11px] text-white/55">Shareable link</div>
+                    <div className="mt-1 flex items-center gap-2 text-sm text-white/80">
+                      <IconLink className="h-4 w-4 text-white/55" />
                       <div className="min-w-0 truncate">
-                        <span className="text-muted-foreground">{origin ? `${origin}` : ""}</span>
+                        <span className="text-white/55">{origin ? `${origin}` : ""}</span>
                         <span className="font-mono">{path}</span>
                       </div>
                     </div>
@@ -688,8 +1033,16 @@ function LinkReadyPopup({
                 </div>
               </div>
 
+              {/* QR generated BEFORE payment */}
+              <QrCodeBlock value={fullLink} />
+
               <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                <Button type="button" variant="outline" className="rounded-full" onClick={onPreview}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full border-white/15 bg-white/0 text-white hover:bg-white/10"
+                  onClick={onPreview}
+                >
                   Open preview
                 </Button>
                 <Button type="button" variant="secondary" className="rounded-full" onClick={onCopy}>
@@ -697,14 +1050,14 @@ function LinkReadyPopup({
                 </Button>
                 <Button
                   type="button"
-                  className="rounded-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95"
+                  className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95"
                   onClick={onPay}
                 >
                   Pay & unlock
                 </Button>
               </div>
 
-              <div className="mt-4 text-[11px] text-muted-foreground">
+              <div className="mt-4 text-[11px] text-white/55">
                 Pro tip: after payment, add a 2–3s “premium” animation before the reveal. It makes the moment land.
               </div>
             </div>
@@ -724,15 +1077,16 @@ function isValidImage(file: File) {
   return file.type.startsWith("image/");
 }
 
+/** ===== Main page ===== */
+
 export default function CreatePage() {
   const reduce = useReducedMotion();
 
   const [step, setStep] = React.useState<StepKey>("hero");
+  const [builderOpen, setBuilderOpen] = React.useState(false);
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [created, setCreated] = React.useState<{ id: string; slug: string } | null>(null);
-
-  const [wipe, setWipe] = React.useState(false);
-  const navLockRef = React.useRef(false);
 
   const [typing, setTyping] = React.useState(false);
   const typingTimer = React.useRef<number | null>(null);
@@ -742,6 +1096,25 @@ export default function CreatePage() {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const [linkPopupOpen, setLinkPopupOpen] = React.useState(false);
+
+  // Info popup state (Pricing / QR Reader only)
+  const [infoOpen, setInfoOpen] = React.useState(false);
+  const [infoTitle, setInfoTitle] = React.useState("Info");
+  const [infoBody, setInfoBody] = React.useState<React.ReactNode>(null);
+  const [infoCta, setInfoCta] = React.useState<{ label?: string; onClick?: () => void }>({});
+
+  // Section refs (FAQ + How it works) for nav scroll
+  const faqRef = React.useRef<HTMLDivElement | null>(null);
+  const howItWorksRef = React.useRef<HTMLDivElement | null>(null);
+
+  function scrollToSection(ref: React.RefObject<HTMLDivElement>, offset = 92) {
+    const el = ref.current;
+    if (!el) return;
+
+    const y = el.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: y, behavior: "smooth" });
+    softHaptic(8);
+  }
 
   React.useEffect(() => {
     return () => {
@@ -801,18 +1174,8 @@ export default function CreatePage() {
   }
 
   async function doStepChange(nextStep: StepKey) {
-    if (navLockRef.current) return;
-    navLockRef.current = true;
-
     softHaptic([8, 12, 8]);
-
-    if (!reduce) setWipe(true);
-    setTimeout(() => setStep(nextStep), reduce ? 0 : 140);
-
-    setTimeout(() => {
-      setWipe(false);
-      navLockRef.current = false;
-    }, reduce ? 120 : 650);
+    setStep(nextStep);
   }
 
   async function next() {
@@ -820,8 +1183,7 @@ export default function CreatePage() {
       if (step === "red") await form.trigger("redPhrase");
       if (step === "green") await form.trigger("relationshipStartAt");
       if (step === "yellow") await form.trigger("loveLetter");
-      if (step === "photo")
-        toast.message("Pick a photo that *says* something.", { description: "The reveal moment lives or dies on this choice." });
+      if (step === "photo") toast.message("Pick a photo that *says* something.", { description: "The reveal moment lives or dies on this choice." });
 
       toast.message("Almost there…", { description: "Complete this step to continue." });
       softHaptic(18);
@@ -838,13 +1200,18 @@ export default function CreatePage() {
     await doStepChange(prev);
   }
 
-  // keyboard-first
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (!builderOpen) return;
+
       if (e.key === "Escape") {
         if (linkPopupOpen) {
           e.preventDefault();
           setLinkPopupOpen(false);
+          softHaptic(8);
+        } else {
+          e.preventDefault();
+          setBuilderOpen(false);
           softHaptic(8);
         }
         return;
@@ -860,7 +1227,7 @@ export default function CreatePage() {
         return;
       }
 
-      if (step === "hero" || step === "red" || step === "green" || step === "photo" || step === "confirm") {
+      if (step === "red" || step === "green" || step === "photo" || step === "confirm") {
         e.preventDefault();
         next();
       }
@@ -868,7 +1235,7 @@ export default function CreatePage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, v.redPhrase, v.relationshipStartAt, v.loveLetter, photoFile, linkPopupOpen]);
+  }, [builderOpen, step, v.redPhrase, v.relationshipStartAt, v.loveLetter, photoFile, linkPopupOpen]);
 
   function setPhoto(file: File | null) {
     if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
@@ -939,10 +1306,9 @@ export default function CreatePage() {
 
       setCreated({ id: data.id, slug: data.slug });
 
-      // OPEN POPUP AUTOMATICALLY
       setLinkPopupOpen(true);
 
-      toast.success("Link created.", { description: "Now unlock the premium reveal ✨" });
+      toast.success("Link created.", { description: "Save your QR code, then unlock the premium reveal ✨" });
       softHaptic([10, 14, 10]);
     } catch (e: any) {
       toast.error(e?.message ?? "Something went wrong.");
@@ -1006,7 +1372,7 @@ export default function CreatePage() {
 
   const headline =
     step === "hero"
-      ? "Turn three truths into a premium reveal."
+      ? "Turn your story into a premium reveal."
       : step === "red"
       ? "Write the line that stops them."
       : step === "green"
@@ -1028,20 +1394,188 @@ export default function CreatePage() {
       ? "Pick the most meaningful one. This is the moment they’ll remember."
       : step === "yellow"
       ? "One memory + one gratitude + one promise. Keep it real."
-      : "If it feels right, create the link — we’ll open your share + unlock popup immediately.";
+      : "If it feels right, create the link — we’ll open your unlock popup immediately.";
 
   const scene = {
-    initial: reduce ? { opacity: 0 } : { opacity: 0, y: 18, filter: "blur(9px)", scale: 0.992 },
+    initial: reduce ? { opacity: 0 } : { opacity: 0, y: 18, filter: "blur(10px)", scale: 0.992 },
     animate: reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)", scale: 1 },
-    exit: reduce ? { opacity: 0 } : { opacity: 0, y: -10, filter: "blur(9px)", scale: 0.992 },
-    transition: { duration: reduce ? 0.15 : 0.44, ease: "easeOut" as const },
+    exit: reduce ? { opacity: 0 } : { opacity: 0, y: -10, filter: "blur(10px)", scale: 0.992 },
+    transition: { duration: reduce ? 0.15 : 0.42, ease: "easeOut" as const },
   };
 
-  return (
-    <div className="min-h-screen">
-      <PremiumBg step={step} />
-      <StepWipe show={wipe} />
+  function openBuilder() {
+    setBuilderOpen(true);
+    setStep("red");
+    softHaptic([8, 12, 8]);
+  }
 
+  function openInfo(title: string, body: React.ReactNode, ctaLabel?: string, cta?: () => void) {
+    setInfoTitle(title);
+    setInfoBody(body);
+    setInfoCta({ label: ctaLabel, onClick: cta });
+    setInfoOpen(true);
+    softHaptic([8, 12, 8]);
+  }
+
+  function openPricing() {
+    openInfo(
+      "Pricing",
+      <>
+        <div className="space-y-3">
+          <div className="text-white/85">
+            LoveWheel costs <span className="text-white font-semibold">{PRICE_USD}</span> to unlock the premium spin → reveal.
+          </div>
+          <div>
+            That’s the number on your card. The emotional value is… not measurable. This isn’t “content”. It’s a moment someone
+            keeps.
+          </div>
+          <div className="text-white/80">One-time payment. No subscription. After unlock, the reveal becomes part of the surprise.</div>
+        </div>
+      </>,
+      "Start creating",
+      openBuilder
+    );
+  }
+
+  function openFaqItem(which: string) {
+    const map: Record<string, { title: string; body: React.ReactNode }> = {
+      "what-is": {
+        title: "What exactly is LoveWheel?",
+        body: (
+          <div className="space-y-3">
+            <div>
+              It’s a private gift page you create in minutes: a short line, a “time together” counter, a photo reveal, and a love
+              letter.
+            </div>
+            <div>Your partner spins the wheel and discovers each piece. It feels like a game, but lands like a memory.</div>
+          </div>
+        ),
+      },
+      "is-it-private": {
+        title: "Is it private?",
+        body: (
+          <div className="space-y-3">
+            <div>
+              Yes. The link is unlisted (only people with the link can open it), and the reveal is gated so it doesn’t get spoiled
+              instantly.
+            </div>
+            <div className="text-white/80">Pro tip: send it at the exact moment you want it to land.</div>
+          </div>
+        ),
+      },
+      "what-if-they-share": {
+        title: "What if they share the link?",
+        body: (
+          <div className="space-y-3">
+            <div>
+              That’s part of the magic. The wheel makes it feel like a tiny ritual. But your details are personal, so most people
+              keep it between you two.
+            </div>
+            <div className="text-white/80">If you want, you can create a new moment anytime.</div>
+          </div>
+        ),
+      },
+      "does-it-expire": {
+        title: "Does it expire?",
+        body: (
+          <div className="space-y-3">
+            <div>No. The counter keeps running, and the page stays live.</div>
+            <div className="text-white/80">It’s a gift that quietly gets better with time.</div>
+          </div>
+        ),
+      },
+    };
+
+    const item = map[which] ?? { title: "FAQ", body: <div>More answers coming soon.</div> };
+    openInfo(item.title, item.body);
+  }
+
+  function openHowItWorksItem(which: string) {
+    const map: Record<string, { title: string; body: React.ReactNode }> = {
+      build: {
+        title: "How it works: Build",
+        body: (
+          <div className="space-y-3">
+            <div>You write four things:</div>
+            <ul className="list-disc pl-5 space-y-1 text-white/80">
+              <li>A short line that hits.</li>
+              <li>The date your story began (we turn it into a live counter).</li>
+              <li>A photo (the “oh wow” reveal).</li>
+              <li>A letter they’ll keep.</li>
+            </ul>
+            <div className="text-white/80">You don’t need to be poetic. You just need one true detail.</div>
+          </div>
+        ),
+      },
+      share: {
+        title: "How it works: Share",
+        body: (
+          <div className="space-y-3">
+            <div>You get a link instantly. Send it however you want:</div>
+            <ul className="list-disc pl-5 space-y-1 text-white/80">
+              <li>Text message</li>
+              <li>DM</li>
+              <li>A note inside a gift</li>
+              <li>A printed QR code in a letter</li>
+            </ul>
+            <div className="text-white/80">The best delivery is the unexpected one.</div>
+          </div>
+        ),
+      },
+      reveal: {
+        title: "How it works: Reveal",
+        body: (
+          <div className="space-y-3">
+            <div>
+              Your partner spins. Each slice reveals a piece. The premium spin → reveal unlock makes the moment feel earned and
+              cinematic.
+            </div>
+            <div className="text-white/80">A tiny pause before the reveal turns “cute” into “I’m not crying, you are.”</div>
+          </div>
+        ),
+      },
+    };
+
+    const item = map[which] ?? { title: "How it works", body: <div>More details soon.</div> };
+    openInfo(item.title, item.body);
+  }
+
+  function openQrReader() {
+    openInfo(
+      "QR Reader",
+      <div className="space-y-3">
+        <div>We generate a QR code for your LoveWheel link, so you can print it and place it inside a real letter.</div>
+        <div className="text-white/80">
+          Imagine this: a handwritten note… then a QR code at the bottom. They scan it. The wheel appears. The reveal begins.
+        </div>
+        <div className="text-white/80">Digital surprise. Physical delivery. Unfair combo.</div>
+      </div>,
+      "Create a moment",
+      openBuilder
+    );
+  }
+
+  const heroPhrases = ["I’d choose you again.", "You feel like home.", "My favorite plan is still: you.", "I’ll never stop choosing us.", "Somehow, it’s always you."];
+  const heroPhrase = heroPhrases[clamp(redLen % heroPhrases.length, 0, heroPhrases.length - 1)];
+
+  return (
+    <div className="min-h-screen text-white">
+      <NeonBg />
+
+      {/* Info popup */}
+      <InfoModal
+        open={infoOpen}
+        onOpenChange={(v) => {
+          setInfoOpen(v);
+          if (!v) softHaptic(8);
+        }}
+        title={infoTitle}
+        content={infoBody}
+        ctaLabel={infoCta.label}
+        onCta={infoCta.onClick}
+      />
+
+      {/* Link popup (after create) */}
       {created && (
         <LinkReadyPopup
           open={linkPopupOpen}
@@ -1056,149 +1590,345 @@ export default function CreatePage() {
         />
       )}
 
-      <div className="mx-auto max-w-3xl px-5 py-10 md:py-14">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <TopPill step={step} />
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">{headline}</h1>
-          <p className="mt-3 max-w-2xl text-muted-foreground">{sub}</p>
+      {/* Top nav */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/55 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-2xl bg-white/8 ring-1 ring-white/12 flex items-center justify-center">
+              <span className="text-fuchsia-300">
+                <IconHeart className="h-5 w-5" />
+              </span>
+            </div>
+            <div className="text-sm font-semibold tracking-tight">
+              Love<span className="text-fuchsia-300">Wheel</span>
+            </div>
+          </div>
 
-          {/* tiny price hint (kept subtle) */}
-          {(step === "hero" || step === "confirm") && (
-            <div className="mt-2 text-[11px] text-muted-foreground">{PRICE_MICROCOPY}</div>
-          )}
+          <nav className="hidden items-center gap-7 text-sm text-white/70 md:flex">
+            <button type="button" className="hover:text-white transition" onClick={openPricing}>
+              Pricing
+            </button>
 
+            {/* FAQ now scrolls */}
+            <button
+              type="button"
+              className="hover:text-white transition"
+              onClick={() => scrollToSection(faqRef)}
+            >
+              FAQ
+            </button>
+
+            {/* How it works now scrolls */}
+            <button
+              type="button"
+              className="hover:text-white transition"
+              onClick={() => scrollToSection(howItWorksRef)}
+            >
+              How it works
+            </button>
+
+            <button type="button" className="hover:text-white transition" onClick={openQrReader}>
+              QR Reader
+            </button>
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              onClick={openBuilder}
+              className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95"
+            >
+              Create yours
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* HERO */}
+      <main className="mx-auto max-w-6xl px-5 py-12 md:py-16">
+        <div className="grid items-center gap-10 md:grid-cols-2">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+              Designed to land like a memory
+            </div>
+
+            <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
+              Surprise{" "}
+              <span className="bg-gradient-to-r from-white via-fuchsia-200 to-pink-200 bg-clip-text text-transparent">
+                your love
+              </span>
+            </h1>
+
+            <p className="mt-4 max-w-xl text-white/65">
+              Create a live relationship counter, a private line, a photo reveal, and a letter. Share via link or QR — then unlock
+              the premium spin → reveal.
+            </p>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                onClick={openBuilder}
+                className="h-12 rounded-full px-7 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_20px_80px_-40px_rgba(255,64,169,0.75)] hover:opacity-95"
+              >
+                Start creating
+              </Button>
+
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-12 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                onClick={() =>
+                  toast.message("Quick tip", {
+                    description: "The best gifts feel like one private detail. Start there.",
+                  })
+                }
+              >
+                Quick tip
+              </Button>
+
+              <button
+                type="button"
+                onClick={openPricing}
+                className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-[11px] text-white/70 backdrop-blur transition hover:bg-white/10"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                {PRICE_MICROCOPY}
+              </button>
+            </div>
+
+            <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() =>
+                  openInfo(
+                    "How long does it take?",
+                    <div className="space-y-3">
+                      <div>Usually 2–3 minutes.</div>
+                      <div className="text-white/80">The “perfect” version takes longer, but the best version is the honest one.</div>
+                    </div>,
+                    "Start now",
+                    openBuilder
+                  )
+                }
+                className="text-left rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur hover:bg-white/10 transition"
+              >
+                <div className="text-[11px] text-white/55">Takes</div>
+                <div className="mt-1 text-lg font-semibold text-white/90">2–3 min</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={openQrReader}
+                className="text-left rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur hover:bg-white/10 transition"
+              >
+                <div className="text-[11px] text-white/55">Share</div>
+                <div className="mt-1 text-lg font-semibold text-white/90">Link + QR</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={openPricing}
+                className="text-left rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur hover:bg-white/10 transition"
+              >
+                <div className="text-[11px] text-white/55">Unlock</div>
+                <div className="mt-1 text-lg font-semibold text-white/90">{PRICE_USD}</div>
+              </button>
+            </div>
+          </div>
+
+          <HeroArt phrase={heroPhrase} />
+        </div>
+
+        <div className="mt-10 flex items-center justify-center gap-6 text-white/55">
+          <div className="hidden sm:block text-xs">+723 happy couples</div>
+        </div>
+
+        {/* Sections with click → popup */}
+        <div className="mt-12 grid gap-5 md:grid-cols-2">
+          {/* Pricing */}
+          <button
+            type="button"
+            onClick={openPricing}
+            className="text-left rounded-3xl border border-white/12 bg-white/6 p-6 backdrop-blur transition hover:bg-white/10"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+              Pricing
+            </div>
+            <div className="mt-3 text-2xl font-semibold text-white/90">{PRICE_USD} to unlock</div>
+            <div className="mt-2 text-sm text-white/65">The number is small. The emotional value is outrageous. Click to see what’s included.</div>
+          </button>
+
+          {/* QR Reader */}
+          <button
+            type="button"
+            onClick={openQrReader}
+            className="text-left rounded-3xl border border-white/12 bg-white/6 p-6 backdrop-blur transition hover:bg-white/10"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+              QR Reader
+            </div>
+            <div className="mt-3 text-2xl font-semibold text-white/90">Print it. Seal it. Deliver it.</div>
+            <div className="mt-2 text-sm text-white/65">We generate a QR code for your link so you can place it inside a letter for the ultimate surprise.</div>
+          </button>
+        </div>
+
+        {/* FAQ */}
+        <div ref={faqRef} className="mt-10 scroll-mt-28">
+          <div className="flex items-center justify-between">
+            <div className="text-xl font-semibold text-white/90">FAQ</div>
+            <button
+              type="button"
+              onClick={() =>
+                openInfo(
+                  "FAQ",
+                  <div className="space-y-3">
+                    <div>Tap any question on the page and it opens a detailed answer.</div>
+                    <div className="text-white/80">We designed this to feel like exploring, not reading.</div>
+                  </div>
+                )
+              }
+              className="text-xs text-white/60 hover:text-white transition"
+            >
+              What’s this?
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {[
+              { id: "what-is", q: "What exactly is LoveWheel?" },
+              { id: "is-it-private", q: "Is it private?" },
+              { id: "what-if-they-share", q: "What if they share the link?" },
+              { id: "does-it-expire", q: "Does it expire?" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => openFaqItem(item.id)}
+                className="text-left rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur transition hover:bg-white/10"
+              >
+                <div className="text-sm font-semibold text-white/90">{item.q}</div>
+                <div className="mt-1 text-xs text-white/60">Click to open the full answer.</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* How it works */}
+        <div ref={howItWorksRef} className="mt-10 scroll-mt-28">
+          <div className="text-xl font-semibold text-white/90">How it works</div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {[
+              { id: "build", title: "Build", desc: "Write the four pieces that make it real." },
+              { id: "share", title: "Share", desc: "Send by link or a printed QR in a letter." },
+              { id: "reveal", title: "Reveal", desc: "They spin. They discover. It lands." },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => openHowItWorksItem(item.id)}
+                className="text-left rounded-2xl border border-white/12 bg-white/6 p-5 backdrop-blur transition hover:bg-white/10"
+              >
+                <div className="inline-flex items-center gap-2 text-xs text-white/60">
+                  <IconSpark className="h-4 w-4 text-white/55" />
+                  Step
+                </div>
+                <div className="mt-2 text-lg font-semibold text-white/90">{item.title}</div>
+                <div className="mt-1 text-sm text-white/65">{item.desc}</div>
+                <div className="mt-3 text-xs text-white/60">Click to open details.</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* BUILDER MODAL */}
+      <BuilderModal
+        open={builderOpen}
+        onOpenChange={(v) => {
+          setBuilderOpen(v);
+          if (v) softHaptic([8, 12, 8]);
+          else softHaptic(8);
+        }}
+      >
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+            <span className={cx("h-1.5 w-1.5 rounded-full", a.dot)} />
+            Premium builder
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">{headline}</h2>
+          <p className="mt-2 text-sm text-white/60">{sub}</p>
           <MinimalProgress step={step} progress={progress} />
         </motion.div>
 
         <div className="relative">
           <motion.div
             className={cx("pointer-events-none absolute -inset-2 rounded-[34px] blur-2xl", "bg-gradient-to-r", a.glow)}
-            animate={{ opacity: [0.22, 0.42, 0.22], scale: [1, 1.015, 1] }}
+            animate={{ opacity: [0.18, 0.34, 0.18], scale: [1, 1.015, 1] }}
             transition={{ duration: 4.4, ease: "easeInOut", repeat: Infinity }}
           />
-          <div className="pointer-events-none absolute -inset-px rounded-[32px] bg-gradient-to-r from-transparent via-foreground/10 to-transparent opacity-60" />
 
           <div className={cx("relative rounded-[32px] ring-1", a.ring)}>
-            <Card className="border bg-background/55 shadow-[0_30px_120px_-60px_rgba(0,0,0,0.55)] backdrop-blur">
-              <CardContent className="relative p-7 md:p-10">
-                <Sparkles step={step} active={typing} />
+            <Card className="border border-white/12 bg-white/6 shadow-[0_30px_140px_-80px_rgba(0,0,0,0.9)] backdrop-blur">
+              <CardContent className="relative p-6 sm:p-8">
+                {!reduce && (
+                  <AnimatePresence>
+                    {typing && (
+                      <motion.div
+                        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        <motion.div
+                          className={cx("absolute -top-10 left-8 h-24 w-24 rounded-full blur-2xl", a.dot, "opacity-10")}
+                          animate={{ y: [0, 16, 0], x: [0, 8, 0] }}
+                          transition={{ duration: 2.8, ease: "easeInOut", repeat: Infinity }}
+                        />
+                        <motion.div
+                          className="absolute -bottom-12 right-10 h-28 w-28 rounded-full bg-violet-500/10 blur-2xl"
+                          animate={{ y: [0, -16, 0], x: [0, -10, 0] }}
+                          transition={{ duration: 3.0, ease: "easeInOut", repeat: Infinity }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
 
                 <AnimatePresence mode="wait">
-                  {/* HERO */}
-                  {step === "hero" && (
-                    <motion.div key="hero" {...scene} className="space-y-6">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="text-xs text-muted-foreground">Minimal. Fast. Built for emotional payoff.</div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="inline-flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-rose-500/70" />
-                            Words
-                          </span>
-                          <span className="inline-flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-sky-500/70" />
-                            Photo reveal
-                          </span>
-                          <span className="inline-flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-amber-500/70" />
-                            Premium moment
-                          </span>
-                        </div>
-                      </div>
-
-                      <LoveScore redLen={redLen} hasDate={!!v.relationshipStartAt} hasPhoto={!!photoFile} letterLen={letterLen} />
-
-                      <div className="rounded-2xl border bg-background/55 p-4 backdrop-blur">
-                        <div className="text-xs text-muted-foreground">A quick recipe</div>
-                        <div className="mt-2 grid gap-2 text-sm text-foreground/90">
-                          <div className="flex items-start gap-2">
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-rose-500/80" />
-                            <span>
-                              <span className="font-medium">One line</span> that only you could write.
-                            </span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500/80" />
-                            <span>
-                              <span className="font-medium">One date</span> that marks the start.
-                            </span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-sky-500/80" />
-                            <span>
-                              <span className="font-medium">One photo</span> that makes them pause.
-                            </span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500/80" />
-                            <span>
-                              <span className="font-medium">One letter</span> they’ll save.
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <KeyHint>
-                          Press <span className="font-mono">Enter</span> to begin.
-                        </KeyHint>
-
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="rounded-full"
-                            onClick={() =>
-                              toast.message("Tip", {
-                                description: "Add one private detail. That’s what turns this into a real moment.",
-                              })
-                            }
-                          >
-                            Quick tip
-                          </Button>
-
-                          <Button
-                            type="button"
-                            onClick={next}
-                            className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95"
-                          >
-                            Begin
-                          </Button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* RED */}
+                  {/* STEP: RED */}
                   {step === "red" && (
                     <motion.div key="red" {...scene} className="space-y-6">
                       <div className="flex items-end justify-between gap-4">
                         <div>
-                          <div className="text-xs text-muted-foreground">Step 1 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight">Write the line that stops them.</div>
-                          <div className="mt-2 text-sm text-muted-foreground">
-                            Aim for <span className="text-foreground/80">specific</span>, not perfect.
+                          <div className="text-xs text-white/55">Step 1 of 4</div>
+                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Write the line that stops them.</div>
+                          <div className="mt-2 text-sm text-white/60">
+                            Aim for <span className="text-white/85">specific</span>, not perfect.
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border bg-background/55 px-3 py-2 text-xs text-muted-foreground">
-                          <span className="text-foreground/80">{redLen}</span>/80
+                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
+                          <span className="text-white/85">{redLen}</span>/80
                         </div>
                       </div>
 
-                      <div className={cx("rounded-3xl border bg-background/55 p-6", a.stroke)}>
-                        <Label htmlFor="redPhrase" className="text-xs text-muted-foreground">
+                      <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
+                        <Label htmlFor="redPhrase" className="text-xs text-white/60">
                           Your line (the one they’ll replay)
                         </Label>
 
                         <div className="relative mt-2">
                           <motion.div
-                            className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r from-rose-500/16 via-pink-500/10 to-amber-500/10 blur-xl"
-                            animate={{ opacity: [0.14, 0.28, 0.14] }}
+                            className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r from-fuchsia-500/16 via-pink-500/10 to-violet-500/10 blur-xl"
+                            animate={{ opacity: [0.12, 0.24, 0.12] }}
                             transition={{ duration: 3.0, ease: "easeInOut", repeat: Infinity }}
                           />
                           {(() => {
                             const { ref: rhfRef, ...redReg } = form.register("redPhrase");
-
                             return (
                               <Input
                                 id="redPhrase"
@@ -1216,17 +1946,16 @@ export default function CreatePage() {
                                   });
                                   pingTyping();
                                 }}
-                                className="relative h-12 rounded-2xl text-base bg-background/70 focus-visible:ring-2 focus-visible:ring-foreground/15"
+                                className="relative h-12 rounded-2xl text-base bg-white/5 text-white placeholder:text-white/35 border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
                               />
                             );
                           })()}
-
                         </div>
 
                         <FieldError msg={form.formState.errors.redPhrase?.message} />
 
-                        <div className="mt-4 rounded-2xl border bg-background/60 p-4 text-xs text-muted-foreground">
-                          <div className="font-medium text-foreground/85">Make it hit:</div>
+                        <div className="mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
+                          <div className="font-medium text-white/85">Make it hit:</div>
                           <div className="mt-2 grid gap-1">
                             <div>• Mention a shared thing: a place, a joke, a habit.</div>
                             <div>• Keep it short enough to screenshot.</div>
@@ -1253,9 +1982,18 @@ export default function CreatePage() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <Button type="button" variant="secondary" className="rounded-full" onClick={back}>
-                          Back
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          onClick={() => {
+                            setBuilderOpen(false);
+                            softHaptic(8);
+                          }}
+                        >
+                          Close
                         </Button>
+
                         <div className="flex items-center gap-3">
                           <KeyHint>
                             <span className="font-mono">Enter</span> to continue
@@ -1264,7 +2002,7 @@ export default function CreatePage() {
                             type="button"
                             onClick={next}
                             disabled={!canAdvanceFrom("red")}
-                            className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 disabled:opacity-60"
+                            className="rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 disabled:opacity-60"
                           >
                             Continue
                           </Button>
@@ -1273,35 +2011,34 @@ export default function CreatePage() {
                     </motion.div>
                   )}
 
-                  {/* GREEN */}
+                  {/* STEP: GREEN */}
                   {step === "green" && (
                     <motion.div key="green" {...scene} className="space-y-6">
                       <div className="flex items-end justify-between gap-4">
                         <div>
-                          <div className="text-xs text-muted-foreground">Step 2 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight">Pick the day it began.</div>
-                          <div className="mt-2 text-sm text-muted-foreground">This powers the live counter.</div>
+                          <div className="text-xs text-white/55">Step 2 of 4</div>
+                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Pick the day it began.</div>
+                          <div className="mt-2 text-sm text-white/60">This powers the live counter.</div>
                         </div>
 
-                        <div className="rounded-2xl border bg-background/55 px-3 py-2 text-xs text-muted-foreground">
-                          <span className="text-foreground/80">{duration}</span>
+                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
+                          <span className="text-white/85">{duration}</span>
                         </div>
                       </div>
 
-                      <div className={cx("rounded-3xl border bg-background/55 p-6", a.stroke)}>
-                        <Label htmlFor="relationshipStartAt" className="text-xs text-muted-foreground">
+                      <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
+                        <Label htmlFor="relationshipStartAt" className="text-xs text-white/60">
                           Relationship start date
                         </Label>
 
                         <div className="relative mt-2">
                           <motion.div
-                            className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r from-emerald-500/14 via-sky-500/10 to-rose-500/8 blur-xl"
-                            animate={{ opacity: [0.12, 0.24, 0.12] }}
+                            className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r from-emerald-400/12 via-sky-400/10 to-fuchsia-500/10 blur-xl"
+                            animate={{ opacity: [0.10, 0.22, 0.10] }}
                             transition={{ duration: 3.4, ease: "easeInOut", repeat: Infinity }}
                           />
                           {(() => {
                             const { ref: rhfRef, ...dateReg } = form.register("relationshipStartAt");
-
                             return (
                               <Input
                                 id="relationshipStartAt"
@@ -1319,25 +2056,26 @@ export default function CreatePage() {
                                   });
                                   pingTyping();
                                 }}
-                                className={cx(
-                                  "relative h-12 rounded-2xl text-base bg-background/70",
-                                  "focus-visible:ring-2 focus-visible:ring-foreground/15"
-                                )}
+                                className="relative h-12 rounded-2xl text-base bg-white/5 text-white border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
                               />
                             );
                           })()}
-
                         </div>
 
                         <FieldError msg={form.formState.errors.relationshipStartAt?.message} />
 
-                        <div className="mt-4 rounded-2xl border bg-background/60 p-4 text-xs text-muted-foreground">
+                        <div className="mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
                           Choose the date that feels true — the first “we” moment, not the first message.
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <Button type="button" variant="secondary" className="rounded-full" onClick={back}>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          onClick={back}
+                        >
                           Back
                         </Button>
                         <div className="flex items-center gap-3">
@@ -1348,7 +2086,7 @@ export default function CreatePage() {
                             type="button"
                             onClick={next}
                             disabled={!canAdvanceFrom("green")}
-                            className="rounded-full px-6 bg-gradient-to-r from-emerald-500 via-sky-500 to-rose-500 text-white hover:opacity-95 disabled:opacity-60"
+                            className="rounded-full px-6 bg-gradient-to-r from-emerald-400 via-sky-400 to-fuchsia-500 text-white hover:opacity-95 disabled:opacity-60"
                           >
                             Continue
                           </Button>
@@ -1357,28 +2095,28 @@ export default function CreatePage() {
                     </motion.div>
                   )}
 
-                  {/* PHOTO */}
+                  {/* STEP: PHOTO */}
                   {step === "photo" && (
                     <motion.div key="photo" {...scene} className="space-y-6">
                       <div className="flex items-end justify-between gap-4">
                         <div>
-                          <div className="text-xs text-muted-foreground">Step 3 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight">Choose the photo that says everything.</div>
-                          <div className="mt-2 text-sm text-muted-foreground">
-                            This is the <span className="text-foreground/80">reveal</span>. Pick the most meaningful one.
+                          <div className="text-xs text-white/55">Step 3 of 4</div>
+                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Choose the photo that says everything.</div>
+                          <div className="mt-2 text-sm text-white/60">
+                            This is the <span className="text-white/85">reveal</span>. Pick the most meaningful one.
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border bg-background/55 px-3 py-2 text-xs text-muted-foreground">
-                          <span className="text-foreground/80">{photoFile ? "Selected" : "Missing"}</span>
+                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
+                          <span className="text-white/85">{photoFile ? "Selected" : "Missing"}</span>
                         </div>
                       </div>
 
-                      <div className={cx("rounded-3xl border bg-background/55 p-6", a.stroke)}>
+                      <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <div className="text-sm font-semibold tracking-tight">Couple photo</div>
-                            <div className="mt-1 text-xs text-muted-foreground">JPG/PNG/WebP • up to {MAX_PHOTO_MB}MB</div>
+                            <div className="text-sm font-semibold tracking-tight text-white/90">Couple photo</div>
+                            <div className="mt-1 text-xs text-white/55">JPG/PNG/WebP • up to {MAX_PHOTO_MB}MB</div>
                           </div>
 
                           <div className="flex items-center gap-2">
@@ -1407,32 +2145,32 @@ export default function CreatePage() {
                             if (f) setPhoto(f);
                           }}
                           className={cx(
-                            "mt-4 rounded-2xl border bg-muted/10 p-4 transition",
-                            "hover:bg-muted/15",
-                            "focus-within:ring-2 focus-within:ring-foreground/15"
+                            "mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 transition",
+                            "hover:bg-white/8",
+                            "focus-within:ring-2 focus-within:ring-white/15"
                           )}
                         >
                           {!photoPreviewUrl ? (
                             <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-                              <div className="inline-flex items-center gap-2 rounded-full border bg-background/55 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-                                <IconPhoto className="h-4 w-4 text-sky-500/80" />
+                              <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+                                <IconPhoto className="h-4 w-4 text-sky-300" />
                                 Drag & drop or click “Choose”
                               </div>
-                              <div className="max-w-sm text-xs text-muted-foreground">
+                              <div className="max-w-sm text-xs text-white/60">
                                 Pick the photo that makes your chest feel warm. A laugh. A trip. A night you’ll never forget.
                               </div>
                             </div>
                           ) : (
                             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                              <div className="relative overflow-hidden rounded-2xl border bg-background">
+                              <div className="relative overflow-hidden rounded-2xl border border-white/12 bg-white/5">
                                 <img src={photoPreviewUrl} alt="Selected couple photo preview" className="h-[260px] w-full object-cover" />
-                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                                <div className="pointer-events-none absolute bottom-3 left-3 text-xs text-white/90">This will be revealed after payment.</div>
+                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+                                <div className="pointer-events-none absolute bottom-3 left-3 text-xs text-white/85">This will be revealed after payment.</div>
                               </div>
 
-                              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60">
                                 <div className="truncate">
-                                  <span className="text-foreground/80">{photoFile?.name}</span>
+                                  <span className="text-white/85">{photoFile?.name}</span>
                                 </div>
                                 <div>{photoFile ? `${Math.round(photoFile.size / 1024)} KB` : ""}</div>
                               </div>
@@ -1441,14 +2179,19 @@ export default function CreatePage() {
                         </div>
 
                         {!photoFile ? (
-                          <div className="mt-3 text-xs text-muted-foreground">Choose carefully — this is the “oh wow” moment.</div>
+                          <div className="mt-3 text-xs text-white/60">Choose carefully — this is the “oh wow” moment.</div>
                         ) : (
-                          <div className="mt-3 text-xs text-muted-foreground">Perfect. This is the moment.</div>
+                          <div className="mt-3 text-xs text-white/60">Perfect. This is the moment.</div>
                         )}
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <Button type="button" variant="secondary" className="rounded-full" onClick={back}>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          onClick={back}
+                        >
                           Back
                         </Button>
                         <div className="flex items-center gap-3">
@@ -1459,7 +2202,7 @@ export default function CreatePage() {
                             type="button"
                             onClick={next}
                             disabled={!canAdvanceFrom("photo")}
-                            className="rounded-full px-6 bg-gradient-to-r from-sky-500 via-violet-500 to-rose-500 text-white hover:opacity-95 disabled:opacity-60"
+                            className="rounded-full px-6 bg-gradient-to-r from-sky-400 via-violet-500 to-fuchsia-500 text-white hover:opacity-95 disabled:opacity-60"
                           >
                             Continue
                           </Button>
@@ -1468,66 +2211,61 @@ export default function CreatePage() {
                     </motion.div>
                   )}
 
-                  {/* YELLOW */}
+                  {/* STEP: YELLOW */}
                   {step === "yellow" && (
                     <motion.div key="yellow" {...scene} className="space-y-6">
                       <div className="flex items-end justify-between gap-4">
                         <div>
-                          <div className="text-xs text-muted-foreground">Step 4 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight">Write the letter they’ll keep.</div>
-                          <div className="mt-2 text-sm text-muted-foreground">One memory + one gratitude + one promise. Keep it real.</div>
+                          <div className="text-xs text-white/55">Step 4 of 4</div>
+                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Write the letter they’ll keep.</div>
+                          <div className="mt-2 text-sm text-white/60">One memory + one gratitude + one promise. Keep it real.</div>
                         </div>
 
-                        <div className="rounded-2xl border bg-background/55 px-3 py-2 text-xs text-muted-foreground">
-                          <span className="text-foreground/80">{letterLen}</span>/4000
+                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
+                          <span className="text-white/85">{letterLen}</span>/4000
                         </div>
                       </div>
 
-                      <div className={cx("rounded-3xl border bg-background/55 p-6", a.stroke)}>
-                        <Label htmlFor="loveLetter" className="text-xs text-muted-foreground">
+                      <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
+                        <Label htmlFor="loveLetter" className="text-xs text-white/60">
                           Your letter (make it undeniable)
                         </Label>
 
                         <div className="relative mt-2">
                           <motion.div
-                            className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r from-amber-500/14 via-rose-500/10 to-sky-500/10 blur-xl"
-                            animate={{ opacity: [0.12, 0.26, 0.12] }}
+                            className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r from-amber-300/12 via-fuchsia-500/10 to-sky-400/10 blur-xl"
+                            animate={{ opacity: [0.10, 0.24, 0.10] }}
                             transition={{ duration: 3.2, ease: "easeInOut", repeat: Infinity }}
                           />
                           {(() => {
-                              const { ref: rhfRef, ...letterReg } = form.register("loveLetter");
-
-                              return (
-                                <Textarea
-                                  id="loveLetter"
-                                  placeholder={"The moment I knew it was you was...\n\nThank you for...\n\nHere’s what I promise you..."}
-                                  {...letterReg}
-                                  ref={(el) => {
-                                    rhfRef(el);
-                                    letterRef.current = el;
-                                  }}
-                                  onChange={(e) => {
-                                    letterReg.onChange(e);
-                                    form.setValue("loveLetter", e.target.value, {
-                                      shouldValidate: true,
-                                      shouldDirty: true,
-                                    });
-                                    pingTyping();
-                                  }}
-                                  className={cx(
-                                    "relative min-h-[240px] rounded-2xl text-base bg-background/70",
-                                    "focus-visible:ring-2 focus-visible:ring-foreground/15"
-                                  )}
-                                />
-                              );
-                            })()}
-
+                            const { ref: rhfRef, ...letterReg } = form.register("loveLetter");
+                            return (
+                              <Textarea
+                                id="loveLetter"
+                                placeholder={"The moment I knew it was you was...\n\nThank you for...\n\nHere’s what I promise you..."}
+                                {...letterReg}
+                                ref={(el) => {
+                                  rhfRef(el);
+                                  letterRef.current = el;
+                                }}
+                                onChange={(e) => {
+                                  letterReg.onChange(e);
+                                  form.setValue("loveLetter", e.target.value, {
+                                    shouldValidate: true,
+                                    shouldDirty: true,
+                                  });
+                                  pingTyping();
+                                }}
+                                className="relative min-h-[240px] rounded-2xl text-base bg-white/5 text-white placeholder:text-white/35 border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
+                              />
+                            );
+                          })()}
                         </div>
 
                         <FieldError msg={form.formState.errors.loveLetter?.message} />
 
-                        <div className="mt-4 rounded-2xl border bg-background/60 p-4 text-xs text-muted-foreground">
-                          <div className="font-medium text-foreground/85">A simple structure that works:</div>
+                        <div className="mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
+                          <div className="font-medium text-white/85">A simple structure that works:</div>
                           <div className="mt-2 grid gap-1">
                             <div>• A memory: “I still think about…”</div>
                             <div>• A thank you: “You changed my life by…”</div>
@@ -1555,20 +2293,25 @@ export default function CreatePage() {
                           ))}
                         </div>
 
-                        <div className="mt-4 text-xs text-muted-foreground">
+                        <div className="mt-4 text-xs text-white/55">
                           Shortcut: <span className="font-mono">Ctrl+Enter</span> to continue.
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <Button type="button" variant="secondary" className="rounded-full" onClick={back}>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          onClick={back}
+                        >
                           Back
                         </Button>
                         <Button
                           type="button"
                           onClick={next}
                           disabled={!canAdvanceFrom("yellow")}
-                          className="rounded-full px-6 bg-gradient-to-r from-amber-500 via-rose-500 to-sky-500 text-white hover:opacity-95 disabled:opacity-60"
+                          className="rounded-full px-6 bg-gradient-to-r from-amber-300 via-fuchsia-500 to-sky-400 text-[#050816] hover:opacity-95 disabled:opacity-60"
                         >
                           Review
                         </Button>
@@ -1576,15 +2319,17 @@ export default function CreatePage() {
                     </motion.div>
                   )}
 
-                  {/* CONFIRM */}
+                  {/* STEP: CONFIRM */}
                   {step === "confirm" && (
                     <motion.div key="confirm" {...scene} className="space-y-6">
                       <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
-                          <div className="text-xs text-muted-foreground">Preview</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight">Preview it like it’s already theirs.</div>
-                          <div className="mt-2 text-sm text-muted-foreground">If it hits, create the link — we’ll open your unlock popup immediately.</div>
-                          <div className="mt-2 text-[11px] text-muted-foreground">{PRICE_MICROCOPY}</div>
+                          <div className="text-xs text-white/55">Preview</div>
+                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Preview it like it’s already theirs.</div>
+                          <div className="mt-2 text-sm text-white/60">If it hits, create the link — we’ll open your unlock popup immediately.</div>
+                          <button type="button" onClick={openPricing} className="mt-2 text-[11px] text-white/55 hover:text-white transition">
+                            {PRICE_MICROCOPY}
+                          </button>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -1606,7 +2351,12 @@ export default function CreatePage() {
                       <ConfirmPreview red={v.redPhrase} startDate={v.relationshipStartAt} duration={duration} letter={v.loveLetter} photoPreviewUrl={photoPreviewUrl} />
 
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <Button type="button" variant="secondary" className="rounded-full" onClick={back}>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          onClick={back}
+                        >
                           Back
                         </Button>
 
@@ -1615,13 +2365,13 @@ export default function CreatePage() {
                             type="button"
                             onClick={form.handleSubmit(onCreate)}
                             disabled={!canSubmit}
-                            className="rounded-full px-6 bg-gradient-to-r from-sky-500 via-rose-500 to-amber-500 text-white hover:opacity-95 disabled:opacity-60"
+                            className="rounded-full px-6 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white hover:opacity-95 disabled:opacity-60"
                           >
                             {isSubmitting ? "Creating…" : "Create gift link"}
                           </Button>
-                          <div className="text-[11px] text-muted-foreground">
-                            You’ll pay to unlock the reveal next · <span className="text-foreground/80">{PRICE_USD}</span>
-                          </div>
+                          <button type="button" onClick={openPricing} className="text-[11px] text-white/55 hover:text-white transition">
+                            You’ll pay to unlock the reveal next · <span className="text-white/85">{PRICE_USD}</span>
+                          </button>
                         </div>
                       </div>
                     </motion.div>
@@ -1632,8 +2382,8 @@ export default function CreatePage() {
           </div>
         </div>
 
-        <div className="mt-6 text-center text-xs text-muted-foreground">You’re not filling a form — you’re setting up a moment.</div>
-      </div>
+        <div className="mt-5 text-center text-xs text-white/55">You’re not filling a form — you’re setting up a moment.</div>
+      </BuilderModal>
     </div>
   );
 }

@@ -8,11 +8,13 @@ import {
   useMotionValue,
   animate,
   useSpring,
+  useTransform,
 } from "framer-motion";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 type Gift = {
   id: string;
@@ -22,6 +24,8 @@ type Gift = {
   love_letter: string;
   red_phrase: string;
   relationship_start_at: string;
+  couple_names?: string;
+  created_by_name?: string;
 };
 
 type SliceKey = "blue" | "red" | "green" | "yellow";
@@ -29,50 +33,69 @@ const ALL_SLICES: SliceKey[] = ["blue", "red", "green", "yellow"];
 
 const SLICE_LABEL: Record<SliceKey, string> = {
   blue: "Photo",
-  red: "Short Line",
-  green: "Time Together",
-  yellow: "Love Letter",
+  red: "Your Line",
+  green: "Your Time",
+  yellow: "Your Letter",
 };
 
 const SLICE_HINT: Record<SliceKey, string> = {
-  blue: "A single frame that says everything.",
-  red: "A sentence you’ll want to keep.",
-  green: "Proof that time can be tender.",
-  yellow: "Read it slowly—like a secret.",
+  blue: "A memory frozen in time.",
+  red: "Words that echo in the heart.",
+  green: "Moments that became forever.",
+  yellow: "Feelings written just for you.",
 };
 
 const SLICE_PUBLIC: Record<
   SliceKey,
-  { colorName: string; title: string; preview: string; vibe: string }
+  { 
+    colorName: string; 
+    title: string; 
+    preview: string; 
+    vibe: string; 
+    emoji: string;
+    briefDesc: string;
+    whatYouGet: string;
+  }
 > = {
   blue: {
-    colorName: "Blue",
-    title: "A photo",
-    preview: "A saved moment—instant warmth.",
-    vibe: "Visual + emotional",
+    colorName: "Sapphire",
+    title: "Our Photo",
+    preview: "A captured moment that tells our story.",
+    vibe: "Visual memory",
+    emoji: "📸",
+    briefDesc: "Cherished photo memory",
+    whatYouGet: "You'll see a special photo of the couple that captures their love story in a single moment."
   },
   red: {
     colorName: "Rose",
-    title: "A short line",
-    preview: "One sentence that lands softly… then stays.",
-    vibe: "Quick + powerful",
+    title: "Your Line",
+    preview: "Words that only you could say.",
+    vibe: "Heartfelt whisper",
+    emoji: "💖",
+    briefDesc: "Special phrase for you",
+    whatYouGet: "You'll discover a unique love phrase or quote that holds special meaning for this relationship."
   },
   green: {
     colorName: "Emerald",
-    title: "Time together",
-    preview: "Days / hours / minutes since it began.",
-    vibe: "Nostalgia + goosebumps",
+    title: "Our Time",
+    preview: "Every second has been worth it.",
+    vibe: "Growing love",
+    emoji: "⏳",
+    briefDesc: "Relationship timeline",
+    whatYouGet: "You'll see how long this couple has been together, with a beautiful timeline breakdown of their journey."
   },
   yellow: {
     colorName: "Gold",
-    title: "A love letter",
-    preview: "A longer message—read it like a vow.",
-    vibe: "Deep + romantic",
+    title: "Love Letter",
+    preview: "A letter sealed with feeling.",
+    vibe: "Deep connection",
+    emoji: "💌",
+    briefDesc: "Personal love letter",
+    whatYouGet: "You'll read a heartfelt love letter written from the heart, expressing deep feelings and memories."
   },
 };
 
 /* --------------------------------- Utils --------------------------------- */
-
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
@@ -88,7 +111,7 @@ function msToParts(ms: number) {
   const hours = Math.floor((s % 86400) / 3600);
   const mins = Math.floor((s % 3600) / 60);
   const secs = s % 60;
-  return { days, hours, mins, secs };
+  return { days, hours, mins, secs, totalSeconds: s };
 }
 function formatDate(d: Date) {
   try {
@@ -106,41 +129,51 @@ function useEvent<T extends (...args: any[]) => any>(fn: T) {
   React.useEffect(() => void (ref.current = fn), [fn]);
   return React.useCallback((...args: Parameters<T>) => ref.current(...args), []);
 }
-
 function safeSplitLines(text: string) {
   return text
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
 }
+function shareOnTwitter(text: string, url: string) {
+  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+    text
+  )}&url=${encodeURIComponent(url)}`;
+  window.open(tweetUrl, "_blank", "width=550,height=420");
+}
+function shareOnWhatsApp(text: string, url: string) {
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
+    `${text} ${url}`
+  )}`;
+  window.open(whatsappUrl, "_blank");
+}
 
 /* ------------------------------ Visual theme ------------------------------ */
-
 function colorDotClass(k: SliceKey) {
   return k === "blue"
-    ? "bg-sky-500/90"
+    ? "bg-sky-400/90"
     : k === "red"
-    ? "bg-rose-500/90"
+    ? "bg-fuchsia-500/90"
     : k === "green"
-    ? "bg-emerald-500/90"
-    : "bg-amber-500/90";
+    ? "bg-emerald-400/90"
+    : "bg-amber-300/90";
 }
 
 function sliceThemeGradient(k: SliceKey) {
   return k === "red"
-    ? "from-rose-500/22 via-pink-500/10 to-transparent"
+    ? "from-fuchsia-500/22 via-pink-500/10 to-violet-500/10"
     : k === "green"
-    ? "from-emerald-500/18 via-emerald-500/10 to-transparent"
+    ? "from-emerald-400/18 via-sky-400/10 to-fuchsia-500/10"
     : k === "yellow"
-    ? "from-amber-500/18 via-amber-500/10 to-transparent"
-    : "from-sky-500/18 via-sky-500/10 to-transparent";
+    ? "from-amber-300/18 via-fuchsia-500/10 to-sky-400/10"
+    : "from-sky-400/18 via-violet-500/10 to-fuchsia-500/10";
 }
 
 function sliceFillRGBA(k: SliceKey) {
-  if (k === "blue") return "rgba(56,189,248,.70)";
-  if (k === "red") return "rgba(244,114,182,.70)";
-  if (k === "green") return "rgba(52,211,153,.68)";
-  return "rgba(251,191,36,.68)";
+  if (k === "blue") return "rgba(56,189,248,.85)";
+  if (k === "red") return "rgba(236,72,153,.85)";
+  if (k === "green") return "rgba(52,211,153,.85)";
+  return "rgba(251,191,36,.85)";
 }
 
 function buildWheelLayout(keys: SliceKey[]) {
@@ -189,7 +222,6 @@ function angleFromTopClockwiseFromEvent(
 }
 
 /* ------------------------------ Storage helpers ------------------------------ */
-
 function useLocalStorageBoolean(key: string, initial: boolean) {
   const [value, setValue] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return initial;
@@ -213,15 +245,114 @@ function useLocalStorageBoolean(key: string, initial: boolean) {
   return [value, setValue] as const;
 }
 
-/* ------------------------------ Background ------------------------------ */
+/* ------------------------------ Premium Icons ------------------------------ */
+function IconHeart({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M12 21s-7.2-4.35-9.6-8.55C.3 8.85 2.25 5.4 5.85 5.1c1.95-.15 3.45.9 4.2 2.1.75-1.2 2.25-2.25 4.2-2.1 3.6.3 5.55 3.75 3.45 7.35C19.2 16.65 12 21 12 21z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
+function IconSpark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M12 2l1.2 5.2L18 9l-4.8 1.8L12 16l-1.2-5.2L6 9l4.8-1.8L12 2zm7 8l.6 2.6L22 14l-2.4.9L19 18l-.6-3.1L16 14l2.4-1.4L19 10zM4 10l.6 2.6L7 14l-2.4.9L4 18l-.6-3.1L1 14l2.4-1.4L4 10z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconShare({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M18 16c-.79 0-1.5.31-2.03.81L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.53.5 1.24.81 2.03.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.51 9.31 6.8 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.8 0 1.51-.31 2.04-.81l7.05 4.11c-.05.23-.09.46-.09.7 0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconGift({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 00-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconRestart({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconVolumeOn({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconVolumeOff({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/* ------------------------------ Premium Background ------------------------------ */
 function GlowBg() {
+  const reduce = useReducedMotion();
+
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_12%_10%,rgba(244,114,182,0.22),transparent_55%),radial-gradient(1100px_circle_at_86%_18%,rgba(251,191,36,0.14),transparent_55%),radial-gradient(1000px_circle_at_55%_92%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(900px_circle_at_50%_45%,rgba(236,72,153,0.10),transparent_55%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_50%_50%,transparent_35%,rgba(0,0,0,0.24)_100%)] dark:bg-[radial-gradient(1200px_circle_at_50%_50%,transparent_35%,rgba(0,0,0,0.72)_100%)]" />
-      <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.55)_1px,transparent_1px)] [background-size:7px_7px]" />
-      <div className="absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_bottom,rgba(255,255,255,0.55),transparent,rgba(255,255,255,0.25))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1400px_circle_at_15%_15%,rgba(255,255,255,0.08),transparent_50%),radial-gradient(1000px_circle_at_85%_25%,rgba(255,64,169,0.12),transparent_50%),radial-gradient(900px_circle_at_70%_85%,rgba(155,81,224,0.10),transparent_60%),linear-gradient(180deg,#050816_0%,#0a0b1a_45%,#090a15_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_50%_45%,transparent_30%,rgba(0,0,0,0.85)_100%)]" />
+      <div className="absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:16px_16px]" />
+
+      {!reduce && (
+        <>
+          <motion.div
+            className="absolute -inset-14 opacity-[0.35]"
+            animate={{ y: [0, -14, 0], x: [0, 8, 0] }}
+            transition={{ duration: 10, ease: "easeInOut", repeat: Infinity }}
+          >
+            <div className="absolute left-[10%] top-[25%] h-32 w-32 rounded-full bg-fuchsia-500/15 blur-3xl" />
+            <div className="absolute left-[72%] top-[18%] h-36 w-36 rounded-full bg-violet-500/18 blur-3xl" />
+            <div className="absolute left-[55%] top-[72%] h-40 w-40 rounded-full bg-pink-500/15 blur-3xl" />
+          </motion.div>
+          <motion.div
+            className="absolute inset-0"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 120, ease: "linear", repeat: Infinity }}
+          >
+            <div className="absolute left-[30%] top-[10%] h-64 w-64 rounded-full bg-sky-500/05 blur-3xl" />
+          </motion.div>
+        </>
+      )}
     </div>
   );
 }
@@ -230,7 +361,7 @@ function SoftDivider({ className = "" }: { className?: string }) {
   return (
     <div
       className={[
-        "my-6 h-px w-full bg-gradient-to-r from-transparent via-border/80 to-transparent",
+        "my-6 h-px w-full bg-gradient-to-r from-transparent via-white/15 to-transparent",
         className,
       ].join(" ")}
     />
@@ -239,28 +370,34 @@ function SoftDivider({ className = "" }: { className?: string }) {
 
 function Pill({
   children,
-  dotClassName = "bg-rose-500/85",
+  dotClassName = "bg-fuchsia-400",
+  glow = false,
 }: {
   children: React.ReactNode;
   dotClassName?: string;
+  glow?: boolean;
 }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/55 px-3 py-1 text-xs text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.35)_inset] backdrop-blur">
+    <span
+      className={[
+        "relative inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs text-white/80 shadow-[0_1px_0_rgba(255,255,255,0.35)_inset] backdrop-blur",
+        glow ? "shadow-[0_0_20px_rgba(236,72,153,0.3)]" : "",
+      ].join(" ")}
+    >
       <span className={["h-1.5 w-1.5 rounded-full", dotClassName].join(" ")} />
       {children}
     </span>
   );
 }
 
-/* ------------------------------ Audio FX ------------------------------ */
-
+/* ------------------------------ Premium Audio FX ------------------------------ */
 function useTickAudio(enabled: boolean) {
   const prefersReducedMotion = useReducedMotion();
   const ctxRef = React.useRef<AudioContext | null>(null);
   const lastRef = React.useRef(0);
 
-  const beep = React.useCallback(
-    (kind: "tick" | "land") => {
+  const play = React.useCallback(
+    (kind: "tick" | "land" | "success" | "reveal" | "spin_start" | "segment_pass") => {
       if (!enabled || prefersReducedMotion) return;
 
       try {
@@ -275,25 +412,61 @@ function useTickAudio(enabled: boolean) {
         if (ctx.state === "suspended") void ctx.resume();
 
         const now = ctx.currentTime;
-        const osc = ctx.createOscillator();
+        const osc1 = ctx.createOscillator();
+        const osc2 = kind === "success" || kind === "reveal" || kind === "spin_start" ? ctx.createOscillator() : null;
         const gain = ctx.createGain();
 
-        const freq = kind === "tick" ? 560 : 360;
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now);
+        let freq1 = 560;
+        let freq2 = 840;
+        let dur = 0.02;
+        let peak = 0.035;
 
-        const dur = kind === "tick" ? 0.02 : 0.12;
-        const peak = kind === "tick" ? 0.035 : 0.085;
+        if (kind === "land") {
+          freq1 = 360;
+          freq2 = 480;
+          dur = 0.12;
+          peak = 0.085;
+        } else if (kind === "success") {
+          freq1 = 640;
+          freq2 = 960;
+          dur = 0.25;
+          peak = 0.12;
+        } else if (kind === "reveal") {
+          freq1 = 420;
+          freq2 = 720;
+          dur = 0.18;
+          peak = 0.095;
+        } else if (kind === "spin_start") {
+          freq1 = 680;
+          freq2 = 920;
+          dur = 0.15;
+          peak = 0.1;
+        } else if (kind === "segment_pass") {
+          freq1 = 480;
+          freq2 = 720;
+          dur = 0.08;
+          peak = 0.05;
+        }
+
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(freq1, now);
+        if (osc2) {
+          osc2.type = "sine";
+          osc2.frequency.setValueAtTime(freq2, now);
+        }
 
         gain.gain.setValueAtTime(0.0001, now);
         gain.gain.exponentialRampToValueAtTime(peak, now + 0.01);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
 
-        osc.connect(gain);
+        osc1.connect(gain);
+        if (osc2) osc2.connect(gain);
         gain.connect(ctx.destination);
 
-        osc.start(now);
-        osc.stop(now + dur + 0.02);
+        osc1.start(now);
+        if (osc2) osc2.start(now);
+        osc1.stop(now + dur + 0.02);
+        if (osc2) osc2.stop(now + dur + 0.02);
       } catch {
         // ignore
       }
@@ -305,482 +478,540 @@ function useTickAudio(enabled: boolean) {
     const t = performance.now();
     if (t - lastRef.current < 60) return;
     lastRef.current = t;
-    beep("tick");
-  }, [beep]);
+    play("tick");
+  }, [play]);
 
-  const land = React.useCallback(() => beep("land"), [beep]);
+  const land = React.useCallback(() => play("land"), [play]);
+  const success = React.useCallback(() => play("success"), [play]);
+  const reveal = React.useCallback(() => play("reveal"), [play]);
+  const spinStart = React.useCallback(() => play("spin_start"), [play]);
+  const segmentPass = React.useCallback(() => play("segment_pass"), [play]);
 
-  return { tick: tickThrottled, land };
+  return { tick: tickThrottled, land, success, reveal, spinStart, segmentPass };
 }
 
-/* ------------------------------ Icons ------------------------------ */
-
-function HeartIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={["h-4 w-4", className].join(" ")}
-      fill="none"
-    >
-      <path
-        d="M12 20s-7-4.6-9.2-8.9C1.3 8 3 5.2 6 5.1c1.6 0 3 .9 3.8 2 .8-1.1 2.2-2 3.8-2 3 .1 4.7 2.9 3.2 6C19 15.4 12 20 12 20Z"
-        className="fill-white/90"
-      />
-    </svg>
-  );
-}
-
-function IconSparkle() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 2l1.1 4.4L17.5 7.5l-4.4 1.1L12 13l-1.1-4.4L6.5 7.5l4.4-1.1L12 2Z"
-        className="fill-white/90"
-      />
-      <path
-        d="M19 12l.7 2.8L22.5 15l-2.8.7L19 18.5l-.7-2.8L15.5 15l2.8-.7L19 12Z"
-        className="fill-white/70"
-      />
-      <path
-        d="M5 13l.6 2.4L8 16l-2.4.6L5 19l-.6-2.4L2 16l2.4-.6L5 13Z"
-        className="fill-white/70"
-      />
-    </svg>
-  );
-}
-
-/* ------------------------------ Premium Confetti ------------------------------ */
-
-function HeartBurst({ fire }: { fire: boolean }) {
+/* ------------------------------ HTML Confetti System ------------------------------ */
+function ConfettiExplosion({ trigger, intensity = 1 }: { trigger: boolean; intensity?: number }) {
   const prefersReducedMotion = useReducedMotion();
-  const [seed, setSeed] = React.useState(0);
+  const [particles, setParticles] = React.useState<Array<{
+    id: number;
+    x: number;
+    y: number;
+    color: string;
+    shape: 'heart' | 'circle' | 'star' | 'diamond';
+  }>>([]);
 
   React.useEffect(() => {
-    if (!fire || prefersReducedMotion) return;
-    setSeed((s) => s + 1);
-  }, [fire, prefersReducedMotion]);
+    if (!trigger || prefersReducedMotion) return;
+
+    const colors = [
+      '#ec4899', // pink-500
+      '#f472b6', // pink-400
+      '#db2777', // pink-600
+      '#f9a8d4', // pink-300
+      '#8b5cf6', // violet-500
+      '#a78bfa', // violet-400
+      '#7c3aed', // violet-600
+      '#c4b5fd', // violet-300
+      '#3b82f6', // blue-500
+      '#60a5fa', // blue-400
+      '#1d4ed8', // blue-600
+      '#93c5fd', // blue-300
+      '#10b981', // emerald-500
+      '#34d399', // emerald-400
+      '#059669', // emerald-600
+      '#6ee7b7', // emerald-300
+    ];
+
+    const shapes: Array<'heart' | 'circle' | 'star' | 'diamond'> = ['heart', 'circle', 'star', 'diamond'];
+    
+    const newParticles = Array.from({ length: Math.floor(60 * intensity) }).map((_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      shape: shapes[Math.floor(Math.random() * shapes.length)],
+    }));
+
+    setParticles(newParticles);
+
+    const timer = setTimeout(() => {
+      setParticles([]);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [trigger, intensity, prefersReducedMotion]);
+
+  if (particles.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-40">
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
       <AnimatePresence>
-        {fire && !prefersReducedMotion && (
+        {particles.map((particle) => (
           <motion.div
-            key={`burst-${seed}`}
-            className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            key={particle.id}
+            className="absolute"
+            style={{
+              left: `${particle.x}%`,
+              top: `${particle.y}%`,
+              color: particle.color,
+            }}
+            initial={{
+              opacity: 0,
+              scale: 0,
+              rotate: 0,
+              y: 0,
+              x: 0,
+            }}
+            animate={{
+              opacity: [0, 1, 1, 0],
+              scale: [0, 1.2, 1, 0.8],
+              rotate: [0, 180, 360, 540],
+              y: [
+                0,
+                -Math.random() * 300 - 100,
+                -Math.random() * 500 - 200,
+                -Math.random() * 800 - 300,
+              ],
+              x: [
+                0,
+                (Math.random() - 0.5) * 200,
+                (Math.random() - 0.5) * 400,
+                (Math.random() - 0.5) * 600,
+              ],
+            }}
+            transition={{
+              duration: 2 + Math.random() * 1,
+              ease: "easeOut",
+            }}
           >
-            {Array.from({ length: 18 }).map((_, i) => {
-              const left = 50 + (Math.random() * 26 - 13);
-              const top = 52 + (Math.random() * 16 - 8);
-              const dx = Math.random() * 240 - 120;
-              const dy = -(210 + Math.random() * 210);
-              const rot = Math.random() * 160 - 80;
-              const delay = i * 0.012;
-
-              return (
-                <motion.div
-                  key={i}
-                  className="absolute"
-                  style={{ left: `${left}%`, top: `${top}%` }}
-                  initial={{ opacity: 0, scale: 0.6, x: 0, y: 0, rotate: 0 }}
-                  animate={{
-                    opacity: [0, 1, 1, 0],
-                    scale: [0.6, 1, 1, 0.9],
-                    x: dx,
-                    y: dy,
-                    rotate: rot,
-                  }}
-                  transition={{ duration: 0.95, delay, ease: "easeOut" }}
-                >
-                  <div className="grid h-7 w-7 place-items-center rounded-full border border-white/12 bg-black/16 backdrop-blur">
-                    <HeartIcon className="opacity-95" />
-                  </div>
-                </motion.div>
-              );
-            })}
+            {particle.shape === 'heart' && (
+              <div className="text-2xl">❤️</div>
+            )}
+            {particle.shape === 'circle' && (
+              <div className="w-3 h-3 rounded-full bg-current" />
+            )}
+            {particle.shape === 'star' && (
+              <div className="text-xl">⭐</div>
+            )}
+            {particle.shape === 'diamond' && (
+              <div className="text-xl">💎</div>
+            )}
           </motion.div>
-        )}
+        ))}
       </AnimatePresence>
     </div>
   );
 }
 
-/* ------------------------------ Reveal Modal ------------------------------ */
+/* ------------------------------ Storytelling Introduction ------------------------------ */
+function StoryIntro({ onComplete }: { onComplete: () => void }) {
+  const [step, setStep] = React.useState(0);
+  const prefersReducedMotion = useReducedMotion();
 
+  const steps = [
+    {
+      emoji: "🎁",
+      title: "A Personalized Experience",
+      text: "This isn't just a wheel—it's a journey through your unique story.",
+    },
+    {
+      emoji: "💝",
+      title: "Four Heartfelt Surprises",
+      text: "Each color holds a special memory, chosen just for you.",
+    },
+    {
+      emoji: "🎯",
+      title: "Your Choice Matters",
+      text: "Pick what speaks to you. The outcome is random, but your choice makes it personal.",
+    },
+    {
+      emoji: "✨",
+      title: "Ready to Begin?",
+      text: "Let's spin the wheel of memories together.",
+    },
+  ];
+
+  React.useEffect(() => {
+    if (step >= steps.length) {
+      const timer = setTimeout(onComplete, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [step, steps.length, onComplete]);
+
+  const nextStep = () => setStep(s => s + 1);
+
+  if (step >= steps.length) return null;
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 grid place-items-center px-5"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="absolute inset-0 bg-black/80"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      />
+      
+      <motion.div
+        className="relative w-full max-w-md"
+        initial={{ y: 20, scale: 0.95 }}
+        animate={{ y: 0, scale: 1 }}
+        transition={{ type: "spring", damping: 20 }}
+      >
+        <div className="rounded-3xl border border-white/15 bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-2xl p-8 text-center">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
+          >
+            <div className="text-5xl">{steps[step].emoji}</div>
+            <h3 className="text-2xl font-semibold text-white/95">{steps[step].title}</h3>
+            <p className="text-white/70">{steps[step].text}</p>
+            
+            <div className="pt-4">
+              <div className="flex justify-center gap-2 mb-6">
+                {steps.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      i <= step ? "bg-fuchsia-500 w-6" : "bg-white/20 w-3"
+                    }`}
+                  />
+                ))}
+              </div>
+              
+              <Button
+                onClick={nextStep}
+                className="rounded-full px-8 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 shadow-[0_18px_80px_-55px_rgba(244,114,182,0.55)]"
+              >
+                {step === steps.length - 1 ? "Begin Experience" : "Continue"}
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------ Live Time Counter ------------------------------ */
+function useLiveTimeCounter(startDate: Date | null) {
+  const [currentTime, setCurrentTime] = React.useState(() => new Date());
+  
+  React.useEffect(() => {
+    if (!startDate) return;
+    
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [startDate]);
+  
+  if (!startDate) return null;
+  
+  const elapsed = Math.max(0, currentTime.getTime() - startDate.getTime());
+  return msToParts(elapsed);
+}
+
+/* ------------------------------ Enhanced Reveal Modal ------------------------------ */
 function RevealOverlay({
   open,
   slice,
   onClose,
   gift,
-  parts,
 }: {
   open: boolean;
   slice: SliceKey | null;
   onClose: () => void;
   gift: Gift;
-  parts: ReturnType<typeof msToParts>;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const [stage, setStage] = React.useState<"intro" | "reveal">("intro");
+  const [glow, setGlow] = React.useState(false);
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
   const closeBtnRef = React.useRef<HTMLButtonElement | null>(null);
-  const lastActiveEl = React.useRef<HTMLElement | null>(null);
+  const startDate = gift ? new Date(gift.relationship_start_at) : null;
+  const liveParts = useLiveTimeCounter(startDate);
 
   React.useEffect(() => {
     if (!open) return;
     setStage("intro");
+    setGlow(true);
+    const timer = setTimeout(() => setGlow(false), 1200);
+    return () => clearTimeout(timer);
   }, [open, slice]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    lastActiveEl.current = document.activeElement as HTMLElement | null;
-    window.setTimeout(() => closeBtnRef.current?.focus(), 0);
-    return () => {
-      lastActiveEl.current?.focus?.();
-    };
-  }, [open]);
-
-  const theme = slice
-    ? sliceThemeGradient(slice)
-    : "from-white/10 via-white/5 to-transparent";
-  const dot = slice ? colorDotClass(slice) : "bg-foreground/50";
-  const title = slice ? SLICE_LABEL[slice] : "Reveal";
-
-  const headline =
-    slice === "red"
-      ? "A line, just for you."
-      : slice === "green"
-      ? "Your love, measured gently."
-      : slice === "yellow"
-      ? "A letter sealed in time."
-      : "A moment you can revisit.";
-
-  const introCopy =
-    slice === "red"
-      ? "Short. Soft. Unforgettable."
-      : slice === "green"
-      ? "Because every second carries meaning."
-      : slice === "yellow"
-      ? "Slow down—this one deserves your full attention."
-      : "A photo that brings you right back.";
-
-  const readyLine =
-    slice === "red"
-      ? "Press Reveal when you’re ready."
-      : slice === "green"
-      ? "Press Reveal to see your timeline."
-      : slice === "yellow"
-      ? "Press Reveal to open the letter."
-      : "Press Reveal to uncover the photo.";
-
-  const letterLines = React.useMemo(
-    () => safeSplitLines(gift.love_letter),
-    [gift.love_letter]
-  );
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-      if (e.key === "Enter" && stage === "intro") {
-        e.preventDefault();
-        setStage("reveal");
-      }
-
-      if (e.key === "Tab") {
-        const root = dialogRef.current;
-        if (!root) return;
-
-        const focusables = Array.from(
-          root.querySelectorAll<HTMLElement>(
-            'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])'
-          )
-        ).filter((el) => !el.hasAttribute("disabled"));
-
-        if (!focusables.length) return;
-
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        const active = document.activeElement as HTMLElement | null;
-
-        if (e.shiftKey) {
-          if (active === first) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (active === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, stage]);
+  const theme = slice ? sliceThemeGradient(slice) : "from-white/10 via-white/5 to-transparent";
+  const dot = slice ? colorDotClass(slice) : "bg-white/50";
+  const publicInfo = slice ? SLICE_PUBLIC[slice] : null;
 
   return (
     <AnimatePresence>
       {open && slice && (
         <motion.div
-          key="overlay"
           className="fixed inset-0 z-50 grid place-items-center px-5"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           aria-modal="true"
           role="dialog"
-          aria-label="Surprise reveal dialog"
         >
           <motion.button
             type="button"
-            aria-label="Close overlay"
-            className="absolute inset-0 bg-black/70"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
 
-          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${theme}`} />
+          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${theme} opacity-30`} />
 
           <motion.div
             ref={dialogRef}
-            initial={{
-              y: prefersReducedMotion ? 0 : 18,
-              scale: 0.99,
-              opacity: 0,
-            }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{
-              y: prefersReducedMotion ? 0 : 10,
-              scale: 0.995,
-              opacity: 0,
-            }}
-            transition={{ type: "spring", stiffness: 150, damping: 18, mass: 0.9 }}
-            className="relative w-full max-w-2xl"
+            initial={{ y: 20, scale: 0.98 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: 10, scale: 0.99 }}
+            transition={{ type: "spring", damping: 20 }}
+            className="relative w-full max-w-3xl"
           >
-            <div className="rounded-[30px] border border-border/60 bg-background/70 shadow-[0_40px_140px_-80px_rgba(0,0,0,0.85)] backdrop-blur-xl">
-              <div className="flex items-start justify-between gap-4 px-6 pb-2 pt-6 md:px-8">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={["h-2.5 w-2.5 rounded-full", dot].join(" ")} />
-                    <div className="text-xs text-muted-foreground">{title}</div>
+            <div className={`rounded-3xl border border-white/15 bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-2xl shadow-2xl ${
+              glow ? "shadow-fuchsia-500/30" : "shadow-black/50"
+            }`}>
+              <div className="p-8">
+                <div className="flex items-start justify-between gap-6 mb-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className={`h-3 w-3 rounded-full ${dot}`} />
+                      <span className="text-sm font-medium text-white/70">{publicInfo?.emoji} {SLICE_LABEL[slice]}</span>
+                    </div>
+                    <h2 className="text-3xl font-bold text-white/95">{publicInfo?.title}</h2>
+                    <p className="mt-2 text-white/60">{SLICE_HINT[slice]}</p>
                   </div>
-                  <div className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-                    {headline}
-                  </div>
-                  <div className="mt-2 text-sm text-muted-foreground">{SLICE_HINT[slice]}</div>
+                  
+                  <Button
+                    ref={closeBtnRef as any}
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full border border-white/15 bg-white/5 hover:bg-white/10"
+                    onClick={onClose}
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </Button>
                 </div>
 
-                <Button
-                  ref={closeBtnRef as any}
-                  variant="secondary"
-                  className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
-                  onClick={onClose}
-                >
-                  Close
-                </Button>
-              </div>
+                <AnimatePresence mode="wait">
+                  {stage === "intro" ? (
+                    <motion.div
+                      key="intro"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6"
+                    >
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                        <div className="text-sm text-white/60 mb-2">WHAT YOU'LL DISCOVER</div>
+                        <div className="text-xl font-semibold text-white/90 mb-2">{publicInfo?.whatYouGet}</div>
+                        
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <div className="text-xs text-white/60">THEME COLOR</div>
+                            <div className="text-white/90 flex items-center gap-2">
+                              <span className={`h-2 w-2 rounded-full ${dot}`} />
+                              {publicInfo?.colorName}
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-xs text-white/60">VIBE</div>
+                            <div className="text-white/90">{publicInfo?.vibe}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10">
+                          <div className="text-xs text-white/60 mb-1">PREVIEW</div>
+                          <div className="text-white/80">{publicInfo?.preview}</div>
+                        </div>
+                      </div>
 
-              <SoftDivider className="my-4" />
-
-              <div className="px-6 pb-6 md:px-8 md:pb-8">
-                <motion.div
-                  className="relative overflow-hidden rounded-[26px] border border-border/60 bg-background/60 shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]"
-                  initial={prefersReducedMotion ? { opacity: 0 } : { rotateX: 8, y: 8, opacity: 0 }}
-                  animate={prefersReducedMotion ? { opacity: 1 } : { rotateX: 0, y: 0, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 135, damping: 16 }}
-                  style={{ transformStyle: "preserve-3d" }}
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_circle_at_25%_18%,rgba(255,255,255,0.22),transparent_55%)]" />
-                  <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(to_right,rgba(255,255,255,0.9),transparent)]" />
-
-                  <div className="p-6 md:p-8">
-                    <AnimatePresence mode="wait">
-                      {stage === "intro" ? (
-                        <motion.div
-                          key="intro"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 8 }}
-                          transition={{ duration: 0.26 }}
-                          className="space-y-5"
+                      <div className="text-center py-4">
+                        <Button
+                          onClick={() => setStage("reveal")}
+                          size="lg"
+                          className="rounded-full px-8 text-lg bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 hover:shadow-[0_0_40px_rgba(236,72,153,0.4)] transition-all duration-300"
                         >
-                          <div className="text-xs uppercase tracking-wide text-muted-foreground/90">
-                            It landed on
-                          </div>
-
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <div className="text-2xl font-semibold tracking-tight">
-                                {SLICE_PUBLIC[slice].colorName} — {SLICE_PUBLIC[slice].title}
-                              </div>
-                              <div className="mt-2 text-sm text-muted-foreground">{introCopy}</div>
-                            </div>
-
-                            <div className="hidden sm:block rounded-2xl border border-border/60 bg-muted/10 px-4 py-3 text-xs text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]">
-                              <div className="font-medium text-foreground/80">Vibe</div>
-                              <div className="mt-1">{SLICE_PUBLIC[slice].vibe}</div>
-                            </div>
-                          </div>
-
-                          <div className="rounded-2xl border border-border/60 bg-muted/10 p-4 text-sm text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]">
-                            <div className="font-medium text-foreground/80">One more step</div>
-                            <div className="mt-1">{readyLine}</div>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-3 pt-1">
-                            <div className="text-xs text-muted-foreground">Tip: press Enter to reveal.</div>
-                            <Button
-                              className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 shadow-[0_18px_80px_-55px_rgba(244,114,182,0.55)]"
-                              onClick={() => setStage("reveal")}
-                            >
-                              Reveal
-                            </Button>
-                          </div>
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="reveal"
-                          initial={{ opacity: 0, scale: 0.99, y: 10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.995, y: 6 }}
-                          transition={{ type: "spring", stiffness: 170, damping: 18 }}
-                        >
-                          {slice === "red" && (
-                            <div className="text-center">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground/90">
-                                Short line
-                              </div>
-                              <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.06 }}
-                                className="mt-3 text-3xl font-semibold leading-tight tracking-tight md:text-4xl"
-                              >
-                                “{gift.red_phrase}”
-                              </motion.div>
-                              <div className="mt-4 text-xs text-muted-foreground">
-                                Save it. Repeat it. Make it yours.
-                              </div>
-                            </div>
-                          )}
-
-                          {slice === "green" && (
-                            <div className="space-y-4">
-                              <div className="text-sm text-muted-foreground">
-                                Since{" "}
-                                <span className="font-medium text-foreground">
-                                  {formatDate(new Date(gift.relationship_start_at))}
-                                </span>
-                              </div>
-
-                              <div className="grid grid-cols-4 gap-3">
-                                {[
-                                  { v: parts.days, l: "days" },
-                                  { v: parts.hours, l: "hrs" },
-                                  { v: parts.mins, l: "min" },
-                                  { v: parts.secs, l: "sec" },
-                                ].map((x, i) => (
-                                  <motion.div
-                                    key={x.l}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.06 }}
-                                    className="rounded-2xl border border-border/60 bg-muted/10 p-4 text-center shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]"
-                                  >
-                                    <div className="text-2xl font-semibold tracking-tight">{x.v}</div>
-                                    <div className="text-xs text-muted-foreground">{x.l}</div>
-                                  </motion.div>
-                                ))}
-                              </div>
-
-                              <div className="text-xs text-muted-foreground">
-                                Still choosing each other—one second at a time.
-                              </div>
-                            </div>
-                          )}
-
-                          {slice === "yellow" && (
-                            <div className="space-y-3">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground/90">
-                                Love letter
-                              </div>
-                              <div className="space-y-2">
-                                {(letterLines.length ? letterLines : [gift.love_letter])
-                                  .slice(0, 18)
-                                  .map((line, i) => (
-                                    <motion.div
-                                      key={i}
-                                      initial={{ opacity: 0, y: 8 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      transition={{ delay: i * 0.028 }}
-                                      className="text-sm leading-relaxed text-foreground/90"
-                                    >
-                                      {line}
-                                    </motion.div>
-                                  ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {slice === "blue" && (
-                            <div className="space-y-3">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground/90">
-                                Photo
-                              </div>
-
-                              {gift.couple_photo_url ? (
-                                <motion.div
-                                  initial={{ opacity: 0, scale: 0.99 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ duration: 0.32 }}
-                                  className="relative overflow-hidden rounded-3xl border border-border/60 shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]"
-                                >
-                                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_circle_at_28%_18%,rgba(255,255,255,0.24),transparent_55%)]" />
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={gift.couple_photo_url}
-                                    alt="Couple photo"
-                                    className="h-[300px] w-full object-cover md:h-[360px]"
-                                    loading="eager"
-                                  />
-                                </motion.div>
-                              ) : (
-                                <div className="rounded-3xl border border-border/60 bg-muted/10 p-12 text-center text-sm text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]">
-                                  Photo not added yet.
-                                </div>
-                              )}
-
-                              <div className="text-xs text-muted-foreground">
-                                A little “us”—kept beautifully.
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-6 flex items-center justify-between gap-3">
-                            <div className="text-xs text-muted-foreground">
-                              Tip: after the last one, there’s a final message.
-                            </div>
-                            <Button className="rounded-full px-6" onClick={onClose}>
-                              Continue
-                            </Button>
-                          </div>
-                        </motion.div>
+                          <IconSpark className="w-5 h-5 mr-2" />
+                          Reveal Now
+                        </Button>
+                        <p className="mt-3 text-sm text-white/60">Press Enter or click to unveil the surprise</p>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="reveal"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      className="space-y-8"
+                    >
+                      {slice === "red" && (
+                        <div className="text-center py-8">
+                          <div className="text-sm text-white/60 mb-4">A SPECIAL LINE FOR YOU</div>
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent"
+                          >
+                            "{gift.red_phrase}"
+                          </motion.div>
+                          <p className="mt-6 text-white/70">Words meant only for your heart</p>
+                        </div>
                       )}
-                    </AnimatePresence>
-                  </div>
-                </motion.div>
+
+                      {slice === "green" && liveParts && (
+                        <div className="space-y-6">
+                          <div className="text-center">
+                            <div className="text-sm text-white/60">LOVE TIMELINE</div>
+                            <div className="text-2xl font-semibold text-white/90 mt-2">
+                              Since {formatDate(new Date(gift.relationship_start_at))}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {[
+                              { 
+                                value: liveParts.days, 
+                                label: "Days", 
+                                color: "from-emerald-400 to-sky-400",
+                                description: "Days of love"
+                              },
+                              { 
+                                value: liveParts.hours, 
+                                label: "Hours", 
+                                color: "from-sky-400 to-violet-400",
+                                description: "Hours shared"
+                              },
+                              { 
+                                value: liveParts.mins, 
+                                label: "Minutes", 
+                                color: "from-violet-400 to-fuchsia-400",
+                                description: "Minutes together"
+                              },
+                              { 
+                                value: liveParts.secs, 
+                                label: "Seconds", 
+                                color: "from-fuchsia-400 to-pink-400",
+                                description: "Seconds counting..."
+                              },
+                            ].map((item, i) => (
+                              <motion.div
+                                key={item.label}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: i * 0.1 }}
+                                className={`rounded-2xl bg-gradient-to-br ${item.color} p-4 text-center`}
+                              >
+                                <div className="text-3xl font-bold text-white">
+                                  {item.value}
+                                  {item.label === "Seconds" && (
+                                    <span className="text-sm ml-1 opacity-80">↻</span>
+                                  )}
+                                </div>
+                                <div className="text-sm text-white/90 mt-1">{item.label}</div>
+                                {item.description && (
+                                  <div className="text-xs text-white/80 mt-2">{item.description}</div>
+                                )}
+                              </motion.div>
+                            ))}
+                          </div>
+                          
+                          <div className="text-center mt-4">
+                            <div className="inline-block px-4 py-2 bg-white/5 rounded-full">
+                              <div className="text-sm text-white/70">Total: {liveParts.totalSeconds.toLocaleString()} seconds of love</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {slice === "yellow" && (
+                        <div className="space-y-6">
+                          <div className="text-center">
+                            <div className="text-sm text-white/60">LOVE LETTER</div>
+                            <h3 className="text-2xl font-semibold text-white/90 mt-2">Words From The Heart</h3>
+                          </div>
+                          
+                          <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-6">
+                            <div className="space-y-4">
+                              {safeSplitLines(gift.love_letter).map((line, i) => (
+                                <motion.p
+                                  key={i}
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: i * 0.05 }}
+                                  className="text-white/90 leading-relaxed"
+                                >
+                                  {line}
+                                </motion.p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {slice === "blue" && (
+                        <div className="space-y-6">
+                          <div className="text-center">
+                            <div className="text-sm text-white/60">CAPTURED MOMENT</div>
+                            <h3 className="text-2xl font-semibold text-white/90 mt-2">A Memory In Time</h3>
+                          </div>
+                          
+                          {gift.couple_photo_url ? (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="relative overflow-hidden rounded-3xl border border-white/10"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                              <img
+                                src={gift.couple_photo_url}
+                                alt="Cherished memory"
+                                className="w-full h-[400px] object-cover"
+                              />
+                              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                                <div className="text-sm opacity-90">A moment to remember forever</div>
+                              </div>
+                            </motion.div>
+                          ) : (
+                            <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center">
+                              <div className="text-5xl mb-4">📸</div>
+                              <div className="text-white/70">A beautiful memory awaits here</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="pt-6 border-t border-white/10">
+                        <Button
+                          onClick={onClose}
+                          size="lg"
+                          className="w-full rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 hover:opacity-90"
+                        >
+                          Continue Journey
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </motion.div>
@@ -790,512 +1021,130 @@ function RevealOverlay({
   );
 }
 
-/* ------------------------------ NEW: Final Popup Overlay ------------------------------ */
-
-function EndOverlay({
+/* ------------------------------ Final Celebration ------------------------------ */
+function FinalCelebration({
   open,
   onClose,
-  onReplay,
+  onShare,
+  gift,
 }: {
   open: boolean;
   onClose: () => void;
-  onReplay: () => void;
+  onShare: () => void;
+  gift: Gift;
 }) {
   const prefersReducedMotion = useReducedMotion();
-  const dialogRef = React.useRef<HTMLDivElement | null>(null);
-  const primaryBtnRef = React.useRef<HTMLButtonElement | null>(null);
-  const lastActiveEl = React.useRef<HTMLElement | null>(null);
+  const [confettiTrigger, setConfettiTrigger] = React.useState(false);
 
   React.useEffect(() => {
-    if (!open) return;
-    lastActiveEl.current = document.activeElement as HTMLElement | null;
-    window.setTimeout(() => primaryBtnRef.current?.focus(), 0);
-    return () => lastActiveEl.current?.focus?.();
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-
-      if (e.key === "Tab") {
-        const root = dialogRef.current;
-        if (!root) return;
-
-        const focusables = Array.from(
-          root.querySelectorAll<HTMLElement>(
-            'button,[href],[tabindex]:not([tabindex="-1"])'
-          )
-        ).filter((el) => !el.hasAttribute("disabled"));
-
-        if (!focusables.length) return;
-
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        const active = document.activeElement as HTMLElement | null;
-
-        if (e.shiftKey) {
-          if (active === first) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (active === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const prev = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.documentElement.style.overflow = prev;
-    };
-  }, [open]);
+    if (open && !prefersReducedMotion) {
+      setConfettiTrigger(true);
+      const timer = setTimeout(() => setConfettiTrigger(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [open, prefersReducedMotion]);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-[80] grid place-items-center px-5"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          aria-modal="true"
-          role="dialog"
-          aria-label="Final message"
-        >
-          <motion.button
-            type="button"
-            aria-label="Close"
-            className="absolute inset-0 bg-black/70"
+    <>
+      <ConfettiExplosion trigger={confettiTrigger} intensity={2} />
+      
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="fixed inset-0 z-50 grid place-items-center px-5"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_10%,rgba(244,114,182,0.22),transparent_55%),radial-gradient(900px_circle_at_85%_15%,rgba(251,191,36,0.14),transparent_55%),radial-gradient(1000px_circle_at_50%_90%,rgba(56,189,248,0.10),transparent_60%)]" />
-
-          <motion.div
-            ref={dialogRef}
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.995 }}
-            transition={{ type: "spring", stiffness: 190, damping: 18 }}
-            className="relative w-full max-w-2xl"
           >
-            <div className="rounded-[30px] border border-border/60 bg-background/75 shadow-[0_50px_180px_-110px_rgba(0,0,0,0.90)] backdrop-blur-xl overflow-hidden">
-              <div className="pointer-events-none absolute inset-0 opacity-[0.55] bg-[radial-gradient(900px_circle_at_25%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-b from-purple-900/30 via-black/70 to-black"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            />
 
-              <div className="relative p-6 md:p-10 text-center">
-                <div className="mx-auto w-fit">
-                  <Pill dotClassName="bg-rose-500/80">Complete</Pill>
+            <motion.div
+              className="relative w-full max-w-2xl"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 20 }}
+            >
+              <div className="rounded-3xl border border-white/20 bg-gradient-to-b from-white/15 to-white/5 backdrop-blur-2xl p-10 text-center shadow-2xl">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", delay: 0.2 }}
+                  className="inline-block p-4 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 mb-6"
+                >
+                  <IconGift className="w-12 h-12 text-white" />
+                </motion.div>
+
+                <h2 className="text-4xl font-bold text-white/95 mb-4">Experience Complete! ✨</h2>
+                
+                <p className="text-xl text-white/80 mb-2">
+                  You've uncovered all the beautiful memories
+                </p>
+                
+                {gift.couple_names && (
+                  <p className="text-white/70 mb-8">
+                    For {gift.couple_names} • Created with love
+                  </p>
+                )}
+
+                <div className="space-y-6 mb-8">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-2xl bg-white/5 p-4">
+                      <div className="text-2xl font-bold text-white/95">4</div>
+                      <div className="text-sm text-white/70">Surprises Revealed</div>
+                    </div>
+                    <div className="rounded-2xl bg-white/5 p-4">
+                      <div className="text-2xl font-bold text-white/95">100%</div>
+                      <div className="text-sm text-white/70">Emotional Journey</div>
+                    </div>
+                  </div>
                 </div>
 
-                <h2 className="mt-4 text-2xl font-semibold tracking-tight md:text-3xl">
-                  We hope you loved this experience.
-                </h2>
-                <p className="mt-3 text-sm text-muted-foreground md:text-base">
-                  Wishing the couple a lifetime of joy, warmth, and beautiful moments together.
-                </p>
-
-                <div className="mt-7 flex flex-wrap justify-center gap-2">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button
-                    ref={primaryBtnRef as any}
-                    onClick={() => {
-                      onClose();
-                      onReplay();
-                    }}
-                    className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 shadow-[0_16px_70px_-45px_rgba(244,114,182,0.55)]"
+                    onClick={onShare}
+                    size="lg"
+                    className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90"
                   >
-                    Replay the experience
+                    <IconShare className="w-5 h-5 mr-2" />
+                    Share This Experience
                   </Button>
+                  
                   <Button
-                    variant="secondary"
-                    className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
-                    onClick={() => (window.location.href = "/create")}
+                    onClick={() => window.location.href = "/create"}
+                    size="lg"
+                    variant="outline"
+                    className="rounded-full border-white/20 bg-white/5 hover:bg-white/10"
                   >
-                    Create Yours
+                    Create Your Own
                   </Button>
+                  
                   <Button
-                    variant="secondary"
-                    className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
                     onClick={onClose}
-                    title="Close"
+                    size="lg"
+                    variant="ghost"
+                    className="rounded-full border-white/20"
                   >
                     Close
                   </Button>
                 </div>
 
-                <div className="mt-5 text-[11px] text-muted-foreground">
-                  Tip: press <span className="font-medium text-foreground/80">Esc</span> to close.
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-/* ------------------------------ Bet Chips ------------------------------ */
-
-function BetChip({
-  k,
-  selected,
-  disabled,
-  pulse,
-  onPick,
-}: {
-  k: SliceKey;
-  selected: boolean;
-  disabled: boolean;
-  pulse: boolean;
-  onPick: () => void;
-}) {
-  const base =
-    k === "blue"
-      ? "from-sky-500/20 via-sky-400/8"
-      : k === "red"
-      ? "from-rose-500/22 via-pink-500/8"
-      : k === "green"
-      ? "from-emerald-500/20 via-emerald-400/8"
-      : "from-amber-500/20 via-amber-300/8";
-
-  return (
-    <motion.button
-      type="button"
-      disabled={disabled}
-      onClick={onPick}
-      className={[
-        "relative inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/18 px-3 py-2 text-xs text-white/85 backdrop-blur",
-        "shadow-[0_22px_90px_-70px_rgba(0,0,0,0.75)]",
-        "transition active:scale-[0.98] disabled:cursor-not-allowed",
-        selected ? "ring-2 ring-white/18" : "hover:border-white/18",
-        disabled ? "opacity-45" : "opacity-100",
-      ].join(" ")}
-      animate={pulse && !selected && !disabled ? { y: [0, -2, 0] } : { y: 0 }}
-      transition={
-        pulse && !selected && !disabled
-          ? { duration: 1.25, repeat: Infinity, ease: "easeInOut" }
-          : {}
-      }
-      aria-pressed={selected}
-      title={`Pick ${SLICE_PUBLIC[k].colorName}`}
-    >
-      <span className={["h-2.5 w-2.5 rounded-full", colorDotClass(k)].join(" ")} />
-      <span className="font-semibold tracking-tight">{SLICE_PUBLIC[k].colorName}</span>
-      <span className="text-white/55">•</span>
-      <span className="text-white/72">{SLICE_PUBLIC[k].title}</span>
-      <span className={`pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b ${base} to-transparent`} />
-    </motion.button>
-  );
-}
-
-/* ------------------------------ Primary Spin CTA ------------------------------ */
-
-function PressToSpinButton({
-  enabled,
-  spinning,
-  onPress,
-  label,
-  helper,
-}: {
-  enabled: boolean;
-  spinning: boolean;
-  onPress: () => void;
-  label: string;
-  helper?: string;
-}) {
-  const prefersReducedMotion = useReducedMotion();
-
-  return (
-    <motion.div
-      className={[
-        "relative rounded-full border border-white/14 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 p-[2px]",
-        "shadow-[0_28px_120px_-90px_rgba(244,114,182,0.70)]",
-        enabled ? "opacity-100" : "opacity-60",
-      ].join(" ")}
-      animate={!enabled && !spinning ? { y: [0, -2, 0] } : { y: 0 }}
-      transition={
-        !enabled && !spinning ? { duration: 1.25, repeat: Infinity, ease: "easeInOut" } : {}
-      }
-    >
-      <motion.button
-        type="button"
-        disabled={!enabled || spinning}
-        className={[
-          "group relative flex flex-col items-center justify-center gap-1 rounded-full px-10 py-5 text-sm font-semibold text-white",
-          "bg-black/16 backdrop-blur",
-          "shadow-[0_1px_0_rgba(255,255,255,0.18)_inset]",
-          "transition active:scale-[0.98] disabled:cursor-not-allowed",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25",
-        ].join(" ")}
-        onClick={() => {
-          if (enabled && !spinning) onPress();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            if (enabled && !spinning) onPress();
-          }
-        }}
-        aria-label={label}
-        title={enabled ? "Press to spin" : "Pick a color first"}
-      >
-        <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(520px_circle_at_30%_25%,rgba(255,255,255,0.24),transparent_58%)] opacity-90" />
-        <span className="relative inline-flex items-center gap-2">
-          <IconSparkle />
-          {spinning ? "Spinning…" : label}
-        </span>
-        <span className="relative text-[11px] font-medium text-white/70">
-          {helper ?? (spinning ? "listen for the ticks" : "press Enter / Space")}
-        </span>
-      </motion.button>
-
-      <motion.div
-        className="pointer-events-none absolute -inset-2 rounded-full opacity-40"
-        animate={prefersReducedMotion ? {} : { opacity: [0.28, 0.52, 0.28] }}
-        transition={prefersReducedMotion ? {} : { duration: 2.1, repeat: Infinity }}
-        style={{
-          background:
-            "radial-gradient(600px circle at 30% 30%, rgba(255,255,255,0.16), transparent 60%)",
-          filter: "blur(10px)",
-        }}
-      />
-    </motion.div>
-  );
-}
-
-/* ------------------------------ FIXED: Choice Modal (centered) ------------------------------ */
-
-function ChoiceModal({
-  open,
-  remaining,
-  bet,
-  canPick,
-  onPick,
-  onClose,
-}: {
-  open: boolean;
-  remaining: SliceKey[];
-  bet: SliceKey | null;
-  canPick: boolean;
-  onPick: (k: SliceKey) => void;
-  onClose: () => void;
-}) {
-  const prefersReducedMotion = useReducedMotion();
-  const dialogRef = React.useRef<HTMLDivElement | null>(null);
-  const closeRef = React.useRef<HTMLButtonElement | null>(null);
-  const lastActiveEl = React.useRef<HTMLElement | null>(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-    lastActiveEl.current = document.activeElement as HTMLElement | null;
-    window.setTimeout(() => closeRef.current?.focus(), 0);
-    return () => lastActiveEl.current?.focus?.();
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-
-      if (e.key === "Tab") {
-        const root = dialogRef.current;
-        if (!root) return;
-
-        const focusables = Array.from(
-          root.querySelectorAll<HTMLElement>(
-            'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])'
-          )
-        ).filter((el) => !el.hasAttribute("disabled"));
-
-        if (!focusables.length) return;
-
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        const active = document.activeElement as HTMLElement | null;
-
-        if (e.shiftKey) {
-          if (active === first) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (active === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const prev = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.documentElement.style.overflow = prev;
-    };
-  }, [open]);
-
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-[70]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          aria-modal="true"
-          role="dialog"
-          aria-label="Pick your color"
-        >
-          <motion.button
-            type="button"
-            aria-label="Close"
-            className="absolute inset-0 bg-black/70"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-
-          <div className="absolute inset-0 grid place-items-end sm:place-items-center p-3 sm:p-6">
-            <motion.div
-              ref={dialogRef}
-              initial={
-                prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.99 }
-              }
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.995 }}
-              transition={{ type: "spring", stiffness: 220, damping: 20 }}
-              className={[
-                "w-full sm:max-w-lg",
-                "rounded-[28px] border border-border/60 bg-background/80 shadow-[0_40px_160px_-90px_rgba(0,0,0,0.85)] backdrop-blur-xl",
-                "overflow-hidden",
-              ].join(" ")}
-              style={{ maxHeight: "min(82vh, 720px)" }}
-            >
-              <div className="relative">
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-[0.60]"
-                  style={{
-                    background:
-                      "radial-gradient(900px circle at 20% 0%, rgba(244,114,182,0.14), transparent 55%), radial-gradient(900px circle at 95% 10%, rgba(251,191,36,0.10), transparent 55%), radial-gradient(1000px circle at 40% 110%, rgba(56,189,248,0.09), transparent 60%)",
-                  }}
-                />
-
-                <div className="relative px-5 pb-4 pt-5 sm:px-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold tracking-tight">Pick your color</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        This is your “I hope it’s this one.” The spin stays random.
-                      </div>
-                    </div>
-
-                    <Button
-                      ref={closeRef as any}
-                      variant="secondary"
-                      className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
-                      onClick={onClose}
-                    >
-                      Close
-                    </Button>
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-border/60 bg-muted/10 p-3 text-[11px] text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]">
-                    Tip: you can also tap <span className="font-medium text-foreground/80">directly on the wheel</span>.
-                    This menu is just a comfy shortcut.
-                  </div>
-
-                  <div className="mt-4 grid gap-2">
-                    {remaining.map((k) => (
-                      <button
-                        key={k}
-                        type="button"
-                        disabled={!canPick}
-                        onClick={() => onPick(k)}
-                        className={[
-                          "group relative flex w-full items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/60 px-4 py-3 text-left",
-                          "shadow-[0_18px_70px_-60px_rgba(0,0,0,0.55)] backdrop-blur",
-                          "transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55",
-                          bet === k ? "ring-2 ring-foreground/15" : "hover:border-border/80",
-                        ].join(" ")}
-                        aria-pressed={bet === k}
-                        title={`Select ${SLICE_PUBLIC[k].colorName}`}
-                      >
-                        <span className="flex items-center gap-3">
-                          <span className={["h-3 w-3 rounded-full", colorDotClass(k)].join(" ")} />
-                          <span>
-                            <div className="text-sm font-semibold tracking-tight">
-                              {SLICE_PUBLIC[k].colorName}{" "}
-                              <span className="text-muted-foreground font-medium">— {SLICE_PUBLIC[k].title}</span>
-                            </div>
-                            <div className="mt-0.5 text-[11px] text-muted-foreground">
-                              {SLICE_PUBLIC[k].preview}
-                            </div>
-                          </span>
-                        </span>
-
-                        <span className="shrink-0 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] text-muted-foreground">
-                          {bet === k ? "Selected" : "Choose"}
-                        </span>
-
-                        <span
-                          className={[
-                            "pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition group-hover:opacity-100",
-                            "bg-[radial-gradient(520px_circle_at_30%_30%,rgba(255,255,255,0.14),transparent_55%)]",
-                          ].join(" ")}
-                        />
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <div className="text-[11px] text-muted-foreground">
-                      Press <span className="font-medium text-foreground/80">Esc</span> to close.
-                    </div>
-                    <Button className="rounded-full px-6" variant="secondary" onClick={onClose}>
-                      Done
-                    </Button>
-                  </div>
-                </div>
+                <p className="mt-8 text-sm text-white/60">
+                  This moment was created with LoveWheel • Share the love 💝
+                </p>
               </div>
             </motion.div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
-/* ------------------------------ Wheel ------------------------------ */
-
+/* ------------------------------ Enhanced Wheel Component ------------------------------ */
 function Wheel({
   rotationMV,
   spinning,
@@ -1307,6 +1156,8 @@ function Wheel({
   setBet,
   lastResult,
   pointerPulse,
+  onShare,
+  spinCount,
 }: {
   rotationMV: ReturnType<typeof useMotionValue<number>>;
   spinning: boolean;
@@ -1318,582 +1169,588 @@ function Wheel({
   setBet: (k: SliceKey | null) => void;
   lastResult: { slice: SliceKey; guessedRight: boolean } | null;
   pointerPulse: number;
+  onShare: () => void;
+  spinCount: number;
 }) {
   const prefersReducedMotion = useReducedMotion();
-
-  const mustPick = remaining.length > 0 && !bet && !spinning && !disabled;
-  const canPick = !spinning && !disabled && remaining.length > 0;
-
-  const ringAccent =
-    spotlight === "blue"
-      ? "from-sky-500/18 via-sky-400/8"
-      : spotlight === "red"
-      ? "from-rose-500/18 via-pink-500/8"
-      : spotlight === "green"
-      ? "from-emerald-500/16 via-emerald-400/8"
-      : spotlight === "yellow"
-      ? "from-amber-500/16 via-amber-300/8"
-      : "from-white/10 via-white/5";
+  const [showLabels, setShowLabels] = React.useState(true);
+  const wheelRef = React.useRef<HTMLDivElement>(null);
+  const lastSegmentRef = React.useRef(-1);
 
   const layout = React.useMemo(() => buildWheelLayout(remaining), [remaining]);
   const wheelBg = React.useMemo(() => buildConicGradient(remaining), [remaining]);
 
-  const spinScale = useSpring(spinning && !prefersReducedMotion ? 1.01 : 1, {
-    stiffness: 220,
-    damping: 18,
-    mass: 0.7,
+  const spinScale = useSpring(spinning && !prefersReducedMotion ? 1.02 : 1, {
+    stiffness: 200,
+    damping: 15,
   });
 
-  const [choiceOpen, setChoiceOpen] = React.useState(false);
+  const glowIntensity = useSpring(spotlight ? 1 : 0, {
+    stiffness: 100,
+    damping: 10,
+  });
+
+    const pointerScale = useSpring(1, { stiffness: 700, damping: 18 });
 
   React.useEffect(() => {
-    if (!canPick) setChoiceOpen(false);
-  }, [canPick]);
+    if (!pointerPulse) return;
+    pointerScale.set(1.14);
+    const c = animate(pointerScale, 1, { duration: 0.18, ease: "easeOut" });
+    return () => c.stop();
+  }, [pointerPulse, pointerScale]);
 
-  const pick = React.useCallback(
-    (k: SliceKey) => {
-      if (!canPick) return;
-      setBet(k);
-      setChoiceOpen(false);
-      toast.message("Choice set.", { description: `You chose ${SLICE_PUBLIC[k].colorName}.` });
-    },
-    [canPick, setBet]
-  );
-
-  const wheelRef = React.useRef<HTMLDivElement | null>(null);
 
   const onWheelClick = React.useCallback(
     (e: React.MouseEvent) => {
-      if (!canPick) return;
+      if (!remaining.length || spinning || disabled) return;
+
       const el = wheelRef.current;
       if (!el) return;
 
-      const t = e.target as HTMLElement | null;
-      if (t && t.closest?.("[data-wheel-cta]")) return;
-
-      const degTopCW = angleFromTopClockwiseFromEvent(e, el);
-
+      const deg = angleFromTopClockwiseFromEvent(e, el);
       const currentRot = mod360(rotationMV.get());
-      const wheelSpaceDeg = mod360(degTopCW - currentRot);
+      const wheelSpaceDeg = mod360(deg - currentRot);
+      const idx = Math.floor(wheelSpaceDeg / layout.step);
+      const key = remaining[idx];
 
-      const step = 360 / Math.max(1, remaining.length);
-      const idx = Math.floor(wheelSpaceDeg / step);
-      const key = remaining[clamp(idx, 0, remaining.length - 1)] ?? remaining[0];
-
-      if (!key) return;
-
-      if (bet === key) {
-        setBet(null);
-        toast.message("Choice cleared.", { description: "Pick another one." });
-      } else {
-        pick(key);
+      if (key && key !== bet) {
+        setBet(key);
+        toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
+          description: "Your heart's pick is set",
+        });
       }
     },
-    [canPick, remaining, rotationMV, bet, setBet, pick]
+    [remaining, spinning, disabled, rotationMV, layout.step, bet, setBet]
   );
 
   return (
-    <div className="mx-auto grid place-items-center">
-      <ChoiceModal
-        open={choiceOpen}
-        remaining={remaining}
-        bet={bet}
-        canPick={canPick}
-        onPick={pick}
-        onClose={() => setChoiceOpen(false)}
-      />
+    <div className="relative">
+      {/* Floating stats */}
+      <div className="absolute -top-20 left-0 right-0 flex justify-center gap-4">
+        <Pill dotClassName="bg-fuchsia-400" glow={remaining.length === 1}>
+          {remaining.length} {remaining.length === 1 ? "Surprise Left" : "Surprises Left"}
+        </Pill>
+        <Pill dotClassName="bg-sky-400">
+          {bet ? `${SLICE_PUBLIC[bet].emoji} ${SLICE_PUBLIC[bet].colorName}` : "No Choice Yet"}
+        </Pill>
+        <Pill dotClassName="bg-amber-400">
+          Spin #{spinCount + 1}
+        </Pill>
+      </div>
 
-      <div className="relative w-full max-w-[920px]">
-        <div className="mb-6 text-center">
-          <div className="text-base font-semibold tracking-tight">
-            {spinning
-              ? "Let it unfold…"
-              : disabled
-              ? "All surprises revealed."
-              : bet
-              ? remaining.length === 1
-                ? "Final choice."
-                : "Choice set."
-              : "Choose a color to begin."}
-          </div>
+      {/* Main wheel container */}
+      <div className="relative mx-auto aspect-square w-full max-w-[600px]">
+        {/* Outer glow */}
+        <motion.div
+          className="absolute -inset-12 rounded-full blur-3xl"
+          style={{
+            background: `radial-gradient(circle at center, ${
+              spotlight ? sliceFillRGBA(spotlight) : "rgba(255,255,255,0.1)"
+            } 0%, transparent 70%)`,
+            opacity: glowIntensity,
+          }}
+        />
 
-          <div className="mt-1 text-xs text-muted-foreground">
-            {spinning
-              ? "A soft tick for every passing slice."
-              : disabled
-              ? "Replay anytime to relive the moment."
-              : bet
-              ? remaining.length === 1
-                ? `You chose ${SLICE_PUBLIC[bet].colorName}. The final reveal is next.`
-                : `You chose ${SLICE_PUBLIC[bet].colorName}. (The outcome remains random.)`
-              : "Pick a chip, tap the wheel, or click the choice pill. Then spin."}
-          </div>
-
-          <div className="mt-4 flex items-center justify-center">
-            <div className="relative">
-              <button
-                type="button"
-                disabled={!canPick}
-                onClick={() => setChoiceOpen(true)}
-                className={[
-                  "relative inline-flex items-center gap-3 rounded-full border border-border/60 bg-background/55 px-4 py-2 text-xs text-muted-foreground",
-                  "shadow-[0_18px_80px_-60px_rgba(0,0,0,0.55)] backdrop-blur",
-                  "transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20",
-                ].join(" ")}
-                aria-haspopup="dialog"
-                aria-expanded={choiceOpen}
-                title={canPick ? "Click to pick your choice" : "You can pick after the reveal"}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <span className="grid h-7 w-7 place-items-center rounded-full border border-white/12 bg-black/16">
-                    <HeartIcon className="opacity-90" />
-                  </span>
-                  <span className="font-medium text-foreground/85">Your choice</span>
-                </span>
-
-                <span className="text-muted-foreground">—</span>
-
-                <AnimatePresence mode="wait">
-                  {bet ? (
-                    <motion.span
-                      key={`bet-${bet}`}
-                      initial={{ opacity: 0, y: 6, scale: 0.985 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.99 }}
-                      transition={{ type: "spring", stiffness: 220, damping: 18 }}
-                      className="inline-flex items-center gap-2"
-                    >
-                      <span className={["h-2.5 w-2.5 rounded-full", colorDotClass(bet)].join(" ")} />
-                      <span className="font-semibold text-foreground">{SLICE_PUBLIC[bet].colorName}</span>
-
-                      <span className="ml-1 inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-1 text-[11px] text-muted-foreground">
-                        click to change
-                      </span>
-                    </motion.span>
-                  ) : (
-                    <motion.span
-                      key="bet-empty"
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 6 }}
-                      className="text-muted-foreground"
-                    >
-                      Click here to choose
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-
-                <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(520px_circle_at_30%_25%,rgba(255,255,255,0.14),transparent_60%)]" />
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            {remaining.map((k) => (
-              <BetChip
-                key={k}
-                k={k}
-                selected={bet === k}
-                disabled={!canPick}
-                pulse={mustPick}
-                onPick={() => {
-                  if (!canPick) return;
-                  if (bet === k) {
-                    setBet(null);
-                    toast.message("Choice cleared.", { description: "Pick another one." });
-                    return;
-                  }
-                  pick(k);
+        {/* Decorative rings */}
+        <div className="absolute inset-0 rounded-full border border-white/5" />
+        <div className="absolute inset-2 rounded-full border border-white/2" />
+        
+        {/* Animated floating particles */}
+        {!prefersReducedMotion && (
+          <div className="absolute inset-0 overflow-hidden rounded-full">
+            {Array.from({ length: 8 + spinCount * 2 }).map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute h-1 w-1 bg-white/40 rounded-full"
+                style={{
+                  left: `${50 + (46 + spinCount * 2) * Math.cos((i * Math.PI) / 4)}%`,
+                  top: `${50 + (46 + spinCount * 2) * Math.sin((i * Math.PI) / 4)}%`,
+                }}
+                animate={{
+                  scale: [1, 1.5 + spinCount * 0.1, 1],
+                  opacity: [0.3, 0.8 + spinCount * 0.05, 0.3],
+                }}
+                transition={{
+                  duration: 2 - spinCount * 0.1,
+                  repeat: Infinity,
+                  delay: i * 0.2,
                 }}
               />
             ))}
           </div>
+        )}
 
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            <Pill dotClassName={mustPick ? "bg-rose-500/80" : "bg-foreground/50"}>
-              {mustPick ? (
-                <>Pick a color to unlock the spin</>
-              ) : (
-                <>
-                  Outcome stays <span className="font-medium text-foreground">random</span>
-                  <span className="text-muted-foreground"> — your choice is the romance.</span>
-                </>
-              )}
-            </Pill>
-            <Pill dotClassName="bg-emerald-500/80">
-              Remaining <span className="font-medium text-foreground">{remaining.length}</span>/4
-            </Pill>
-            <Pill dotClassName="bg-sky-500/75">Tap the wheel to choose</Pill>
-          </div>
-
-          <AnimatePresence>
-            {lastResult && !spinning && !prefersReducedMotion && (
-              <motion.div
-                key="resultBadge"
-                initial={{ opacity: 0, y: 8, scale: 0.99 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 6, scale: 0.995 }}
-                transition={{ type: "spring", stiffness: 180, damping: 18 }}
-                className="mt-4 mx-auto w-fit inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/55 px-4 py-2 text-xs shadow-[0_18px_80px_-60px_rgba(0,0,0,0.65)] backdrop-blur"
-              >
-                <span className={["h-2 w-2 rounded-full", colorDotClass(lastResult.slice)].join(" ")} />
-                <span className="font-semibold">{lastResult.guessedRight ? "Well chosen." : "Almost."}</span>
-                <span className="text-muted-foreground">
-                  It landed on {SLICE_PUBLIC[lastResult.slice].colorName}.
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div className="pointer-events-none absolute left-1/2 top-[290px] h-[72%] w-[72%] -translate-x-1/2 rounded-full bg-gradient-to-r from-rose-500/12 via-pink-500/8 to-amber-500/12 blur-2xl" />
-
+        {/* The wheel */}
         <motion.div
-          className="absolute left-1/2 top-[364px] z-30 -translate-x-1/2"
-          animate={spinning && !prefersReducedMotion ? { y: [0, -2, 0] } : { y: 0 }}
-          transition={{ duration: 0.25, repeat: spinning && !prefersReducedMotion ? Infinity : 0 }}
-          style={{ scale: prefersReducedMotion ? 1 : 1 + Math.min(0.07, pointerPulse * 0.010) }}
+          ref={wheelRef}
+          onClick={onWheelClick}
+          className="absolute inset-0 rounded-full cursor-pointer touch-pan-y select-none"
+          style={{
+            rotate: rotationMV,
+            scale: spinScale,
+            background: wheelBg,
+            transformStyle: "preserve-3d",
+            boxShadow: spinning ? '0 0 60px rgba(255,255,255,0.3)' : 'none',
+          }}
+          whileHover={!spinning && !disabled && remaining.length > 0 ? { scale: 1.02 } : {}}
         >
-          <div className="h-0 w-0 border-l-[14px] border-r-[14px] border-b-[22px] border-l-transparent border-r-transparent border-b-foreground/85 drop-shadow-sm" />
-          <div className="mx-auto mt-1 h-3 w-3 rounded-full bg-foreground/70 shadow-[0_12px_34px_-20px_rgba(0,0,0,0.85)]" />
+          {/* Inner gradient */}
+          <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15)_0%,transparent_70%)]" />
+          
+          {/* Segment separators */}
+          {remaining.length > 1 &&
+            remaining.map((_, i) => {
+              const angle = i * layout.step;
+              return (
+                <div
+                  key={i}
+                  className="absolute left-1/2 top-1/2 h-[2%] w-px origin-bottom -translate-x-1/2 bg-gradient-to-b from-white/80 via-white/60 to-transparent"
+                  style={{ 
+                    transform: `rotate(${angle}deg)`,
+                    top: '2%'
+                  }}
+                />
+              );
+            })}
+          
+          {/* Labels */}
+          {showLabels && remaining.map((key, i) => {
+            const centerAngle = (i + 0.5) * layout.step;
+            const rad = (centerAngle * Math.PI) / 180;
+            const radius = 35;
+            const x = 50 + radius * Math.cos(rad - Math.PI / 2);
+            const y = 50 + radius * Math.sin(rad - Math.PI / 2);
+
+            return (
+              <motion.div
+                key={key}
+                className="absolute pointer-events-none"
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+                animate={spinning ? {
+                  scale: [1, 1.1, 1],
+                  rotate: [0, 5, 0],
+                } : {}}
+                transition={spinning ? {
+                  duration: 0.8,
+                  repeat: Infinity,
+                  delay: i * 0.1,
+                } : {}}
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl drop-shadow-lg">{SLICE_PUBLIC[key].emoji}</span>
+                  <span className="text-xs font-semibold text-white/90 bg-black/40 px-2 py-1 rounded-full backdrop-blur-sm">
+                    {SLICE_PUBLIC[key].colorName}
+                  </span>
+                  <span className="text-[10px] text-white/70 mt-1 max-w-[80px] text-center bg-black/20 px-1 py-0.5 rounded">
+                    {SLICE_PUBLIC[key].briefDesc}
+                  </span>
+                </div>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
-        <div className="relative mx-auto mt-6 aspect-square w-full max-w-[560px]">
-          <div className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-b from-white/12 to-transparent blur-[2px]" />
-          <div className="pointer-events-none absolute -inset-2 rounded-full border border-white/10" />
-          <div
-            className={`pointer-events-none absolute -inset-10 rounded-full bg-gradient-to-b ${ringAccent} to-transparent blur-2xl`}
-          />
-
-          <motion.div
-            className="pointer-events-none absolute -inset-8 rounded-full opacity-[0.45]"
-            animate={prefersReducedMotion ? {} : { rotate: 360 }}
-            transition={prefersReducedMotion ? {} : { duration: 20, ease: "linear", repeat: Infinity }}
-            style={{
-              background:
-                "conic-gradient(from 0deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02), rgba(255,255,255,0.10), rgba(255,255,255,0.02), rgba(255,255,255,0.08))",
-              filter: "blur(12px)",
-            }}
-          />
-
-          <motion.div
-            ref={wheelRef}
-            onClick={onWheelClick}
-            className={[
-              "absolute inset-0 rounded-full border border-border/60 bg-background/65 backdrop-blur",
-              "shadow-[0_60px_190px_-130px_rgba(0,0,0,0.85)] transform-gpu",
-              canPick ? "cursor-pointer" : "cursor-default",
-            ].join(" ")}
-            style={{
-              transformOrigin: "50% 50%",
-              background: wheelBg,
-              rotate: rotationMV,
-              scale: spinScale,
-            }}
-            role="button"
-            aria-label="Wheel (click a slice to choose)"
-            aria-disabled={!canPick}
-            title={canPick ? "Click a slice to choose your color" : "Wheel is locked right now"}
-          >
-            <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(900px_circle_at_28%_18%,rgba(255,255,255,0.46),transparent_50%)]" />
-            <div className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/10" />
-
-            <div className="pointer-events-none absolute inset-[7%] rounded-full ring-1 ring-white/8" />
-            <div className="pointer-events-none absolute inset-[10%] rounded-full bg-[radial-gradient(420px_circle_at_50%_30%,rgba(255,255,255,0.09),transparent_60%)]" />
-
-            <div className="pointer-events-none absolute inset-0 rounded-full">
-              {remaining.length > 1 &&
-                remaining.map((_, i) => {
-                  const ang = i * layout.step;
-                  return (
-                    <div
-                      key={`sep-${i}`}
-                      className="absolute left-1/2 top-1/2 h-[54%] w-px origin-bottom -translate-x-1/2 bg-white/14"
-                      style={{ transform: `rotate(${ang}deg)` }}
-                    />
-                  );
-                })}
-            </div>
-
-            {canPick && (
-              <motion.div
-                className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/0"
-                animate={prefersReducedMotion ? {} : { opacity: [0.12, 0.26, 0.12] }}
-                transition={prefersReducedMotion ? {} : { duration: 2.4, repeat: Infinity }}
-                style={{
-                  boxShadow: "0 0 0 1px rgba(255,255,255,0.08) inset",
-                }}
-              />
-            )}
-          </motion.div>
-
-          <div className="absolute inset-0 grid place-items-center" data-wheel-cta>
-            <div data-wheel-cta>
-              <PressToSpinButton
-                enabled={!disabled && !spinning && remaining.length > 0 && !!bet}
-                spinning={spinning}
-                onPress={onSpin}
-                label={
-                  disabled
-                    ? "All revealed"
-                    : !bet
-                    ? "Choose a color"
-                    : remaining.length === 1
-                    ? "Reveal the last one"
-                    : "Spin"
-                }
-                helper={
-                  !bet
-                    ? "tap the wheel or click your choice"
-                    : remaining.length === 1
-                    ? "no spin—just the reveal"
-                    : undefined
-                }
-              />
-            </div>
+        {/* Pointer */}
+        <motion.div
+          className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
+          style={{ scale: pointerScale }}
+        >
+          <div className="relative">
+            <div className="h-8 w-16 bg-gradient-to-b from-white/30 to-transparent rounded-t-full" />
+            <div className="h-0 w-0 border-l-[20px] border-r-[20px] border-t-[30px] border-l-transparent border-r-transparent border-t-white/95 mx-auto" />
+            <motion.div
+              className="absolute -top-3 left-1/2 -translate-x-1/2 h-6 w-6 rounded-full bg-gradient-to-br from-white to-amber-200 shadow-[0_0_30px_rgba(255,255,255,0.9)]"
+              animate={spinning ? { 
+                scale: [1, 1.3, 1],
+                boxShadow: [
+                  '0 0 20px rgba(255,255,255,0.9)',
+                  '0 0 40px rgba(255,255,255,1)',
+                  '0 0 20px rgba(255,255,255,0.9)'
+                ]
+              } : {}}
+              transition={spinning ? { 
+                duration: 0.5, 
+                repeat: Infinity,
+                ease: "easeInOut"
+              } : {}}
+            />
           </div>
+        </motion.div>
 
-          <AnimatePresence>
-            {mustPick && (
-              <motion.div
-                key="helper"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-[11px] text-muted-foreground shadow-[0_18px_80px_-60px_rgba(0,0,0,0.65)] backdrop-blur"
-              >
-                Click the choice pill • tap the wheel • or pick a chip
-              </motion.div>
-            )}
-          </AnimatePresence>
+        {/* Center button */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.div
+            className="relative"
+            whileHover={!spinning && !disabled && remaining.length > 0 && bet ? { scale: 1.05 } : {}}
+            whileTap={!spinning && !disabled && remaining.length > 0 && bet ? { scale: 0.95 } : {}}
+          >
+            <button
+              onClick={onSpin}
+              disabled={spinning || disabled || remaining.length === 0 || !bet}
+              className={`
+                relative h-28 w-28 rounded-full border-2 border-white/20
+                bg-gradient-to-br from-white/15 to-white/8 backdrop-blur-xl
+                flex flex-col items-center justify-center gap-2
+                disabled:opacity-50 disabled:cursor-not-allowed
+                transition-all duration-300
+                ${spinning ? 'animate-pulse' : ''}
+              `}
+            >
+              <div className="text-4xl">
+                {spinning ? '🌀' : remaining.length === 0 ? '🎉' : '✨'}
+              </div>
+              <div className="text-xs font-semibold tracking-wider">
+                {spinning ? 'SPINNING...' : remaining.length === 0 ? 'COMPLETE!' : 'SPIN NOW!'}
+              </div>
+              
+              {/* Pulsing ring effect */}
+              {!spinning && !disabled && remaining.length > 0 && bet && (
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-fuchsia-500/60"
+                  animate={{ 
+                    scale: [1, 1.15, 1],
+                    borderColor: [
+                      'rgba(236,72,153,0.6)',
+                      'rgba(236,72,153,0.9)',
+                      'rgba(236,72,153,0.6)'
+                    ]
+                  }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                />
+              )}
+              
+              {/* Anel interno giratório durante spin */}
+              {spinning && (
+                <motion.div
+                  className="absolute inset-4 rounded-full border border-white/30"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+              )}
+            </button>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Controls and status */}
+      <div className="mt-12 space-y-6">
+        {/* Progress com animação */}
+        <div className="max-w-md mx-auto">
+          <div className="flex justify-between text-sm text-white/70 mb-2">
+            <span>Your Journey</span>
+            <span>{4 - remaining.length} of 4</span>
+          </div>
+          <div className="relative">
+            <Progress value={((4 - remaining.length) / 4) * 100} className="h-2" />
+            <motion.div
+              className="absolute top-0 left-0 h-2 w-1 bg-white/80 rounded-full"
+              animate={{
+                x: ['0%', '100%'],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+            />
+          </div>
         </div>
 
-        <div className="mt-4 text-center text-[11px] text-muted-foreground">
-          Keyboard: 1/2/3/4 choose • Enter/Space spin • R replay • Esc close • M sound
+        {/* Choice chips */}
+        <div className="flex flex-wrap justify-center gap-3">
+          {remaining.map((key) => (
+            <motion.button
+              key={key}
+              onClick={() => setBet(key === bet ? null : key)}
+              className={`
+                relative px-4 py-2 rounded-full border backdrop-blur-sm
+                flex items-center gap-2 transition-all duration-300
+                ${bet === key 
+                  ? 'border-fuchsia-500/50 bg-fuchsia-500/25 shadow-[0_0_40px_rgba(236,72,153,0.4)]' 
+                  : 'border-white/20 bg-white/5 hover:bg-white/10'
+                }
+              `}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              animate={bet === key ? {
+                boxShadow: [
+                  '0 0 20px rgba(236,72,153,0.3)',
+                  '0 0 40px rgba(236,72,153,0.6)',
+                  '0 0 20px rgba(236,72,153,0.3)',
+                ]
+              } : {}}
+              transition={bet === key ? { duration: 1.5, repeat: Infinity } : {}}
+            >
+              <motion.span 
+                className={`h-2 w-2 rounded-full ${colorDotClass(key)}`}
+                animate={bet === key ? { scale: [1, 1.2, 1] } : {}}
+                transition={bet === key ? { duration: 1, repeat: Infinity } : {}}
+              />
+              <span className="font-semibold">{SLICE_PUBLIC[key].colorName}</span>
+              <span className="opacity-70">{SLICE_PUBLIC[key].emoji}</span>
+              {bet === key && (
+                <motion.div
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-fuchsia-500/20 to-pink-500/20"
+                  layoutId="activeChoice"
+                />
+              )}
+            </motion.button>
+          ))}
         </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap justify-center gap-4">
+          <Button
+            onClick={() => setBet(null)}
+            variant="outline"
+            size="sm"
+            className="rounded-full border-white/20 bg-white/5 hover:bg-white/10"
+            disabled={!bet}
+          >
+            Clear Choice
+          </Button>
+          
+          <Button
+            onClick={onShare}
+            variant="outline"
+            size="sm"
+            className="rounded-full border-white/20 bg-white/5 hover:bg-white/10"
+          >
+            <IconShare className="w-4 h-4 mr-2" />
+            Share
+          </Button>
+          
+          <Button
+            onClick={() => window.location.href = "/create"}
+            size="sm"
+            className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90"
+          >
+            Create Yours
+          </Button>
+        </div>
+
+        {/* Last result */}
+        {lastResult && !spinning && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 200 }}
+            className="text-center"
+          >
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm ${
+              lastResult.guessedRight 
+                ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.3)]' 
+                : 'bg-white/10 text-white/80 border border-white/20'
+            }`}>
+              <motion.span 
+                className={colorDotClass(lastResult.slice)}
+                animate={lastResult.guessedRight ? { scale: [1, 1.3, 1] } : {}}
+                transition={lastResult.guessedRight ? { duration: 0.5, repeat: 3 } : {}}
+              />
+              {lastResult.guessedRight ? (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  🎯 Perfect match! You chose right! 🎯
+                </motion.span>
+              ) : (
+                <>Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫</>
+              )}
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ------------------------------ Skeleton ------------------------------ */
-
-function Skeleton() {
-  return (
-    <div className="min-h-screen">
-      <GlowBg />
-      <div className="mx-auto max-w-4xl px-5 py-10 md:py-14">
-        <div className="space-y-4">
-          <div className="h-6 w-28 animate-pulse rounded-full bg-muted/20" />
-          <div className="h-10 w-[min(560px,90%)] animate-pulse rounded-2xl bg-muted/20" />
-          <div className="h-4 w-[min(620px,95%)] animate-pulse rounded-xl bg-muted/15" />
-        </div>
-
-        <div className="mt-10">
-          <Card className="border-border/60 bg-background/60 backdrop-blur">
-            <CardContent className="p-6 md:p-10">
-              <div className="mx-auto aspect-square w-full max-w-[540px] animate-pulse rounded-full bg-muted/15" />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------ Page ------------------------------ */
-
+/* ------------------------------ Main Component ------------------------------ */
 export default function GiftWheelClient({ slug }: { slug: string }) {
   const prefersReducedMotion = useReducedMotion();
-
+  const [showStory, setShowStory] = React.useState(true);
   const [gift, setGift] = React.useState<Gift | null>(null);
   const [loading, setLoading] = React.useState(true);
-
   const [remaining, setRemaining] = React.useState<SliceKey[]>(ALL_SLICES);
   const [active, setActive] = React.useState<SliceKey | null>(null);
-
   const [spinning, setSpinning] = React.useState(false);
   const rotationMV = useMotionValue(0);
-
-  const [now, setNow] = React.useState(() => new Date());
-
+  const [now] = React.useState(() => new Date());
   const [paymentRequired, setPaymentRequired] = React.useState(false);
   const [giftIdForPay, setGiftIdForPay] = React.useState<string | null>(null);
-
   const [revealOpen, setRevealOpen] = React.useState(false);
   const [spotlight, setSpotlight] = React.useState<SliceKey | null>(null);
-
   const [bet, setBet] = React.useState<SliceKey | null>(null);
-  const [lastResult, setLastResult] = React.useState<{ slice: SliceKey; guessedRight: boolean } | null>(
-    null
-  );
-
+  const [lastResult, setLastResult] = React.useState<{ slice: SliceKey; guessedRight: boolean } | null>(null);
   const [pointerPulse, setPointerPulse] = React.useState(0);
-
   const [audioOn, setAudioOn] = useLocalStorageBoolean("lw_audio_on", true);
   const audio = useTickAudio(audioOn);
-
   const [burst, setBurst] = React.useState(false);
+  const [finalOpen, setFinalOpen] = React.useState(false);
+  const [confettiTrigger, setConfettiTrigger] = React.useState(false);
+  const hasShownFinal = React.useRef(false);
+  const spinAnimationRef = React.useRef<any>(null);
+  const [spinCount, setSpinCount] = React.useState(0);
+  const lastSegmentIndex = React.useRef(-1);
 
-  // ✅ NEW: final popup after last reveal closes
-  const [endOpen, setEndOpen] = React.useState(false);
-  const endShownRef = React.useRef(false);
-  const remainingRef = React.useRef<SliceKey[]>(remaining);
+  // Fetch gift
   React.useEffect(() => {
-    remainingRef.current = remaining;
-  }, [remaining]);
+    let mounted = true;
 
-  // tick detection for “feel”
-  const boundaryStepRef = React.useRef(90);
-  const lastBoundaryIndexRef = React.useRef<number | null>(null);
-
-  React.useEffect(() => {
-    boundaryStepRef.current = 360 / Math.max(1, remaining.length);
-    lastBoundaryIndexRef.current = null;
-  }, [remaining.length]);
-
-  React.useEffect(() => {
-    if (prefersReducedMotion) return;
-
-    const unsub = rotationMV.on("change", (v) => {
-      if (!spinning) return;
-
-      const step = boundaryStepRef.current;
-      const m = mod360(v);
-      const idx = Math.floor(m / step);
-
-      if (lastBoundaryIndexRef.current === null) {
-        lastBoundaryIndexRef.current = idx;
-        return;
-      }
-
-      if (idx !== lastBoundaryIndexRef.current) {
-        lastBoundaryIndexRef.current = idx;
-        audio.tick();
-        setPointerPulse((p) => p + 1);
-      }
-    });
-
-    return () => unsub();
-  }, [rotationMV, spinning, audio, prefersReducedMotion]);
-
-  React.useEffect(() => {
-    let alive = true;
-
-    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-    async function fetchGift() {
-      const res = await fetch(`/api/gifts/${slug}`, { cache: "no-store" });
-
-      if (res.status === 402) {
-        return { kind: "locked" as const, data: null as any };
-      }
-
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error ?? "Failed to load gift.");
-      return { kind: "ok" as const, data };
-    }
-
-    async function getGiftIdForCheckout() {
-      const r = await fetch(`/api/resolve/${slug}`, { cache: "no-store" });
-      const d = await r.json().catch(() => null);
-      if (!r.ok) throw new Error(d?.error ?? "Failed to prepare checkout.");
-      return d?.id as string | undefined;
-    }
-
-    async function confirmPayment(sessionId: string) {
-      const maxTries = 12;
-
-      for (let i = 0; i < maxTries; i++) {
-        const r = await fetch(`/api/resolve/${slug}?session_id=${encodeURIComponent(sessionId)}`, {
-          cache: "no-store",
-        });
-
-        if (r.status === 200) return true;
-        if (r.status === 202) {
-          await sleep(900);
-          continue;
-        }
-
-        const d = await r.json().catch(() => null);
-        throw new Error(d?.error ?? "Resolve failed.");
-      }
-
-      return false;
-    }
-
-    (async () => {
+    async function load() {
       try {
-        if (!alive) return;
-        setLoading(true);
-
-        const url = new URL(window.location.href);
-        const sessionId = url.searchParams.get("session_id");
-
-        if (sessionId) {
-          const ok = await confirmPayment(sessionId);
-          if (ok) {
-            url.searchParams.delete("session_id");
-            const next =
-              url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : "");
-            window.history.replaceState({}, "", next);
+        const res = await fetch(`/api/gifts/${slug}`);
+        if (res.status === 402) {
+          if (mounted) {
+            setPaymentRequired(true);
+            const idRes = await fetch(`/api/resolve/${slug}`);
+            const data = await idRes.json();
+            setGiftIdForPay(data?.id || null);
           }
-        }
-
-        const out = await fetchGift();
-        if (!alive) return;
-
-        if (out.kind === "locked") {
-          setGift(null);
-          setPaymentRequired(true);
-
-          const id = await getGiftIdForCheckout();
-          if (!alive) return;
-
-          setGiftIdForPay(id ?? null);
           return;
         }
 
-        setPaymentRequired(false);
-        setGiftIdForPay(null);
-        setGift(out.data);
-      } catch (e: any) {
-        if (!alive) return;
-        toast.error(e?.message ?? "Could not load this link.");
+        const data = await res.json();
+        if (mounted) {
+          setGift(data);
+          setPaymentRequired(false);
+        }
+      } catch (error) {
+        toast.error("Failed to load gift");
       } finally {
-        if (alive) setLoading(false);
+        if (mounted) setLoading(false);
       }
-    })();
+    }
 
-    return () => {
-      alive = false;
-    };
+    load();
+    return () => { mounted = false; };
   }, [slug]);
 
-  React.useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
+  // Timer for relationship duration
   const startAt = gift ? new Date(gift.relationship_start_at) : null;
-  const elapsed = startAt ? clamp(now.getTime() - startAt.getTime(), 0, 10 ** 15) : 0;
+  const elapsed = startAt ? Math.max(0, now.getTime() - startAt.getTime()) : 0;
   const parts = msToParts(elapsed);
 
-  const payAndUnlock = useEvent(async () => {
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ giftId: giftIdForPay }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Checkout failed");
-      window.location.href = data.url;
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not start checkout.");
-    }
+const spin = useEvent(async () => {
+  if (spinning || !bet || remaining.length === 0) return;
+
+  setSpinning(true);
+  setRevealOpen(false);
+  setFinalOpen(false);
+  setSpinCount((p) => p + 1);
+  audio.spinStart();
+
+  const chosen = pickRandom(remaining);
+  setSpotlight(chosen);
+
+  const { map, step } = buildWheelLayout(remaining);
+  const seg = map.get(chosen)!;
+
+  // ✅ IMPORTANTE: não "mod360" a rotação final (isso matava as voltas)
+  const currentAbs = rotationMV.get();
+  const currentMod = mod360(currentAbs);
+
+  // alvo aleatório dentro do segmento (mais cassino)
+  const randomOffset = step * (0.18 + Math.random() * 0.64); // 18%..82%
+  const targetAngle = seg.start + randomOffset;
+
+  // pointer no topo (0deg). Queremos: (targetAngle + rotation) ≡ 0 (mod 360)
+  // então rotation_mod = 360 - targetAngle
+  const stopAtMod = mod360(360 - targetAngle);
+  const deltaMod = mod360(stopAtMod - currentMod);
+
+  const spins = prefersReducedMotion ? 2 : Math.floor(6 + Math.min(4, spinCount * 0.5));
+  const totalDelta = spins * 360 + deltaMod;
+
+  const finalAbs = currentAbs + totalDelta;
+  const overshoot = prefersReducedMotion ? 0 : 12; // “clack” final do cassino
+  const preTargetAbs = finalAbs + overshoot;
+
+  if (spinAnimationRef.current) spinAnimationRef.current.stop();
+  lastSegmentIndex.current = -1;
+
+  const duration = prefersReducedMotion ? 1.2 : clamp(4.2 + spinCount * 0.12, 4.2, 5.5);
+
+  // Fase 1: acelera + desacelera (tween bonito)
+  const phase1 = animate(rotationMV, [currentAbs, preTargetAbs], {
+    duration,
+    ease: [0.12, 0.78, 0.08, 0.99],
+    onUpdate: (latest) => {
+      // qual segmento está no ponteiro (topo)?
+      const angleMod = mod360(latest);
+      const wheelTopDeg = mod360(360 - angleMod);
+      const idx = Math.floor(wheelTopDeg / step) % remaining.length;
+
+      const progress = (latest - currentAbs) / (preTargetAbs - currentAbs);
+
+      if (idx !== lastSegmentIndex.current) {
+        lastSegmentIndex.current = idx;
+
+        // ticks mais rápidos e “fortes” no final
+        if (progress > 0.78) audio.segmentPass();
+        else audio.tick();
+
+        // só incrementa: o Wheel faz o punch (sem setTimeout spam)
+        setPointerPulse((p) => p + 1);
+      }
+    },
   });
+
+  spinAnimationRef.current = phase1;
+  await phase1.finished;
+
+  // Fase 2: settle / “encaixe” final (spring)
+  const phase2 = animate(rotationMV, finalAbs, prefersReducedMotion ? {
+    duration: 0.18,
+    ease: "easeOut",
+  } : {
+    type: "spring",
+    stiffness: 260,
+    damping: 18,
+    mass: 0.9,
+  });
+
+  spinAnimationRef.current = phase2;
+  await phase2.finished;
+
+  // final
+  audio.land();
+  setPointerPulse((p) => p + 1);
+
+  if (navigator.vibrate) navigator.vibrate([120, 40, 120]);
+
+  const guessedRight = chosen === bet;
+  setLastResult({ slice: chosen, guessedRight });
+
+  if (guessedRight) {
+    audio.success();
+    setBurst(true);
+    setConfettiTrigger(true);
+    setTimeout(() => {
+      setBurst(false);
+      setConfettiTrigger(false);
+    }, 1500);
+  } else {
+    audio.reveal();
+    setConfettiTrigger(true);
+    setTimeout(() => setConfettiTrigger(false), 500);
+  }
+
+  setRemaining((r) => r.filter((x) => x !== chosen));
+  setActive(chosen);
+
+  setTimeout(() => {
+    setSpinning(false);
+    setRevealOpen(true);
+    setBet(null);
+  }, 650);
+});
+
 
   const reset = useEvent(() => {
     setRemaining(ALL_SLICES);
@@ -1906,385 +1763,250 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
     setLastResult(null);
     setPointerPulse(0);
     setBurst(false);
-
-    // ✅ reset final popup state
-    setEndOpen(false);
-    endShownRef.current = false;
-
-    toast.message("Replayed.", { description: "Spin again to relive it." });
+    setFinalOpen(false);
+    setConfettiTrigger(false);
+    setSpinCount(0);
+    hasShownFinal.current = false;
+    toast("Journey reset", { description: "Start fresh with all surprises" });
   });
 
-  // ✅ Close reveal, and if it was the last one, open the final popup right after
   const closeReveal = useEvent(() => {
     setRevealOpen(false);
-
-    // open final message AFTER the last reveal closes
-    const isDone = remainingRef.current.length === 0;
-    if (isDone && !endShownRef.current) {
-      endShownRef.current = true;
-      window.setTimeout(() => setEndOpen(true), prefersReducedMotion ? 0 : 140);
+    if (remaining.length === 0 && !hasShownFinal.current) {
+      hasShownFinal.current = true;
+      setTimeout(() => setFinalOpen(true), 600);
     }
   });
 
-  const spin = useEvent(async () => {
-    if (spinning) return;
-    if (!gift) return;
-
-    if (remaining.length === 0) {
-      toast.message("All revealed.", { description: "Hit replay to experience it again." });
-      return;
+  const shareExperience = useEvent(() => {
+    const url = window.location.href;
+    const text = `Just experienced this beautiful Love Wheel journey! 💝 Spin the wheel and reveal heartfelt surprises.`;
+    
+    if (navigator.share) {
+      navigator.share({ title: 'Love Wheel', text, url });
+    } else {
+      shareOnTwitter(text, url);
     }
-
-    if (!bet) {
-      toast.message("Choose a color first.", {
-        description: "Tap the wheel, click the choice pill, or pick a chip.",
-      });
-      return;
-    }
-
-    // ✅ LAST ONE: no “lonely spin” — go straight to the reveal.
-    if (remaining.length === 1) {
-      const chosen = remaining[0];
-      setSpinning(false);
-      setRevealOpen(false);
-
-      setSpotlight(chosen);
-
-      const guessedRight = bet === chosen;
-      setLastResult({ slice: chosen, guessedRight });
-
-      toast.message("Final reveal.", {
-        description: `It’s ${SLICE_PUBLIC[chosen].colorName} — ${SLICE_PUBLIC[chosen].title}.`,
-      });
-
-      if (guessedRight && !prefersReducedMotion) {
-        setBurst(false);
-        window.setTimeout(() => setBurst(true), 10);
-        window.setTimeout(() => setBurst(false), 900);
-      }
-
-      setRemaining([]);
-      setActive(chosen);
-      setRevealOpen(true);
-      setBet(null);
-      return;
-    }
-
-    setSpinning(true);
-    setRevealOpen(false);
-    setEndOpen(false);
-
-    const chosen = pickRandom(remaining);
-    setSpotlight(chosen);
-
-    const { map, step } = buildWheelLayout(remaining);
-
-    // ✅ NEW: stop at a RANDOM point inside the slice (not always center)
-    const seg = map.get(chosen);
-    const start = seg?.start ?? 0;
-    const end = seg?.end ?? step;
-
-    // avoid landing too close to borders (feels "off")
-    const edgeMargin = prefersReducedMotion ? 0 : Math.min(8, step * 0.14);
-    const lo = start + edgeMargin;
-    const hi = end - edgeMargin;
-
-    const targetInWheelSpace = prefersReducedMotion
-      ? (seg?.center ?? start + step / 2)
-      : lo + Math.random() * Math.max(1, hi - lo);
-
-    // wheel rotation needed so that pointer (top) points to that angle:
-    const baseTarget = mod360(360 - targetInWheelSpace);
-
-    const currentMod = mod360(rotationMV.get());
-    const deltaToTarget = mod360(baseTarget - currentMod);
-
-    // ✅ NEW: vary turns + a tiny flourish so it feels less "samey"
-    const extraTurns =
-      prefersReducedMotion
-        ? 3
-        : remaining.length === 4
-        ? 8 + Math.floor(Math.random() * 4) // 8..11
-        : remaining.length === 3
-        ? 7 + Math.floor(Math.random() * 4) // 7..10
-        : remaining.length === 2
-        ? 6 + Math.floor(Math.random() * 4) // 6..9
-        : 6;
-
-    const nextRotation = rotationMV.get() + extraTurns * 360 + deltaToTarget;
-
-    // optional micro-overshoot for premium "settle"
-    const overshoot =
-      prefersReducedMotion ? 0 : (Math.random() * 12 + 10) * (Math.random() > 0.5 ? 1 : -1);
-
-    const dur = prefersReducedMotion ? 0.9 : 3.35;
-
-    await new Promise<void>((resolve) => {
-      animate(rotationMV, nextRotation + overshoot, {
-        duration: dur,
-        ease: prefersReducedMotion ? "easeOut" : [0.06, 0.92, 0.12, 1],
-        onComplete: () => {
-          // settle back quickly (makes it feel alive)
-          if (!prefersReducedMotion && Math.abs(overshoot) > 0.1) {
-            animate(rotationMV, nextRotation, {
-              duration: 0.32,
-              ease: "easeOut",
-              onComplete: () => resolve(),
-            });
-          } else {
-            resolve();
-          }
-        },
-      });
-    });
-
-    audio.land();
-
-    if (!prefersReducedMotion) {
-      try {
-        if (navigator.vibrate) navigator.vibrate([16, 28, 22]);
-      } catch {
-        // ignore
-      }
-    }
-
-    const guessedRight = bet === chosen;
-    setLastResult({ slice: chosen, guessedRight });
-
-    toast.message(guessedRight ? "Well chosen." : "Not this time.", {
-      description: `It landed on ${SLICE_PUBLIC[chosen].colorName} — ${SLICE_PUBLIC[chosen].title}.`,
-    });
-
-    if (guessedRight && !prefersReducedMotion) {
-      setBurst(false);
-      window.setTimeout(() => setBurst(true), 10);
-      window.setTimeout(() => setBurst(false), 900);
-    }
-
-    setRemaining((r) => r.filter((x) => x !== chosen));
-    setActive(chosen);
-
-    setRevealOpen(true);
-    setSpinning(false);
-
-    setBet(null);
   });
 
+  // Keyboard shortcuts
   React.useEffect(() => {
-    if (bet && !remaining.includes(bet)) setBet(null);
-  }, [bet, remaining]);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
-      const isTyping = tag === "input" || tag === "textarea" || (e.target as any)?.isContentEditable;
-      if (isTyping) return;
-
-      if (!spinning && !revealOpen && remaining.length > 0) {
-        if (e.key === "1" && remaining.includes("blue")) setBet("blue");
-        if (e.key === "2" && remaining.includes("red")) setBet("red");
-        if (e.key === "3" && remaining.includes("green")) setBet("green");
-        if (e.key === "4" && remaining.includes("yellow")) setBet("yellow");
-      }
-
-      if ((e.key === " " || e.key === "Enter") && !revealOpen && !endOpen) {
-        e.preventDefault();
-        if (!bet) {
-          toast.message("Choose a color first.", {
-            description: "Tap the wheel, click the choice pill, or pick a chip.",
+      switch (e.key) {
+        case ' ':
+        case 'Enter':
+          e.preventDefault();
+          if (!revealOpen && !finalOpen && !spinning && bet) spin();
+          break;
+        case 'r':
+        case 'R':
+          if (!revealOpen && !finalOpen) reset();
+          break;
+        case 'm':
+        case 'M':
+          setAudioOn(v => !v);
+          toast.success(`Sound ${!audioOn ? 'On' : 'Off'}`, {
+            description: "Audio settings updated",
           });
-          return;
-        }
-        spin();
+          break;
+        case 'Escape':
+          if (revealOpen) closeReveal();
+          if (finalOpen) setFinalOpen(false);
+          break;
+        case '1': if (remaining.includes('blue')) setBet('blue'); break;
+        case '2': if (remaining.includes('red')) setBet('red'); break;
+        case '3': if (remaining.includes('green')) setBet('green'); break;
+        case '4': if (remaining.includes('yellow')) setBet('yellow'); break;
       }
-
-      if ((e.key === "r" || e.key === "R") && !revealOpen && !endOpen) reset();
-      if (e.key === "m" || e.key === "M") setAudioOn((v) => !v);
-      if (e.key === "Escape" && revealOpen) closeReveal();
-      if (e.key === "Escape" && endOpen) setEndOpen(false);
     };
 
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [spin, reset, revealOpen, spinning, remaining, bet, setAudioOn, endOpen, closeReveal]);
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [spin, reset, revealOpen, finalOpen, remaining, setAudioOn, closeReveal, spinning, bet]);
 
-  if (loading) return <Skeleton />;
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <GlowBg />
+        <div className="text-center space-y-6">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full mx-auto"
+          />
+          <div className="text-white/70">Loading your Love Wheel...</div>
+        </div>
+      </div>
+    );
+  }
 
+  // Payment required
   if (paymentRequired) {
     return (
-      <div className="min-h-screen grid place-items-center px-6">
+      <div className="min-h-screen flex items-center justify-center px-6">
         <GlowBg />
-        <Card className="w-full max-w-xl border border-border/60 bg-background/60 shadow-[0_30px_120px_-70px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-          <CardContent className="p-6 md:p-8">
-            <Pill dotClassName="bg-amber-500/80">Locked</Pill>
-
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">
-              Unlock the{" "}
-              <span className="bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">
-                moment
-              </span>
-              .
-            </h1>
-
-            <p className="mt-3 text-sm text-muted-foreground">
-              One-time payment to reveal the wheel and the surprises. The link stays permanent.
-            </p>
-
-            <SoftDivider />
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={payAndUnlock}
-                disabled={!giftIdForPay}
-                className="rounded-full px-6 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white hover:opacity-95 shadow-[0_16px_70px_-45px_rgba(244,114,182,0.55)]"
-              >
-                Pay & Unlock
-              </Button>
-              <Button
-                variant="secondary"
-                className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
-                onClick={() => (window.location.href = "/create")}
-              >
-                Create Yours
-              </Button>
-            </div>
-
-            {!giftIdForPay && <div className="mt-4 text-xs text-muted-foreground">Preparing checkout…</div>}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!gift) {
-    return (
-      <div className="min-h-screen grid place-items-center px-6">
-        <GlowBg />
-        <Card className="w-full max-w-lg border border-border/60 bg-background/60 shadow-[0_30px_120px_-75px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-          <CardContent className="p-6 md:p-8">
-            <Pill dotClassName="bg-sky-500/80">Link Issue</Pill>
-            <div className="mt-4 text-xl font-semibold tracking-tight">Link Not Found</div>
-            <div className="mt-2 text-sm text-muted-foreground">
-              This gift may have been removed, or the link is incorrect.
-            </div>
-            <div className="mt-6">
-              <Button className="rounded-full px-6" onClick={() => (window.location.href = "/create")}>
-                Create a New One
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const isPaid = gift.status === "paid";
-
-  return (
-    <div className="min-h-screen">
-      <GlowBg />
-
-      <HeartBurst fire={burst} />
-
-      <RevealOverlay
-        open={revealOpen}
-        slice={active}
-        onClose={closeReveal}
-        gift={gift}
-        parts={parts}
-      />
-
-      {/* ✅ NEW: final message popup (after last reveal closes) */}
-      <EndOverlay
-        open={endOpen}
-        onClose={() => setEndOpen(false)}
-        onReplay={reset}
-      />
-
-      <div className="mx-auto max-w-5xl px-5 py-10 md:py-14">
-        <div className="flex flex-col items-center text-center">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Pill dotClassName={isPaid ? "bg-rose-500/80" : "bg-sky-500/80"}>
-              {isPaid ? "Surprise" : "Preview"}
-            </Pill>
-
-            <Pill dotClassName="bg-emerald-500/80">
-              Remaining <span className="font-medium text-foreground">{remaining.length}</span>/4
-            </Pill>
-
-            <button
-              type="button"
-              onClick={() => setAudioOn((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/55 px-3 py-1 text-xs text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.35)_inset] backdrop-blur transition hover:border-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
-              aria-pressed={audioOn}
-              title="Toggle sound (M)"
-            >
-              <span
-                className={[
-                  "h-1.5 w-1.5 rounded-full",
-                  audioOn ? "bg-emerald-500/80" : "bg-muted-foreground/45",
-                ].join(" ")}
-              />
-              Sound {audioOn ? "On" : "Off"}
-            </button>
+        <div className="max-w-md w-full space-y-6">
+          <div className="text-center space-y-4">
+            <div className="text-6xl">🔒</div>
+            <h1 className="text-3xl font-bold text-white/95">Unlock This Experience</h1>
+            <p className="text-white/70">A one-time payment reveals this beautiful journey forever</p>
           </div>
-
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
-            A quiet ritual:{" "}
-            <span className="bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">
-              choose
-            </span>{" "}
-            → {remaining.length === 0 ? "relive" : "spin"} → reveal.
-          </h1>
-
-          <p className="mt-3 max-w-2xl text-sm text-muted-foreground md:text-base">
-            Four surprises, one at a time. Your choice never changes the outcome—it just makes the moment feel personal.
-          </p>
-
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
+          
+          <div className="space-y-4">
             <Button
-              variant="secondary"
-              onClick={reset}
-              className="rounded-full border-border/60 bg-background/50 shadow-[0_1px_0_rgba(255,255,255,0.2)_inset]"
-              disabled={spinning}
+              onClick={() => giftIdForPay && fetch('/api/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ giftId: giftIdForPay }),
+              }).then(r => r.json()).then(d => d.url && (window.location.href = d.url))}
+              size="lg"
+              className="w-full rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500"
             >
-              Replay
+              Unlock for $9.99
+            </Button>
+            
+            <Button
+              onClick={() => window.location.href = "/create"}
+              variant="outline"
+              size="lg"
+              className="w-full rounded-full border-white/20 bg-white/5 hover:bg-white/10"
+            >
+              Create Your Own Instead
             </Button>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="mt-10">
-          <Card className="relative overflow-hidden border border-border/60 bg-background/60 shadow-[0_30px_120px_-85px_rgba(0,0,0,0.60)] backdrop-blur-xl">
-            <motion.div
-              className="pointer-events-none absolute inset-0 opacity-[0.50]"
-              animate={prefersReducedMotion ? {} : { opacity: [0.40, 0.54, 0.40] }}
-              transition={prefersReducedMotion ? {} : { duration: 6, repeat: Infinity }}
-              style={{
-                background:
-                  "radial-gradient(900px circle at 20% 15%, rgba(244,114,182,0.13), transparent 55%), radial-gradient(900px circle at 85% 25%, rgba(251,191,36,0.10), transparent 55%), radial-gradient(1000px circle at 50% 90%, rgba(56,189,248,0.09), transparent 60%)",
-              }}
-            />
-            <CardContent className="relative p-6 md:p-10">
-              <Wheel
-                rotationMV={rotationMV}
-                spinning={spinning}
-                onSpin={spin}
-                disabled={spinning || remaining.length === 0}
-                spotlight={spotlight}
-                remaining={remaining}
-                bet={bet}
-                setBet={setBet}
-                lastResult={lastResult}
-                pointerPulse={pointerPulse}
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="mt-8 text-center text-[11px] text-muted-foreground">
-          Keyboard: 1/2/3/4 choose • Enter/Space spin • R replay • Esc close • M sound
+  // Gift not found
+  if (!gift) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <GlowBg />
+        <div className="text-center space-y-6">
+          <div className="text-6xl">😔</div>
+          <h1 className="text-3xl font-bold text-white/95">Gift Not Found</h1>
+          <p className="text-white/70">This Love Wheel may have been removed or the link is incorrect</p>
+          <Button
+            onClick={() => window.location.href = "/create"}
+            size="lg"
+            className="rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500"
+          >
+            Create Your Love Wheel
+          </Button>
         </div>
       </div>
+    );
+  }
+
+  // Main experience
+  return (
+    <div className="min-h-screen text-white overflow-hidden">
+      <GlowBg />
+      <ConfettiExplosion trigger={confettiTrigger} intensity={remaining.length === 1 ? 2 : 1} />
+      
+      {showStory && <StoryIntro onComplete={() => setShowStory(false)} />}
+      
+      {/* POPUP CORRETO - abre para a cor que realmente caiu na roleta */}
+      <RevealOverlay
+        open={revealOpen}
+        slice={active} // Esta é a cor que ALEATORIAMENTE caiu
+        onClose={closeReveal}
+        gift={gift}
+      />
+      
+      <FinalCelebration
+        open={finalOpen}
+        onClose={() => setFinalOpen(false)}
+        onShare={shareExperience}
+        gift={gift}
+      />
+
+      {/* Header */}
+      <header className="container mx-auto px-6 py-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="text-center md:text-left">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
+              Love Wheel
+            </h1>
+            <p className="text-white/70 mt-2">Spin to reveal heartfelt surprises</p>
+            {gift.couple_names && (
+              <p className="text-white/60 text-sm mt-1">For {gift.couple_names}</p>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setAudioOn(v => !v)}
+              className={`px-4 py-2 rounded-full border backdrop-blur-sm flex items-center gap-2 ${
+                audioOn 
+                  ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300' 
+                  : 'border-white/20 bg-white/5 text-white/70'
+              }`}
+            >
+              {audioOn ? <IconVolumeOn className="w-4 h-4" /> : <IconVolumeOff className="w-4 h-4" />}
+              Sound {audioOn ? 'On' : 'Off'}
+            </button>
+            
+            <Button
+              onClick={reset}
+              className="rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 transition-all duration-300 shadow-[0_0_30px_rgba(6,182,212,0.3)]"
+            >
+              <IconRestart className="w-4 h-4 mr-2" />
+              Restart
+            </Button>
+            
+            <Button
+              onClick={shareExperience}
+              className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90"
+            >
+              <IconShare className="w-4 h-4 mr-2" />
+              Share
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="container mx-auto px-6 py-12">
+        <div className="max-w-6xl mx-auto">
+          <Wheel
+            rotationMV={rotationMV}
+            spinning={spinning}
+            onSpin={spin}
+            disabled={spinning || remaining.length === 0}
+            spotlight={spotlight}
+            remaining={remaining}
+            bet={bet}
+            setBet={setBet}
+            lastResult={lastResult}
+            pointerPulse={pointerPulse}
+            onShare={shareExperience}
+            spinCount={spinCount}
+          />
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="container mx-auto px-6 py-8 border-t border-white/10">
+        <div className="text-center text-white/50 text-sm">
+          <p>Made with 💝 using LoveWheel • Share the love with someone special</p>
+          <div className="mt-4">
+            <Button
+              onClick={() => window.location.href = "/create"}
+              variant="outline"
+              size="sm"
+              className="rounded-full border-white/20 bg-white/5 hover:bg-white/10"
+            >
+              Create Your Own Love Wheel
+            </Button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
