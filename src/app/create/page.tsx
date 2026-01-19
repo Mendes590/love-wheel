@@ -1108,14 +1108,18 @@ export default function CreatePage() {
   const faqRef = React.useRef<HTMLDivElement | null>(null);
   const howItWorksRef = React.useRef<HTMLDivElement | null>(null);
 
-  function scrollToSection(ref: React.RefObject<HTMLDivElement>, offset = 92) {
-    const el = ref.current;
-    if (!el) return;
+  function scrollToSection(
+  ref: React.RefObject<HTMLDivElement | null>,
+  offset = 92
+) {
+  const el = ref.current;
+  if (!el) return;
 
-    const y = el.getBoundingClientRect().top + window.scrollY - offset;
-    window.scrollTo({ top: y, behavior: "smooth" });
-    softHaptic(8);
-  }
+  const y = el.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top: y, behavior: "smooth" });
+  softHaptic(8);
+}
+
 
   React.useEffect(() => {
     return () => {
