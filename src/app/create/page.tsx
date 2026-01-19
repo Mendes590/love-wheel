@@ -517,7 +517,8 @@ function HeroArt({ phrase }: { phrase: string }) {
           animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, rotate: 6, scale: 1, filter: "blur(0px)" }}
           transition={{ duration: 0.75, ease: "easeOut" }}
         >
-          <MiniWheel phrase={phrase} reduceMotion={reduce} />
+          <MiniWheel phrase={phrase} reduceMotion={!!reduce} />
+
         </motion.div>
 
         {!reduce && (
