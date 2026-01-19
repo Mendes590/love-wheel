@@ -325,7 +325,7 @@ function IconVolumeOff({ className }: { className?: string }) {
 
 /* ------------------------------ Premium Background ------------------------------ */
 function GlowBg() {
-  const reduce = useReducedMotion();
+  const reduce = !!useReducedMotion();
 
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
