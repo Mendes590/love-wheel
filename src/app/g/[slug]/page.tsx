@@ -18,7 +18,7 @@ const supabaseAdmin = createClient(
 );
 
 const stripe = new Stripe(mustEnv("STRIPE_SECRET_KEY"));
-
+//teste
 
 function isoNow() {
   return new Date().toISOString();
