@@ -1,8 +1,31 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import type { NextRequest } from "next/server";
 
-type GiftAny = Record<string, any>;
+type Gift = {
+  id: string;
+  slug: string;
+  status: string;
+  paid_at: string | null;
+  created_at: string | null;
+
+  couple_photo_url: string | null;
+  love_letter: string | null;
+  relationship_start_at: string | null;
+  red_phrase: string | null;
+
+  stripe_session_id: string | null;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+
+  amount_cents: number | null;
+  currency: string | null;
+
+  // ⚠️ Só inclua se EXISTIR na sua tabela
+  // couple_names: string | null;
+  // created_by_name: string | null;
+};
 
 function mustEnv(name: string) {
   const v = process.env[name];
@@ -13,7 +36,9 @@ function mustEnv(name: string) {
 const supabaseAdmin = createClient(
   mustEnv("SUPABASE_URL"),
   mustEnv("SUPABASE_SERVICE_ROLE_KEY"),
-  { auth: { autoRefreshToken: false, persistSession: false } }
+  {
+    auth: { autoRefreshToken: false, persistSession: false },
+  }
 );
 
 const stripe = new Stripe(mustEnv("STRIPE_SECRET_KEY"), {
@@ -24,57 +49,60 @@ function isoNow() {
   return new Date().toISOString();
 }
 
-async function loadGiftBySlug(slug: string): Promise<GiftAny | null> {
-  const res = await supabaseAdmin.from("gifts").select("*").eq("slug", slug).maybeSingle();
-  if (!res.error && res.data) return res.data as GiftAny;
-
-  const msg = res.error?.message ?? "";
-  if (msg.includes("Cannot coerce the result to a single JSON object")) {
-    const list = await supabaseAdmin
-      .from("gifts")
-      .select("*")
-      .eq("slug", slug)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (!list.error && list.data && list.data.length > 0) {
-      console.warn("⚠️ Slug duplicado no banco. Usando o mais recente.");
-      return list.data[0] as GiftAny;
-    }
-  }
-
-  if (!res.error && !res.data) return null;
-
-  console.error("Erro ao buscar gift:", res.error?.message || "unknown");
-  return null;
-}
-
 export async function GET(
-  request: Request,
-  { params }: { params: { slug: string } }
+  request: NextRequest,
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const { slug } = params;
+    const { slug } = await context.params;
 
-    const gift = await loadGiftBySlug(slug);
+    const { data: gift, error } = await supabaseAdmin
+      .from("gifts")
+      .select(
+        `
+        id,
+        slug,
+        status,
+        paid_at,
+        created_at,
+        couple_photo_url,
+        love_letter,
+        relationship_start_at,
+        red_phrase,
+        stripe_session_id,
+        stripe_checkout_session_id,
+        stripe_payment_intent_id,
+        amount_cents,
+        currency
+      `
+      )
+      .eq("slug", slug)
+      .maybeSingle<Gift>(); // ✅ evita "Cannot coerce ... single JSON object"
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     if (!gift) {
       return NextResponse.json({ error: "Gift não encontrado" }, { status: 404 });
     }
 
+    // ✅ já pago -> devolve tudo
     if (gift.status === "paid" || gift.paid_at) {
       return NextResponse.json(gift);
     }
 
-    if (typeof gift.stripe_payment_intent_id === "string" && gift.stripe_payment_intent_id.startsWith("pi_")) {
+    // ✅ payment_intent no banco -> marca pago
+    if (gift.stripe_payment_intent_id?.startsWith("pi_")) {
       const ts = isoNow();
       await supabaseAdmin
         .from("gifts")
-        .update({ status: "paid", paid_at: ts, updated_at: ts })
+        .update({ status: "paid", paid_at: ts })
         .eq("id", gift.id);
 
       return NextResponse.json({ ...gift, status: "paid", paid_at: ts });
     }
 
+    // ✅ checar sessão no Stripe (URL > banco)
     const url = new URL(request.url);
     const sessionIdFromUrl = url.searchParams.get("session_id");
 
@@ -83,7 +111,7 @@ export async function GET(
       gift.stripe_session_id ||
       gift.stripe_checkout_session_id;
 
-    if (typeof stripeSessionId === "string" && stripeSessionId.startsWith("cs_")) {
+    if (stripeSessionId?.startsWith("cs_")) {
       try {
         const session = await stripe.checkout.sessions.retrieve(stripeSessionId);
 
@@ -97,7 +125,6 @@ export async function GET(
               stripe_session_id: stripeSessionId,
               stripe_checkout_session_id: stripeSessionId,
               stripe_payment_intent_id: session.payment_intent as string,
-              updated_at: ts,
             })
             .eq("id", gift.id);
 
@@ -111,18 +138,19 @@ export async function GET(
           });
         }
       } catch {
-        // segue pro 402
+        // cai no 402 abaixo
       }
     }
 
+    // ❌ não pago
     return NextResponse.json(
       {
         error: "Pagamento necessário",
         id: gift.id,
         slug: gift.slug,
         preview: {
-          red_phrase: gift.red_phrase ?? null,
-          relationship_start_at: gift.relationship_start_at ?? null,
+          red_phrase: gift.red_phrase,
+          relationship_start_at: gift.relationship_start_at,
         },
         needs_payment: true,
       },
