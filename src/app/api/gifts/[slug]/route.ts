@@ -41,9 +41,8 @@ const supabaseAdmin = createClient(
   }
 );
 
-const stripe = new Stripe(mustEnv("STRIPE_SECRET_KEY"), {
-  apiVersion: "2023-10-16",
-});
+const stripe = new Stripe(mustEnv("STRIPE_SECRET_KEY"));
+
 
 function isoNow() {
   return new Date().toISOString();
