@@ -206,34 +206,49 @@ function IconLink({ className }: { className?: string }) {
   );
 }
 
-function IconTikTok({ className }: { className?: string }) {
+function IconSound({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-5 w-5", className)}>
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-4 w-4", className)}>
       <path
+        d="M14 4a1 1 0 00-1.6-.8l-3.8 2.9H4a2 2 0 00-2 2v4a2 2 0 002 2h4.6l3.8 2.9a1 1 0 001.6-.8V4zm-4 5a1 1 0 00-1.7-.7 1 1 0 00-.3.7v2a1 1 0 001 1 1 1 0 001-1V9zm3 3a1 1 0 00-1.7-.7 1 1 0 00-.3.7v2a1 1 0 001 1 1 1 0 001-1v-2zm3-3a1 1 0 00-1.7-.7 1 1 0 00-.3.7v4a1 1 0 001 1 1 1 0 001-1V9z"
         fill="currentColor"
-        d="M16 3c.6 2.6 2.4 4.4 5 5v4c-2.1-.1-3.8-.8-5-1.8V16c0 3.3-2.7 6-6 6s-6-2.7-6-6 2.7-6 6-6c.4 0 .7 0 1 .1v4.2c-.3-.2-.7-.3-1-.3-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2V3h4z"
       />
     </svg>
   );
 }
 
-function IconIG({ className }: { className?: string }) {
+function IconRestart({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-5 w-5", className)}>
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-4 w-4", className)}>
       <path
+        d="M17.6 6.3A8 8 0 0119 12a8 8 0 01-8 8 8 8 0 01-8-8 8 8 0 018-8c1.8 0 3.4.6 4.8 1.7l-2.5 2.5H19V3l-1.4 1.4a10 10 0 00-7.6-3.4C5.4 1 1 5.4 1 11s4.4 10 10 10 10-4.4 10-10c0-2.6-1-5-2.7-6.9l-1.7 1.2z"
         fill="currentColor"
-        d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm10 2H7a3 3 0 00-3 3v10a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3zm-5 4a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6zm6.2-.7a1.1 1.1 0 11-2.2 0 1.1 1.1 0 012.2 0z"
       />
     </svg>
   );
 }
 
-function IconReddit({ className }: { className?: string }) {
+function IconShare({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-5 w-5", className)}>
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-4 w-4", className)}>
       <path
+        d="M18 16c-.8 0-1.5.3-2 .8l-7-4.2c.1-.2.1-.4.1-.6s0-.4-.1-.6l7-4.2c.5.5 1.2.8 2 .8 1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3c0 .2 0 .4.1.6l-7 4.2c-.5-.5-1.2-.8-2-.8-1.7 0-3 1.3-3 3s1.3 3 3 3c.8 0 1.5-.3 2-.8l7 4.2c-.1.2-.1.4-.1.6 0 1.7 1.3 3 3 3s3-1.3 3-3-1.3-3-3-3z"
         fill="currentColor"
-        d="M14.6 3.2l-1 4.6c1.7.2 3.2.9 4.3 1.9l3-1.4a1.5 1.5 0 11.9 1.8l-2.5 1.2c.5.9.7 1.9.7 3 0 4.1-3.6 7.5-8 7.5s-8-3.4-8-7.5c0-1.1.3-2.2.8-3.1L2.3 10a1.5 1.5 0 11.8-1.7l3 1.4c1.1-1 2.6-1.7 4.2-1.9l1.1-5.3a1.3 1.3 0 011.5-1l3.6.7a1.2 1.2 0 11-.5 2.4l-1.4-.3zm-6.9 12a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4zm8.6 0a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4zm-8 3.4c1 .9 2.3 1.4 3.4 1.4s2.5-.5 3.4-1.4a1 1 0 011.4 1.4c-1.4 1.3-3.1 2-4.8 2s-3.4-.7-4.8-2a1 1 0 011.4-1.4z"
+      />
+    </svg>
+  );
+}
+
+function IconArrowRight({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-4 w-4", className)}>
+      <path
+        d="M13 7l5 5-5 5m-6-10l5 5-5 5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
@@ -261,6 +276,222 @@ function NeonBg() {
           <div className="absolute left-[55%] top-[72%] h-36 w-36 rounded-full bg-pink-500/10 blur-3xl" />
         </motion.div>
       )}
+    </div>
+  );
+}
+
+/** ===== MINI WHEEL PREVIEW - A imagem que você enviou ===== */
+
+function MiniWheelPreview() {
+  const [selectedColor, setSelectedColor] = React.useState<string | null>(null);
+  const [spinsLeft, setSpinsLeft] = React.useState(4);
+  const [journey, setJourney] = React.useState<string[]>([]);
+  const [isSpinning, setIsSpinning] = React.useState(false);
+  
+  const colors = [
+    { name: "Gold", description: "Personal love letter", bg: "bg-gradient-to-b from-amber-300 to-amber-500" },
+    { name: "Sapphire", description: "Cherished photo memory", bg: "bg-gradient-to-b from-blue-400 to-blue-600" },
+    { name: "Emerald", description: "Relationship timeline", bg: "bg-gradient-to-b from-emerald-400 to-emerald-600" },
+    { name: "Rose", description: "Special phrase for you", bg: "bg-gradient-to-b from-pink-400 to-pink-600" },
+  ];
+
+  const handleSpin = () => {
+    if (spinsLeft <= 0 || isSpinning) return;
+    
+    setIsSpinning(true);
+    softHaptic([10, 20, 10]);
+    
+    const randomIndex = Math.floor(Math.random() * colors.length);
+    const selected = colors[randomIndex];
+    
+    setTimeout(() => {
+      setSelectedColor(selected.name);
+      setSpinsLeft(prev => prev - 1);
+      setJourney(prev => [...prev, selected.name]);
+      setIsSpinning(false);
+      softHaptic([15, 25, 15]);
+    }, 1500);
+  };
+
+  const handleRestart = () => {
+    setSelectedColor(null);
+    setSpinsLeft(4);
+    setJourney([]);
+    softHaptic(10);
+  };
+
+  return (
+    <div className="relative w-full max-w-sm mx-auto">
+      {/* Wheel container */}
+      <div className="relative rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-b from-gray-900/90 to-gray-950/90 backdrop-blur-lg shadow-2xl shadow-black/50">
+        {/* Header */}
+        <div className="p-6 text-center border-b border-white/10">
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-fuchsia-300 via-pink-300 to-violet-300 bg-clip-text text-transparent">
+            Love Wheel
+          </h3>
+          <p className="text-white/70 text-sm mt-1">Spin to reveal heartfelt surprises</p>
+        </div>
+        
+        {/* Color options */}
+        <div className="p-6 grid grid-cols-2 gap-4">
+          {colors.map((color) => (
+            <div 
+              key={color.name}
+              className={`rounded-2xl p-4 border-2 transition-all duration-300 ${
+                selectedColor === color.name 
+                  ? 'border-white/30 shadow-lg shadow-white/10' 
+                  : 'border-white/10 hover:border-white/20'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full ${color.bg} flex items-center justify-center shadow-inner`}>
+                  {selectedColor === color.name && (
+                    <div className="w-5 h-5 rounded-full bg-white/90 animate-pulse" />
+                  )}
+                </div>
+                <div className="text-left">
+                  <div className={`font-semibold ${
+                    color.name === "Gold" ? "text-amber-300" :
+                    color.name === "Sapphire" ? "text-blue-400" :
+                    color.name === "Emerald" ? "text-emerald-400" :
+                    "text-pink-400"
+                  }`}>
+                    {color.name}
+                  </div>
+                  <div className="text-white/70 text-xs">{color.description}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Stats */}
+        <div className="px-6 pb-4 grid grid-cols-2 gap-4">
+          <div className="rounded-xl bg-white/5 p-3 border border-white/10">
+            <div className="text-white/70 text-xs">Surprises Left</div>
+            <div className="text-2xl font-bold text-white mt-1">{spinsLeft}</div>
+          </div>
+          <div className="rounded-xl bg-white/5 p-3 border border-white/10">
+            <div className="text-white/70 text-xs">Choice</div>
+            <div className="text-2xl font-bold text-white mt-1">
+              {selectedColor ? selectedColor.slice(0, 3) : "—"}
+            </div>
+          </div>
+        </div>
+        
+        {/* Spin info */}
+        <div className="px-6 pb-6">
+          <div className="rounded-xl bg-gradient-to-r from-fuchsia-500/20 to-violet-500/20 p-3 border border-fuchsia-500/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-white/70 text-xs">Current Spin</div>
+                <div className="text-xl font-bold text-white">Spin #{4 - spinsLeft + 1}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-white/70 text-xs">Status</div>
+                <div className="text-sm font-semibold text-fuchsia-300">
+                  {selectedColor ? "Revealed" : "Ready"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Controls */}
+        <div className="p-6 border-t border-white/10 bg-black/30 grid grid-cols-3 gap-3">
+          <button 
+            className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
+            onClick={() => softHaptic(10)}
+          >
+            <IconSound className="h-5 w-5 text-white/80" />
+            <span className="text-xs text-white/70">Sound On</span>
+          </button>
+          
+          <button 
+            className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
+            onClick={handleRestart}
+          >
+            <IconRestart className="h-5 w-5 text-white/80" />
+            <span className="text-xs text-white/70">Restart</span>
+          </button>
+          
+          <button 
+            className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
+            onClick={() => softHaptic(10)}
+          >
+            <IconShare className="h-5 w-5 text-white/80" />
+            <span className="text-xs text-white/70">Share</span>
+          </button>
+        </div>
+        
+        {/* Spin button */}
+        <div className="p-6 pt-0">
+          <button
+            onClick={handleSpin}
+            disabled={spinsLeft <= 0 || isSpinning}
+            className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
+              spinsLeft > 0 && !isSpinning
+                ? 'bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 hover:from-fuchsia-600 hover:via-pink-600 hover:to-violet-600 active:scale-95 shadow-lg shadow-fuchsia-500/30'
+                : 'bg-gray-700/50 cursor-not-allowed'
+            }`}
+          >
+            {isSpinning ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Spinning...
+              </span>
+            ) : spinsLeft > 0 ? (
+              `Spin to Reveal (${spinsLeft} left)`
+            ) : (
+              "No Spins Left"
+            )}
+          </button>
+        </div>
+      </div>
+      
+      {/* Journey section */}
+      <div className="mt-6 rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-b from-gray-900/90 to-gray-950/90 backdrop-blur-lg p-6">
+        <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          Your Journey
+          <span className="text-white/70 text-sm font-normal">
+            {journey.length} of 4
+          </span>
+        </h4>
+        
+        {journey.length === 0 ? (
+          <div className="text-center py-8 text-white/50">
+            <div className="text-4xl mb-2">🌀</div>
+            <p>Spin the wheel to start your journey!</p>
+            <p className="text-sm mt-2">Each spin reveals a new surprise</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {colors.map((color) => (
+              <div 
+                key={color.name}
+                className={`rounded-xl p-3 flex items-center gap-3 ${
+                  journey.includes(color.name)
+                    ? 'bg-white/10 border border-white/20'
+                    : 'bg-white/5 border border-white/10 opacity-50'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full ${color.bg} flex items-center justify-center`}>
+                  {journey.includes(color.name) && (
+                    <div className="w-3 h-3 rounded-full bg-white/90" />
+                  )}
+                </div>
+                <div className="text-sm font-medium text-white">
+                  {color.name}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="mt-4 text-center text-xs text-white/50">
+          Complete all 4 spins to unlock the full experience
+        </div>
+      </div>
     </div>
   );
 }
@@ -469,7 +700,7 @@ function MiniWheel({ phrase, reduceMotion }: { phrase: string; reduceMotion: boo
 
             <div className="mt-4 w-full rounded-2xl border border-white/12 bg-white/6 p-4">
               <div className="text-[11px] text-white/60">It lands like this:</div>
-              <div className="mt-1 text-lg font-semibold text-white/90">“{phrase}”</div>
+              <div className="mt-1 text-lg font-semibold text-white/90">"I'd choose you again."</div>
               <div className="mt-1 text-[11px] text-white/60">Then: unlock → reveal the rest.</div>
             </div>
           </div>
@@ -760,7 +991,7 @@ function ConfirmPreview({
           </span>
           <span className="h-2 w-2 rounded-full bg-fuchsia-400/80" />
         </div>
-        <div className="text-2xl font-semibold leading-snug tracking-tight text-white/90">{red.trim() ? `“${red.trim()}”` : "—"}</div>
+        <div className="text-2xl font-semibold leading-snug tracking-tight text-white/90">{red.trim() ? `"${red.trim()}"` : "—"}</div>
         <div className="mt-3 text-[11px] text-white/60">Make it specific. One private detail beats ten generic compliments.</div>
       </div>
 
@@ -799,7 +1030,7 @@ function ConfirmPreview({
         <div className="mt-3 text-xs text-white/60">Tip: pick a photo that instantly brings you back. A laugh. A trip. A night that felt like forever.</div>
       </div>
 
-      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-sm backdrop-blur">
+      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-blur">
         <div className="mb-2 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
             <IconSpark className="h-4 w-4 text-amber-200" />
@@ -893,7 +1124,7 @@ function QrCodeBlock({ value }: { value: string }) {
           </div>
         ) : (
           <div className="w-full rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
-            {loading ? "Generating your QR code…" : "Couldn’t generate QR code on this device."}
+            {loading ? "Generating your QR code…" : "Couldn't generate QR code on this device."}
           </div>
         )}
       </div>
@@ -1059,7 +1290,7 @@ function LinkReadyPopup({
               </div>
 
               <div className="mt-4 text-[11px] text-white/55">
-                Pro tip: after payment, add a 2–3s “premium” animation before the reveal. It makes the moment land.
+                Pro tip: after payment, add a 2–3s "premium" animation before the reveal. It makes the moment land.
               </div>
             </div>
           </motion.div>
@@ -1076,6 +1307,35 @@ const MAX_BYTES = MAX_PHOTO_MB * 1024 * 1024;
 
 function isValidImage(file: File) {
   return file.type.startsWith("image/");
+}
+
+/** ===== Mobile Responsive Adjustments ===== */
+
+function MobilePreviewSection() {
+  return (
+    <div className="md:hidden w-full mt-10">
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur mb-4">
+          <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+          Live Preview
+        </div>
+        <h3 className="text-2xl font-bold text-white mb-2">See it in action</h3>
+        <p className="text-white/60 text-sm">Experience the Love Wheel just like your partner will</p>
+      </div>
+      
+      <MiniWheelPreview />
+      
+      <div className="mt-8 text-center">
+        <p className="text-white/70 text-sm mb-4">
+          This is how your love story will be revealed - one spin at a time.
+        </p>
+        <button className="text-fuchsia-300 text-sm font-medium inline-flex items-center gap-2">
+          Learn how it works
+          <IconArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /** ===== Main page ===== */
@@ -1252,7 +1512,7 @@ export default function CreatePage() {
     }
 
     if (!isValidImage(file)) {
-      toast.error("That file won’t work.", { description: "Choose an image (JPG/PNG/WebP)." });
+      toast.error("That file won't work.", { description: "Choose an image (JPG/PNG/WebP)." });
       softHaptic(22);
       return;
     }
@@ -1287,7 +1547,7 @@ export default function CreatePage() {
 
   async function onCreate(values: FormValues) {
     if (!photoFile) {
-      toast.error("Add a photo to continue.", { description: "This is the reveal moment — don’t skip it." });
+      toast.error("Add a photo to continue.", { description: "This is the reveal moment — don't skip it." });
       return;
     }
 
@@ -1350,7 +1610,7 @@ export default function CreatePage() {
       toast.success("Link copied.", { description: "Send it when you want the moment to land." });
       softHaptic(10);
     } catch {
-      toast.error("Couldn’t copy.");
+      toast.error("Couldn't copy.");
       softHaptic(22);
     }
   }
@@ -1358,12 +1618,12 @@ export default function CreatePage() {
   const canSubmit = form.formState.isValid && !isSubmitting && !!photoFile;
 
   const quickLine = [
-    "I’d choose you again. Every time.",
+    "I'd choose you again. Every time.",
     "You feel like home — even in chaos.",
     "My favorite plan is still: you.",
-    "You’re the calm I didn’t know I needed.",
-    "If I could replay one thing, it’d be us.",
-    "I’m proud of us. Always.",
+    "You're the calm I didn't know I needed.",
+    "If I could replay one thing, it'd be us.",
+    "I'm proud of us. Always.",
   ];
 
   const quickPrompts = [
@@ -1371,8 +1631,8 @@ export default function CreatePage() {
     "My favorite memory with you is…",
     "Thank you for…",
     "I love the way you…",
-    "Here’s what I promise you…",
-    "If we’re old someday, I hope we still…",
+    "Here's what I promise you…",
+    "If we're old someday, I hope we still…",
   ];
 
   const headline =
@@ -1385,8 +1645,8 @@ export default function CreatePage() {
       : step === "photo"
       ? "Choose the photo that says everything."
       : step === "yellow"
-      ? "Write the letter they’ll keep."
-      : "Preview it like it’s already theirs.";
+      ? "Write the letter they'll keep."
+      : "Preview it like it's already theirs.";
 
   const sub =
     step === "hero"
@@ -1394,12 +1654,12 @@ export default function CreatePage() {
       : step === "red"
       ? "Not generic. Not polite. Something only you could say."
       : step === "green"
-      ? "This powers the live “time together” counter — a simple detail that hits hard."
+      ? "This powers the live 'time together' counter — a simple detail that hits hard."
       : step === "photo"
-      ? "Pick the most meaningful one. This is the moment they’ll remember."
+      ? "Pick the most meaningful one. This is the moment they'll remember."
       : step === "yellow"
       ? "One memory + one gratitude + one promise. Keep it real."
-      : "If it feels right, create the link — we’ll open your unlock popup immediately.";
+      : "If it feels right, create the link — we'll open your unlock popup immediately.";
 
   const scene = {
     initial: reduce ? { opacity: 0 } : { opacity: 0, y: 18, filter: "blur(10px)", scale: 0.992 },
@@ -1431,7 +1691,7 @@ export default function CreatePage() {
             LoveWheel costs <span className="text-white font-semibold">{PRICE_USD}</span> to unlock the premium spin → reveal.
           </div>
           <div>
-            That’s the number on your card. The emotional value is… not measurable. This isn’t “content”. It’s a moment someone
+            That's the number on your card. The emotional value is… not measurable. This isn't "content". It's a moment someone
             keeps.
           </div>
           <div className="text-white/80">One-time payment. No subscription. After unlock, the reveal becomes part of the surprise.</div>
@@ -1449,7 +1709,7 @@ export default function CreatePage() {
         body: (
           <div className="space-y-3">
             <div>
-              It’s a private gift page you create in minutes: a short line, a “time together” counter, a photo reveal, and a love
+              It's a private gift page you create in minutes: a short line, a "time together" counter, a photo reveal, and a love
               letter.
             </div>
             <div>Your partner spins the wheel and discovers each piece. It feels like a game, but lands like a memory.</div>
@@ -1461,7 +1721,7 @@ export default function CreatePage() {
         body: (
           <div className="space-y-3">
             <div>
-              Yes. The link is unlisted (only people with the link can open it), and the reveal is gated so it doesn’t get spoiled
+              Yes. The link is unlisted (only people with the link can open it), and the reveal is gated so it doesn't get spoiled
               instantly.
             </div>
             <div className="text-white/80">Pro tip: send it at the exact moment you want it to land.</div>
@@ -1473,7 +1733,7 @@ export default function CreatePage() {
         body: (
           <div className="space-y-3">
             <div>
-              That’s part of the magic. The wheel makes it feel like a tiny ritual. But your details are personal, so most people
+              That's part of the magic. The wheel makes it feel like a tiny ritual. But your details are personal, so most people
               keep it between you two.
             </div>
             <div className="text-white/80">If you want, you can create a new moment anytime.</div>
@@ -1485,7 +1745,7 @@ export default function CreatePage() {
         body: (
           <div className="space-y-3">
             <div>No. The counter keeps running, and the page stays live.</div>
-            <div className="text-white/80">It’s a gift that quietly gets better with time.</div>
+            <div className="text-white/80">It's a gift that quietly gets better with time.</div>
           </div>
         ),
       },
@@ -1505,10 +1765,10 @@ export default function CreatePage() {
             <ul className="list-disc pl-5 space-y-1 text-white/80">
               <li>A short line that hits.</li>
               <li>The date your story began (we turn it into a live counter).</li>
-              <li>A photo (the “oh wow” reveal).</li>
-              <li>A letter they’ll keep.</li>
+              <li>A photo (the "oh wow" reveal).</li>
+              <li>A letter they'll keep.</li>
             </ul>
-            <div className="text-white/80">You don’t need to be poetic. You just need one true detail.</div>
+            <div className="text-white/80">You don't need to be poetic. You just need one true detail.</div>
           </div>
         ),
       },
@@ -1535,7 +1795,7 @@ export default function CreatePage() {
               Your partner spins. Each slice reveals a piece. The premium spin → reveal unlock makes the moment feel earned and
               cinematic.
             </div>
-            <div className="text-white/80">A tiny pause before the reveal turns “cute” into “I’m not crying, you are.”</div>
+            <div className="text-white/80">A tiny pause before the reveal turns "cute" into "I'm not crying, you are."</div>
           </div>
         ),
       },
@@ -1560,11 +1820,11 @@ export default function CreatePage() {
     );
   }
 
-  const heroPhrases = ["I’d choose you again.", "You feel like home.", "My favorite plan is still: you.", "I’ll never stop choosing us.", "Somehow, it’s always you."];
+  const heroPhrases = ["I'd choose you again.", "You feel like home.", "My favorite plan is still: you.", "I'll never stop choosing us.", "Somehow, it's always you."];
   const heroPhrase = heroPhrases[clamp(redLen % heroPhrases.length, 0, heroPhrases.length - 1)];
 
   return (
-    <div className="min-h-screen text-white">
+    <div className="min-h-screen text-white overflow-x-hidden">
       <NeonBg />
 
       {/* Info popup */}
@@ -1595,21 +1855,24 @@ export default function CreatePage() {
         />
       )}
 
-      {/* Top nav */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/55 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+      {/* Top nav - Mobile optimized */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/85 backdrop-blur supports-[backdrop-filter]:bg-[#050816]/55">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-2xl bg-white/8 ring-1 ring-white/12 flex items-center justify-center">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-2xl bg-white/8 ring-1 ring-white/12 flex items-center justify-center">
               <span className="text-fuchsia-300">
-                <IconHeart className="h-5 w-5" />
+                <IconHeart className="h-4 w-4 sm:h-5 sm:w-5" />
               </span>
             </div>
-            <div className="text-sm font-semibold tracking-tight">
+            <div className="text-sm font-semibold tracking-tight hidden sm:block">
               Love<span className="text-fuchsia-300">Wheel</span>
+            </div>
+            <div className="text-sm font-semibold tracking-tight sm:hidden">
+              LW
             </div>
           </div>
 
-          <nav className="hidden items-center gap-7 text-sm text-white/70 md:flex">
+          <nav className="hidden items-center gap-5 text-sm text-white/70 md:flex">
             <button type="button" className="hover:text-white transition" onClick={openPricing}>
               Pricing
             </button>
@@ -1641,40 +1904,80 @@ export default function CreatePage() {
             <Button
               type="button"
               onClick={openBuilder}
-              className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95"
+              className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 text-sm px-4 py-2 sm:px-6"
             >
-              Create yours
+              Create
             </Button>
+            
+            {/* Mobile menu button */}
+            <button 
+              className="md:hidden flex flex-col gap-1 p-2"
+              onClick={() => {
+                openInfo(
+                  "Menu",
+                  <div className="space-y-3">
+                    <button 
+                      className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
+                      onClick={openPricing}
+                    >
+                      Pricing
+                    </button>
+                    <button 
+                      className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
+                      onClick={() => scrollToSection(faqRef)}
+                    >
+                      FAQ
+                    </button>
+                    <button 
+                      className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
+                      onClick={() => scrollToSection(howItWorksRef)}
+                    >
+                      How it works
+                    </button>
+                    <button 
+                      className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
+                      onClick={openQrReader}
+                    >
+                      QR Reader
+                    </button>
+                  </div>
+                );
+              }}
+            >
+              <div className="w-5 h-0.5 bg-white/70"></div>
+              <div className="w-5 h-0.5 bg-white/70"></div>
+              <div className="w-5 h-0.5 bg-white/70"></div>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* HERO */}
-      <main className="mx-auto max-w-6xl px-5 py-12 md:py-16">
-        <div className="grid items-center gap-10 md:grid-cols-2">
+      {/* HERO - Mobile optimized */}
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-5 sm:py-12 md:py-16">
+        <div className="grid items-center gap-10 lg:grid-cols-2">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
               Designed to land like a memory
             </div>
 
-            <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
               Surprise{" "}
               <span className="bg-gradient-to-r from-white via-fuchsia-200 to-pink-200 bg-clip-text text-transparent">
                 your love
               </span>
             </h1>
 
-            <p className="mt-4 max-w-xl text-white/65">
+            <p className="mt-4 max-w-xl text-white/65 text-sm sm:text-base">
               Create a live relationship counter, a private line, a photo reveal, and a letter. Share via link or QR — then unlock
               the premium spin → reveal.
             </p>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
               <Button
                 type="button"
                 onClick={openBuilder}
-                className="h-12 rounded-full px-7 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_20px_80px_-40px_rgba(255,64,169,0.75)] hover:opacity-95"
+                className="h-12 rounded-full px-7 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_20px_80px_-40px_rgba(255,64,169,0.75)] hover:opacity-95 w-full sm:w-auto"
               >
                 Start creating
               </Button>
@@ -1682,7 +1985,7 @@ export default function CreatePage() {
               <Button
                 type="button"
                 variant="secondary"
-                className="h-12 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                className="h-12 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto"
                 onClick={() =>
                   toast.message("Quick tip", {
                     description: "The best gifts feel like one private detail. Start there.",
@@ -1695,7 +1998,7 @@ export default function CreatePage() {
               <button
                 type="button"
                 onClick={openPricing}
-                className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-[11px] text-white/70 backdrop-blur transition hover:bg-white/10"
+                className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-[11px] text-white/70 backdrop-blur transition hover:bg-white/10 w-full sm:w-auto justify-center"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
                 {PRICE_MICROCOPY}
@@ -1710,7 +2013,7 @@ export default function CreatePage() {
                     "How long does it take?",
                     <div className="space-y-3">
                       <div>Usually 2–3 minutes.</div>
-                      <div className="text-white/80">The “perfect” version takes longer, but the best version is the honest one.</div>
+                      <div className="text-white/80">The "perfect" version takes longer, but the best version is the honest one.</div>
                     </div>,
                     "Start now",
                     openBuilder
@@ -1742,12 +2045,23 @@ export default function CreatePage() {
             </div>
           </div>
 
-          <HeroArt phrase={heroPhrase} />
+          {/* Mobile Preview - Hidden on desktop */}
+          <div className="lg:hidden">
+            <MiniWheelPreview />
+          </div>
+          
+          {/* Desktop Hero Art - Hidden on mobile */}
+          <div className="hidden lg:block">
+            <HeroArt phrase={heroPhrase} />
+          </div>
         </div>
 
         <div className="mt-10 flex items-center justify-center gap-6 text-white/55">
           <div className="hidden sm:block text-xs">+723 happy couples</div>
         </div>
+
+        {/* Mobile Preview Section */}
+        <MobilePreviewSection />
 
         {/* Sections with click → popup */}
         <div className="mt-12 grid gap-5 md:grid-cols-2">
@@ -1762,7 +2076,7 @@ export default function CreatePage() {
               Pricing
             </div>
             <div className="mt-3 text-2xl font-semibold text-white/90">{PRICE_USD} to unlock</div>
-            <div className="mt-2 text-sm text-white/65">The number is small. The emotional value is outrageous. Click to see what’s included.</div>
+            <div className="mt-2 text-sm text-white/65">The number is small. The emotional value is outrageous. Click to see what's included.</div>
           </button>
 
           {/* QR Reader */}
@@ -1797,7 +2111,7 @@ export default function CreatePage() {
               }
               className="text-xs text-white/60 hover:text-white transition"
             >
-              What’s this?
+              What's this?
             </button>
           </div>
 
@@ -1923,7 +2237,7 @@ export default function CreatePage() {
 
                       <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
                         <Label htmlFor="redPhrase" className="text-xs text-white/60">
-                          Your line (the one they’ll replay)
+                          Your line (the one they'll replay)
                         </Label>
 
                         <div className="relative mt-2">
@@ -1964,7 +2278,7 @@ export default function CreatePage() {
                           <div className="mt-2 grid gap-1">
                             <div>• Mention a shared thing: a place, a joke, a habit.</div>
                             <div>• Keep it short enough to screenshot.</div>
-                            <div>• Avoid “you’re amazing” — say why, once.</div>
+                            <div>• Avoid "you're amazing" — say why, once.</div>
                           </div>
                         </div>
 
@@ -2070,7 +2384,7 @@ export default function CreatePage() {
                         <FieldError msg={form.formState.errors.relationshipStartAt?.message} />
 
                         <div className="mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
-                          Choose the date that feels true — the first “we” moment, not the first message.
+                          Choose the date that feels true — the first "we" moment, not the first message.
                         </div>
                       </div>
 
@@ -2159,10 +2473,10 @@ export default function CreatePage() {
                             <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
                               <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
                                 <IconPhoto className="h-4 w-4 text-sky-300" />
-                                Drag & drop or click “Choose”
+                                Drag & drop or click "Choose"
                               </div>
                               <div className="max-w-sm text-xs text-white/60">
-                                Pick the photo that makes your chest feel warm. A laugh. A trip. A night you’ll never forget.
+                                Pick the photo that makes your chest feel warm. A laugh. A trip. A night you'll never forget.
                               </div>
                             </div>
                           ) : (
@@ -2184,7 +2498,7 @@ export default function CreatePage() {
                         </div>
 
                         {!photoFile ? (
-                          <div className="mt-3 text-xs text-white/60">Choose carefully — this is the “oh wow” moment.</div>
+                          <div className="mt-3 text-xs text-white/60">Choose carefully — this is the "oh wow" moment.</div>
                         ) : (
                           <div className="mt-3 text-xs text-white/60">Perfect. This is the moment.</div>
                         )}
@@ -2222,7 +2536,7 @@ export default function CreatePage() {
                       <div className="flex items-end justify-between gap-4">
                         <div>
                           <div className="text-xs text-white/55">Step 4 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Write the letter they’ll keep.</div>
+                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Write the letter they'll keep.</div>
                           <div className="mt-2 text-sm text-white/60">One memory + one gratitude + one promise. Keep it real.</div>
                         </div>
 
@@ -2247,7 +2561,7 @@ export default function CreatePage() {
                             return (
                               <Textarea
                                 id="loveLetter"
-                                placeholder={"The moment I knew it was you was...\n\nThank you for...\n\nHere’s what I promise you..."}
+                                placeholder={"The moment I knew it was you was...\n\nThank you for...\n\nHere's what I promise you..."}
                                 {...letterReg}
                                 ref={(el) => {
                                   rhfRef(el);
@@ -2272,9 +2586,9 @@ export default function CreatePage() {
                         <div className="mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
                           <div className="font-medium text-white/85">A simple structure that works:</div>
                           <div className="mt-2 grid gap-1">
-                            <div>• A memory: “I still think about…”</div>
-                            <div>• A thank you: “You changed my life by…”</div>
-                            <div>• A promise: “I will always…”</div>
+                            <div>• A memory: "I still think about…"</div>
+                            <div>• A thank you: "You changed my life by…"</div>
+                            <div>• A promise: "I will always…"</div>
                           </div>
                         </div>
 
@@ -2330,8 +2644,8 @@ export default function CreatePage() {
                       <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
                           <div className="text-xs text-white/55">Preview</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Preview it like it’s already theirs.</div>
-                          <div className="mt-2 text-sm text-white/60">If it hits, create the link — we’ll open your unlock popup immediately.</div>
+                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Preview it like it's already theirs.</div>
+                          <div className="mt-2 text-sm text-white/60">If it hits, create the link — we'll open your unlock popup immediately.</div>
                           <button type="button" onClick={openPricing} className="mt-2 text-[11px] text-white/55 hover:text-white transition">
                             {PRICE_MICROCOPY}
                           </button>
@@ -2375,7 +2689,7 @@ export default function CreatePage() {
                             {isSubmitting ? "Creating…" : "Create gift link"}
                           </Button>
                           <button type="button" onClick={openPricing} className="text-[11px] text-white/55 hover:text-white transition">
-                            You’ll pay to unlock the reveal next · <span className="text-white/85">{PRICE_USD}</span>
+                            You'll pay to unlock the reveal next · <span className="text-white/85">{PRICE_USD}</span>
                           </button>
                         </div>
                       </div>
@@ -2387,7 +2701,7 @@ export default function CreatePage() {
           </div>
         </div>
 
-        <div className="mt-5 text-center text-xs text-white/55">You’re not filling a form — you’re setting up a moment.</div>
+        <div className="mt-5 text-center text-xs text-white/55">You're not filling a form — you're setting up a moment.</div>
       </BuilderModal>
     </div>
   );

@@ -26,7 +26,126 @@ type Gift = {
   relationship_start_at: string;
   couple_names?: string;
   created_by_name?: string;
+  paid_at?: string;
+  needs_payment?: boolean;
 };
+
+type GiftLike = Partial<Gift> & Record<string, any>;
+
+function firstNonEmptyString(...vals: any[]): string {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim().length > 0) return v;
+  }
+  return "";
+}
+
+function firstTruthy<T>(...vals: any[]): T | null {
+  for (const v of vals) {
+    if (v) return v as T;
+  }
+  return null;
+}
+
+function normalizeGift(raw: GiftLike): Gift {
+  console.log("Normalizando gift:", raw);
+  
+  if (raw && raw.couple_photo_url !== undefined && raw.love_letter !== undefined) {
+    return raw as Gift;
+  }
+
+  function findProp(obj: any, propNames: string[]): any {
+    if (!obj || typeof obj !== 'object') return null;
+    
+    for (const prop of propNames) {
+      if (obj[prop] !== undefined && obj[prop] !== null) {
+        return obj[prop];
+      }
+    }
+    
+    for (const key in obj) {
+      if (typeof obj[key] === 'object') {
+        const found = findProp(obj[key], propNames);
+        if (found) return found;
+      }
+    }
+    
+    return null;
+  }
+
+  const id = findProp(raw, ['id', 'giftId', 'uid']) || '';
+  const slug = findProp(raw, ['slug', 'giftSlug', 'urlSlug']) || '';
+  const status = (findProp(raw, ['status', 'giftStatus', 'state']) || 'draft') as Gift["status"];
+  
+  const couple_photo_url = findProp(raw, [
+    'couple_photo_url', 
+    'couplePhotoUrl', 
+    'couplePhotoURL',
+    'photo_url',
+    'photoUrl',
+    'photoURL',
+    'image_url',
+    'imageUrl',
+    'image'
+  ]) || null;
+
+  const love_letter = findProp(raw, [
+    'love_letter',
+    'loveLetter',
+    'letter',
+    'loveletter',
+    'message',
+    'text',
+    'content'
+  ]) || '';
+
+  const red_phrase = findProp(raw, [
+    'red_phrase',
+    'redPhrase',
+    'phrase',
+    'tagline',
+    'quote'
+  ]) || '';
+
+  const relationship_start_at = findProp(raw, [
+    'relationship_start_at',
+    'relationshipStartAt',
+    'relationshipStartDate',
+    'start_at',
+    'startAt',
+    'startDate',
+    'date'
+  ]) || '';
+
+  console.log("Resultado da normalização:", {
+    id,
+    slug,
+    status,
+    couple_photo_url,
+    love_letter,
+    red_phrase,
+    relationship_start_at
+  });
+
+  return {
+    id,
+    slug,
+    status,
+    couple_photo_url,
+    love_letter,
+    red_phrase,
+    relationship_start_at,
+    couple_names: raw?.couple_names || raw?.coupleNames || undefined,
+    created_by_name: raw?.created_by_name || raw?.createdByName || undefined,
+    paid_at: raw?.paid_at || raw?.paidAt || undefined,
+    needs_payment: raw?.needs_payment || raw?.needsPayment || undefined,
+  };
+}
+
+interface GiftWheelClientProps {
+  slug: string;
+  gift: Gift | null;
+  needsPayment: boolean;
+}
 
 type SliceKey = "blue" | "red" | "green" | "yellow";
 const ALL_SLICES: SliceKey[] = ["blue", "red", "green", "yellow"];
@@ -129,23 +248,12 @@ function useEvent<T extends (...args: any[]) => any>(fn: T) {
   React.useEffect(() => void (ref.current = fn), [fn]);
   return React.useCallback((...args: Parameters<T>) => ref.current(...args), []);
 }
-function safeSplitLines(text: string) {
+function safeSplitLines(text: string | null | undefined) {
+  if (!text) return [];
   return text
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
-}
-function shareOnTwitter(text: string, url: string) {
-  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    text
-  )}&url=${encodeURIComponent(url)}`;
-  window.open(tweetUrl, "_blank", "width=550,height=420");
-}
-function shareOnWhatsApp(text: string, url: string) {
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
-    `${text} ${url}`
-  )}`;
-  window.open(whatsappUrl, "_blank");
 }
 
 /* ------------------------------ Visual theme ------------------------------ */
@@ -192,7 +300,7 @@ function buildWheelLayout(keys: SliceKey[]) {
     map.set(k, { start, end, center, index: i });
   });
 
-  return { step, map, keys: safe };
+  return { step, map, keys: safe, count: n };
 }
 
 function buildConicGradient(keys: SliceKey[]) {
@@ -216,9 +324,13 @@ function angleFromTopClockwiseFromEvent(
   const x = e.clientX - cx;
   const y = e.clientY - cy;
 
-  const degFromRightCCW = (Math.atan2(y, x) * 180) / Math.PI;
-  const degTopCW = mod360(90 - degFromRightCCW);
-  return degTopCW;
+  const rad = Math.atan2(y, x);
+  let deg = (rad * 180) / Math.PI;
+  
+  deg = (90 - deg) % 360;
+  if (deg < 0) deg += 360;
+  
+  return deg;
 }
 
 /* ------------------------------ Storage helpers ------------------------------ */
@@ -748,7 +860,61 @@ function RevealOverlay({
     return () => clearTimeout(timer);
   }, [open, slice]);
 
-  const theme = slice ? sliceThemeGradient(slice) : "from-white/10 via-white/5 to-transparent";
+  // CORREÇÃO DEFINITIVA: Cores específicas para cada slice
+  const getSliceColor = (sliceKey: SliceKey | null) => {
+    if (!sliceKey) return "from-fuchsia-500/22 via-pink-500/10 to-violet-500/10";
+    
+    switch(sliceKey) {
+      case "blue":
+        return "from-sky-400/22 via-blue-500/10 to-violet-500/10";
+      case "red":
+        return "from-fuchsia-500/22 via-pink-500/10 to-violet-500/10";
+      case "green":
+        return "from-emerald-400/22 via-green-500/10 to-teal-500/10";
+      case "yellow":
+        return "from-amber-300/22 via-yellow-500/10 to-orange-500/10";
+      default:
+        return "from-fuchsia-500/22 via-pink-500/10 to-violet-500/10";
+    }
+  };
+
+  const getButtonGradient = (sliceKey: SliceKey | null) => {
+    if (!sliceKey) return "from-fuchsia-500 via-pink-500 to-violet-500";
+    
+    switch(sliceKey) {
+      case "blue":
+        return "from-sky-500 via-blue-500 to-violet-500";
+      case "red":
+        return "from-fuchsia-500 via-pink-500 to-violet-500";
+      case "green":
+        return "from-emerald-500 via-green-500 to-teal-500";
+      case "yellow":
+        return "from-amber-500 via-yellow-500 to-orange-500";
+      default:
+        return "from-fuchsia-500 via-pink-500 to-violet-500";
+    }
+  };
+
+  const getShadowColor = (sliceKey: SliceKey | null) => {
+    if (!sliceKey) return "shadow-fuchsia-500/30";
+    
+    switch(sliceKey) {
+      case "blue":
+        return "shadow-sky-500/30";
+      case "red":
+        return "shadow-fuchsia-500/30";
+      case "green":
+        return "shadow-emerald-500/30";
+      case "yellow":
+        return "shadow-amber-500/30";
+      default:
+        return "shadow-fuchsia-500/30";
+    }
+  };
+
+  const sliceTheme = getSliceColor(slice);
+  const buttonGradient = getButtonGradient(slice);
+  const shadowColor = getShadowColor(slice);
   const dot = slice ? colorDotClass(slice) : "bg-white/50";
   const publicInfo = slice ? SLICE_PUBLIC[slice] : null;
 
@@ -772,7 +938,7 @@ function RevealOverlay({
             onClick={onClose}
           />
 
-          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${theme} opacity-30`} />
+          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${sliceTheme} opacity-30`} />
 
           <motion.div
             ref={dialogRef}
@@ -782,8 +948,8 @@ function RevealOverlay({
             transition={{ type: "spring", damping: 20 }}
             className="relative w-full max-w-3xl"
           >
-            <div className={`rounded-3xl border border-white/15 bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-2xl shadow-2xl ${
-              glow ? "shadow-fuchsia-500/30" : "shadow-black/50"
+            <div className={`rounded-3xl border border-white/15 bg-gradient-to-b ${sliceTheme.replace('/22', '/15').replace('/10', '/5')} backdrop-blur-2xl shadow-2xl ${
+              glow ? shadowColor : "shadow-black/50"
             }`}>
               <div className="p-8">
                 <div className="flex items-start justify-between gap-6 mb-6">
@@ -847,7 +1013,7 @@ function RevealOverlay({
                         <Button
                           onClick={() => setStage("reveal")}
                           size="lg"
-                          className="rounded-full px-8 text-lg bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 hover:shadow-[0_0_40px_rgba(236,72,153,0.4)] transition-all duration-300"
+                          className={`rounded-full px-8 text-lg bg-gradient-to-r ${buttonGradient} hover:shadow-[0_0_40px_rgba(236,72,153,0.4)] transition-all duration-300`}
                         >
                           <IconSpark className="w-5 h-5 mr-2" />
                           Reveal Now
@@ -872,7 +1038,7 @@ function RevealOverlay({
                             transition={{ delay: 0.2 }}
                             className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent"
                           >
-                            "{gift.red_phrase}"
+                            "{gift.red_phrase || "A special phrase just for you"}"
                           </motion.div>
                           <p className="mt-6 text-white/70">Words meant only for your heart</p>
                         </div>
@@ -951,19 +1117,26 @@ function RevealOverlay({
                           </div>
                           
                           <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-6">
-                            <div className="space-y-4">
-                              {safeSplitLines(gift.love_letter).map((line, i) => (
-                                <motion.p
-                                  key={i}
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: i * 0.05 }}
-                                  className="text-white/90 leading-relaxed"
-                                >
-                                  {line}
-                                </motion.p>
-                              ))}
-                            </div>
+                            {gift.love_letter ? (
+                              <div className="space-y-4">
+                                {safeSplitLines(gift.love_letter).map((line, i) => (
+                                  <motion.p
+                                    key={i}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.05 }}
+                                    className="text-white/90 leading-relaxed"
+                                  >
+                                    {line}
+                                  </motion.p>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-12">
+                                <div className="text-5xl mb-4">💌</div>
+                                <p className="text-white/70">A heartfelt letter will appear here</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -986,6 +1159,22 @@ function RevealOverlay({
                                 src={gift.couple_photo_url}
                                 alt="Cherished memory"
                                 className="w-full h-[400px] object-cover"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.style.display = 'none';
+                                  
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    const fallback = document.createElement('div');
+                                    fallback.className = 'w-full h-[400px] flex flex-col items-center justify-center bg-gradient-to-br from-sky-500/20 to-violet-500/20 rounded-3xl';
+                                    fallback.innerHTML = `
+                                      <div class="text-5xl mb-4">📸</div>
+                                      <div class="text-white/90 text-lg">A Beautiful Memory</div>
+                                      <div class="text-white/70 mt-2">This moment lives in your heart</div>
+                                    `;
+                                    parent.appendChild(fallback);
+                                  }
+                                }}
                               />
                               <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                                 <div className="text-sm opacity-90">A moment to remember forever</div>
@@ -1004,7 +1193,7 @@ function RevealOverlay({
                         <Button
                           onClick={onClose}
                           size="lg"
-                          className="w-full rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 hover:opacity-90"
+                          className={`w-full rounded-full bg-gradient-to-r ${buttonGradient} hover:opacity-90`}
                         >
                           Continue Journey
                         </Button>
@@ -1175,7 +1364,6 @@ function Wheel({
   const prefersReducedMotion = useReducedMotion();
   const [showLabels, setShowLabels] = React.useState(true);
   const wheelRef = React.useRef<HTMLDivElement>(null);
-  const lastSegmentRef = React.useRef(-1);
 
   const layout = React.useMemo(() => buildWheelLayout(remaining), [remaining]);
   const wheelBg = React.useMemo(() => buildConicGradient(remaining), [remaining]);
@@ -1190,7 +1378,9 @@ function Wheel({
     damping: 10,
   });
 
-    const pointerScale = useSpring(1, { stiffness: 700, damping: 18 });
+  const pointerScale = useSpring(1, { stiffness: 700, damping: 18 });
+  const counterRotate = useTransform(rotationMV, (v) => -v);
+
 
   React.useEffect(() => {
     if (!pointerPulse) return;
@@ -1199,33 +1389,35 @@ function Wheel({
     return () => c.stop();
   }, [pointerPulse, pointerScale]);
 
-
   const onWheelClick = React.useCallback(
-    (e: React.MouseEvent) => {
-      if (!remaining.length || spinning || disabled) return;
+  (e: React.MouseEvent) => {
+    if (!remaining.length || spinning || disabled) return;
 
-      const el = wheelRef.current;
-      if (!el) return;
+    const el = wheelRef.current;
+    if (!el) return;
 
-      const deg = angleFromTopClockwiseFromEvent(e, el);
-      const currentRot = mod360(rotationMV.get());
-      const wheelSpaceDeg = mod360(deg - currentRot);
-      const idx = Math.floor(wheelSpaceDeg / layout.step);
-      const key = remaining[idx];
+    // 0° no topo, sentido horário
+    const deg = angleFromTopClockwiseFromEvent(e, el);
 
-      if (key && key !== bet) {
-        setBet(key);
-        toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
-          description: "Your heart's pick is set",
-        });
-      }
-    },
-    [remaining, spinning, disabled, rotationMV, layout.step, bet, setBet]
-  );
+    // converte para "ângulo da roleta" (desfaz a rotação atual)
+    const wheelDeg = mod360(deg - rotationMV.get());
+
+    const idx = Math.floor(wheelDeg / layout.step) % remaining.length;
+    const key = remaining[idx];
+
+    if (key && key !== bet) {
+      setBet(key);
+      toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
+        description: "Your heart's pick is set",
+      });
+    }
+  },
+  [remaining, spinning, disabled, rotationMV, layout.step, bet, setBet]
+);
+
 
   return (
     <div className="relative">
-      {/* Floating stats */}
       <div className="absolute -top-20 left-0 right-0 flex justify-center gap-4">
         <Pill dotClassName="bg-fuchsia-400" glow={remaining.length === 1}>
           {remaining.length} {remaining.length === 1 ? "Surprise Left" : "Surprises Left"}
@@ -1238,9 +1430,7 @@ function Wheel({
         </Pill>
       </div>
 
-      {/* Main wheel container */}
       <div className="relative mx-auto aspect-square w-full max-w-[600px]">
-        {/* Outer glow */}
         <motion.div
           className="absolute -inset-12 rounded-full blur-3xl"
           style={{
@@ -1251,11 +1441,9 @@ function Wheel({
           }}
         />
 
-        {/* Decorative rings */}
         <div className="absolute inset-0 rounded-full border border-white/5" />
         <div className="absolute inset-2 rounded-full border border-white/2" />
         
-        {/* Animated floating particles */}
         {!prefersReducedMotion && (
           <div className="absolute inset-0 overflow-hidden rounded-full">
             {Array.from({ length: 8 + spinCount * 2 }).map((_, i) => (
@@ -1280,7 +1468,6 @@ function Wheel({
           </div>
         )}
 
-        {/* The wheel */}
         <motion.div
           ref={wheelRef}
           onClick={onWheelClick}
@@ -1294,10 +1481,8 @@ function Wheel({
           }}
           whileHover={!spinning && !disabled && remaining.length > 0 ? { scale: 1.02 } : {}}
         >
-          {/* Inner gradient */}
           <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.15)_0%,transparent_70%)]" />
           
-          {/* Segment separators */}
           {remaining.length > 1 &&
             remaining.map((_, i) => {
               const angle = i * layout.step;
@@ -1313,13 +1498,16 @@ function Wheel({
               );
             })}
           
-          {/* Labels */}
           {showLabels && remaining.map((key, i) => {
+            const POINTER_OFFSET = -90;
             const centerAngle = (i + 0.5) * layout.step;
-            const rad = (centerAngle * Math.PI) / 180;
+            
+            const visualAngle = centerAngle + POINTER_OFFSET;
+            const rad = (visualAngle * Math.PI) / 180;
             const radius = 35;
-            const x = 50 + radius * Math.cos(rad - Math.PI / 2);
-            const y = 50 + radius * Math.sin(rad - Math.PI / 2);
+            
+            const x = 50 + radius * Math.cos(rad);
+            const y = 50 + radius * Math.sin(rad);
 
             return (
               <motion.div
@@ -1328,11 +1516,10 @@ function Wheel({
                 style={{
                   left: `${x}%`,
                   top: `${y}%`,
-                  transform: 'translate(-50%, -50%)',
+                  transform: `translate(-50%, -50%) rotate(${-rotationMV.get()}deg)`,
                 }}
                 animate={spinning ? {
                   scale: [1, 1.1, 1],
-                  rotate: [0, 5, 0],
                 } : {}}
                 transition={spinning ? {
                   duration: 0.8,
@@ -1354,7 +1541,6 @@ function Wheel({
           })}
         </motion.div>
 
-        {/* Pointer */}
         <motion.div
           className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
           style={{ scale: pointerScale }}
@@ -1381,7 +1567,6 @@ function Wheel({
           </div>
         </motion.div>
 
-        {/* Center button */}
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
             className="relative"
@@ -1407,7 +1592,6 @@ function Wheel({
                 {spinning ? 'SPINNING...' : remaining.length === 0 ? 'COMPLETE!' : 'SPIN NOW!'}
               </div>
               
-              {/* Pulsing ring effect */}
               {!spinning && !disabled && remaining.length > 0 && bet && (
                 <motion.div
                   className="absolute inset-0 rounded-full border-2 border-fuchsia-500/60"
@@ -1423,7 +1607,6 @@ function Wheel({
                 />
               )}
               
-              {/* Anel interno giratório durante spin */}
               {spinning && (
                 <motion.div
                   className="absolute inset-4 rounded-full border border-white/30"
@@ -1436,9 +1619,7 @@ function Wheel({
         </div>
       </div>
 
-      {/* Controls and status */}
       <div className="mt-12 space-y-6">
-        {/* Progress com animação */}
         <div className="max-w-md mx-auto">
           <div className="flex justify-between text-sm text-white/70 mb-2">
             <span>Your Journey</span>
@@ -1460,7 +1641,6 @@ function Wheel({
           </div>
         </div>
 
-        {/* Choice chips */}
         <div className="flex flex-wrap justify-center gap-3">
           {remaining.map((key) => (
             <motion.button
@@ -1502,7 +1682,6 @@ function Wheel({
           ))}
         </div>
 
-        {/* Action buttons */}
         <div className="flex flex-wrap justify-center gap-4">
           <Button
             onClick={() => setBet(null)}
@@ -1533,7 +1712,6 @@ function Wheel({
           </Button>
         </div>
 
-        {/* Last result */}
         {lastResult && !spinning && (
           <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.9 }}
@@ -1571,18 +1749,25 @@ function Wheel({
 }
 
 /* ------------------------------ Main Component ------------------------------ */
-export default function GiftWheelClient({ slug }: { slug: string }) {
+export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelClientProps) {
   const prefersReducedMotion = useReducedMotion();
+
+  const normalizedGift = React.useMemo(() => {
+    return gift ? normalizeGift(gift as any) : null;
+  }, [gift]);
+  
+  React.useEffect(() => {
+    console.log("RAW gift prop:", gift);
+    console.log("NORMALIZED gift:", normalizedGift);
+  }, [gift, normalizedGift]);
+
   const [showStory, setShowStory] = React.useState(true);
-  const [gift, setGift] = React.useState<Gift | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
   const [remaining, setRemaining] = React.useState<SliceKey[]>(ALL_SLICES);
   const [active, setActive] = React.useState<SliceKey | null>(null);
   const [spinning, setSpinning] = React.useState(false);
   const rotationMV = useMotionValue(0);
   const [now] = React.useState(() => new Date());
-  const [paymentRequired, setPaymentRequired] = React.useState(false);
-  const [giftIdForPay, setGiftIdForPay] = React.useState<string | null>(null);
   const [revealOpen, setRevealOpen] = React.useState(false);
   const [spotlight, setSpotlight] = React.useState<SliceKey | null>(null);
   const [bet, setBet] = React.useState<SliceKey | null>(null);
@@ -1597,45 +1782,153 @@ export default function GiftWheelClient({ slug }: { slug: string }) {
   const spinAnimationRef = React.useRef<any>(null);
   const [spinCount, setSpinCount] = React.useState(0);
   const lastSegmentIndex = React.useRef(-1);
+  const [landedSlice, setLandedSlice] = React.useState<SliceKey | null>(null); // NOVA VARIÁVEL PARA CONTROLAR O SLICE QUE CAIU
 
-  // Fetch gift
-  React.useEffect(() => {
-    let mounted = true;
+  // CORREÇÃO CRÍTICA: Garantir que a rotação volta para 0
+  const resetRotation = useEvent(() => {
+    animate(rotationMV, 0, {
+      duration: 0.5,
+      ease: "easeInOut"
+    });
+  });
 
-    async function load() {
-      try {
-        const res = await fetch(`/api/gifts/${slug}`);
-        if (res.status === 402) {
-          if (mounted) {
-            setPaymentRequired(true);
-            const idRes = await fetch(`/api/resolve/${slug}`);
-            const data = await idRes.json();
-            setGiftIdForPay(data?.id || null);
-          }
-          return;
-        }
+  // Se precisa de pagamento
+  if (needsPayment && normalizedGift) {
+    const gift = normalizedGift;
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-8">
+        <GlowBg />
+        <div className="relative w-full max-w-md">
+          <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 via-pink-500/10 to-purple-500/10 rounded-3xl blur-xl" />
+          
+          <Card className="relative border-white/20 bg-gradient-to-b from-white/15 to-white/5 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="text-center mb-8">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", delay: 0.1 }}
+                  className="inline-block p-4 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 mb-4"
+                >
+                  <IconHeart className="w-12 h-12 text-white" />
+                </motion.div>
+                <h1 className="text-3xl font-bold text-white/95 mb-2">
+                  Special Gift
+                </h1>
+                <p className="text-white/70">
+                  "I'd choose you again. Every time."
+                </p>
+              </div>
 
-        const data = await res.json();
-        if (mounted) {
-          setGift(data);
-          setPaymentRequired(false);
-        }
-      } catch (error) {
-        toast.error("Failed to load gift");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
+              <div className="space-y-6 mb-8">
+                {gift.red_phrase && (
+                  <div className="rounded-2xl border border-white/15 bg-white/5 p-6 text-center">
+                    <div className="text-sm text-white/60 mb-2">PREVIEW</div>
+                    <p className="text-xl text-white/90 italic">"{gift.red_phrase}"</p>
+                  </div>
+                )}
 
-    load();
-    return () => { mounted = false; };
-  }, [slug]);
+                {gift.relationship_start_at && (
+                  <div className="flex items-center justify-center gap-2 text-white/80">
+                    <span className="text-sm">Together since:</span>
+                    <span className="font-semibold">
+                      {new Date(gift.relationship_start_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
 
-  // Timer for relationship duration
-  const startAt = gift ? new Date(gift.relationship_start_at) : null;
-  const elapsed = startAt ? Math.max(0, now.getTime() - startAt.getTime()) : 0;
-  const parts = msToParts(elapsed);
+              <SoftDivider />
 
+              <div className="text-center space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white/95 mb-2">
+                    Unlock the Full Experience
+                  </h2>
+                  <p className="text-white/70 mb-4">
+                    Pay only <strong className="text-2xl text-fuchsia-400">$4.99</strong> to reveal all the special content prepared with care
+                  </p>
+                </div>
+
+                <Button
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      const response = await fetch('/api/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ giftId: gift.id })
+                      });
+                      
+                      const data = await response.json();
+                      
+                      if (data.url) {
+                        window.location.href = data.url;
+                      } else {
+                        toast.error('Error creating checkout');
+                      }
+                    } catch (error) {
+                      toast.error('Payment processing error');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full py-6 rounded-xl bg-gradient-to-r from-fuchsia-600 via-pink-600 to-purple-600 hover:from-fuchsia-700 hover:via-pink-700 hover:to-purple-700 text-white font-bold text-lg shadow-[0_20px_60px_-15px_rgba(236,72,153,0.5)] transition-all duration-300"
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Processing...
+                    </div>
+                  ) : (
+                    <>
+                      <IconGift className="w-5 h-5 mr-2" />
+                      Pay & Unlock Full Experience ($4.99)
+                    </>
+                  )}
+                </Button>
+
+                <div className="flex items-center justify-center gap-2 text-sm text-white/60">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span>Secure payment via Stripe • Lifetime access to content</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não tem gift
+  if (!normalizedGift) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <GlowBg />
+        <div className="text-center space-y-6">
+          <div className="text-6xl">😔</div>
+          <h1 className="text-3xl font-bold text-white/95">Gift Not Found</h1>
+          <p className="text-white/70">This Love Wheel may have been removed or the link is incorrect</p>
+          <Button
+            onClick={() => window.location.href = "/create"}
+            size="lg"
+            className="rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500"
+          >
+            Create Your Love Wheel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // CORREÇÃO DEFINITIVA: Função spin corrigida
 const spin = useEvent(async () => {
   if (spinning || !bet || remaining.length === 0) return;
 
@@ -1645,80 +1938,66 @@ const spin = useEvent(async () => {
   setSpinCount((p) => p + 1);
   audio.spinStart();
 
+  // VARIÁVEL LOCAL para armazenar o resultado final
+  let finalResult: SliceKey | null = null;
+
+  // ESCOLHER O SEGMENTO ALEATÓRIO - garantir que está dentro dos remaining
   const chosen = pickRandom(remaining);
+  console.log("🎯 Segmento escolhido:", chosen, "Cor:", SLICE_PUBLIC[chosen].colorName);
+  
+  // Armazenar o resultado imediatamente
+  finalResult = chosen;
+  
+  // Atualizar spotlight para animações visuais
   setSpotlight(chosen);
 
   const { map, step } = buildWheelLayout(remaining);
   const seg = map.get(chosen)!;
 
-  // ✅ IMPORTANTE: não "mod360" a rotação final (isso matava as voltas)
-  const currentAbs = rotationMV.get();
-  const currentMod = mod360(currentAbs);
+  const START_ROTATION = rotationMV.get();
+const spins = prefersReducedMotion ? 2 : Math.floor(6 + Math.min(4, spinCount * 0.5));
 
-  // alvo aleatório dentro do segmento (mais cassino)
-  const randomOffset = step * (0.18 + Math.random() * 0.64); // 18%..82%
-  const targetAngle = seg.start + randomOffset;
+// Queremos que o centro do segmento (seg.center) fique no ponteiro (topo = 0°).
+// No ponteiro: wheelAtPointer = mod360(-rotation)
+// Então precisamos: mod360(-rotationFinal) === seg.center
+// => rotationFinal (mod 360) = mod360(-seg.center) = mod360(360 - seg.center)
+const targetMod = mod360(360 - seg.center);
+const currentMod = mod360(START_ROTATION);
+const delta = mod360(targetMod - currentMod);
 
-  // pointer no topo (0deg). Queremos: (targetAngle + rotation) ≡ 0 (mod 360)
-  // então rotation_mod = 360 - targetAngle
-  const stopAtMod = mod360(360 - targetAngle);
-  const deltaMod = mod360(stopAtMod - currentMod);
+const totalDegrees = START_ROTATION + spins * 360 + delta;
 
-  const spins = prefersReducedMotion ? 2 : Math.floor(6 + Math.min(4, spinCount * 0.5));
-  const totalDelta = spins * 360 + deltaMod;
+if (spinAnimationRef.current) spinAnimationRef.current.stop();
+lastSegmentIndex.current = -1;
 
-  const finalAbs = currentAbs + totalDelta;
-  const overshoot = prefersReducedMotion ? 0 : 12; // “clack” final do cassino
-  const preTargetAbs = finalAbs + overshoot;
+const duration = prefersReducedMotion ? 1.2 : clamp(4.2 + spinCount * 0.12, 4.2, 5.5);
 
-  if (spinAnimationRef.current) spinAnimationRef.current.stop();
-  lastSegmentIndex.current = -1;
+const phase1 = animate(rotationMV, totalDegrees, {
+  duration,
+  ease: [0.12, 0.78, 0.08, 0.99],
+  onUpdate: (latest) => {
+    const wheelAtPointer = mod360(-latest);
+    const idx = Math.floor(wheelAtPointer / step) % remaining.length;
 
-  const duration = prefersReducedMotion ? 1.2 : clamp(4.2 + spinCount * 0.12, 4.2, 5.5);
+    if (idx !== lastSegmentIndex.current) {
+      lastSegmentIndex.current = idx;
+      const progress = (latest - START_ROTATION) / (totalDegrees - START_ROTATION);
 
-  // Fase 1: acelera + desacelera (tween bonito)
-  const phase1 = animate(rotationMV, [currentAbs, preTargetAbs], {
-    duration,
-    ease: [0.12, 0.78, 0.08, 0.99],
-    onUpdate: (latest) => {
-      // qual segmento está no ponteiro (topo)?
-      const angleMod = mod360(latest);
-      const wheelTopDeg = mod360(360 - angleMod);
-      const idx = Math.floor(wheelTopDeg / step) % remaining.length;
+      if (progress > 0.78) audio.segmentPass();
+      else audio.tick();
 
-      const progress = (latest - currentAbs) / (preTargetAbs - currentAbs);
+      setPointerPulse((p) => p + 1);
+    }
+  },
+});
 
-      if (idx !== lastSegmentIndex.current) {
-        lastSegmentIndex.current = idx;
+spinAnimationRef.current = phase1;
+await phase1.finished;
 
-        // ticks mais rápidos e “fortes” no final
-        if (progress > 0.78) audio.segmentPass();
-        else audio.tick();
+// garante o mod final
+rotationMV.set(mod360(totalDegrees));
 
-        // só incrementa: o Wheel faz o punch (sem setTimeout spam)
-        setPointerPulse((p) => p + 1);
-      }
-    },
-  });
 
-  spinAnimationRef.current = phase1;
-  await phase1.finished;
-
-  // Fase 2: settle / “encaixe” final (spring)
-  const phase2 = animate(rotationMV, finalAbs, prefersReducedMotion ? {
-    duration: 0.18,
-    ease: "easeOut",
-  } : {
-    type: "spring",
-    stiffness: 260,
-    damping: 18,
-    mass: 0.9,
-  });
-
-  spinAnimationRef.current = phase2;
-  await phase2.finished;
-
-  // final
   audio.land();
   setPointerPulse((p) => p + 1);
 
@@ -1741,42 +2020,65 @@ const spin = useEvent(async () => {
     setTimeout(() => setConfettiTrigger(false), 500);
   }
 
-  setRemaining((r) => r.filter((x) => x !== chosen));
-  setActive(chosen);
+  // CORREÇÃO: Remover o segmento da lista
+  setRemaining((r) => {
+    const newRemaining = r.filter((x) => x !== chosen);
+    console.log("📋 Nova lista de remaining:", newRemaining);
+    return newRemaining;
+  });
 
+  // Aguardar um pouco antes de abrir o popup
   setTimeout(() => {
     setSpinning(false);
+    
+    // CORREÇÃO CRÍTICA: Definir active com o resultado FINAL
+    console.log("✅ Definindo active como:", chosen);
+    setActive(chosen);
+    
+    // Abrir o popup
+    console.log("🔓 Abrindo popup para:", chosen);
     setRevealOpen(true);
     setBet(null);
-  }, 650);
+    
+    // Reset da rotação para 0 (posição inicial reta)
+    if (remaining.length > 1) {
+      resetRotation();
+    }
+  }, 800);
 });
 
-
   const reset = useEvent(() => {
-    setRemaining(ALL_SLICES);
-    setActive(null);
-    rotationMV.set(0);
-    setRevealOpen(false);
-    setSpinning(false);
-    setSpotlight(null);
-    setBet(null);
-    setLastResult(null);
-    setPointerPulse(0);
-    setBurst(false);
-    setFinalOpen(false);
-    setConfettiTrigger(false);
-    setSpinCount(0);
-    hasShownFinal.current = false;
-    toast("Journey reset", { description: "Start fresh with all surprises" });
-  });
+  setRemaining(ALL_SLICES);
+  setActive(null); // CORREÇÃO: Resetar active aqui
+  setRevealOpen(false);
+  setSpinning(false);
+  setSpotlight(null);
+  setBet(null);
+  setLastResult(null);
+  setPointerPulse(0);
+  setBurst(false);
+  setFinalOpen(false);
+  setConfettiTrigger(false);
+  setSpinCount(0);
+  hasShownFinal.current = false;
+  
+  // Reset da rotação para 0
+  resetRotation();
+  
+  toast("Journey reset", { description: "Start fresh with all surprises" });
+});
 
   const closeReveal = useEvent(() => {
-    setRevealOpen(false);
-    if (remaining.length === 0 && !hasShownFinal.current) {
-      hasShownFinal.current = true;
-      setTimeout(() => setFinalOpen(true), 600);
-    }
-  });
+  setRevealOpen(false);
+
+  // reset depois de fechar
+  resetRotation();
+
+  if (remaining.length === 0 && !hasShownFinal.current) {
+    hasShownFinal.current = true;
+    setTimeout(() => setFinalOpen(true), 600);
+  }
+});
 
   const shareExperience = useEvent(() => {
     const url = window.location.href;
@@ -1785,7 +2087,8 @@ const spin = useEvent(async () => {
     if (navigator.share) {
       navigator.share({ title: 'Love Wheel', text, url });
     } else {
-      shareOnTwitter(text, url);
+      navigator.clipboard.writeText(`${text} ${url}`);
+      toast.success("Link copied to clipboard!");
     }
   });
 
@@ -1826,84 +2129,11 @@ const spin = useEvent(async () => {
     return () => window.removeEventListener('keydown', handleKey);
   }, [spin, reset, revealOpen, finalOpen, remaining, setAudioOn, closeReveal, spinning, bet]);
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <GlowBg />
-        <div className="text-center space-y-6">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-fuchsia-500/30 border-t-fuchsia-500 rounded-full mx-auto"
-          />
-          <div className="text-white/70">Loading your Love Wheel...</div>
-        </div>
-      </div>
-    );
-  }
+  // Timer for relationship duration
+  const startAt = normalizedGift ? new Date(normalizedGift.relationship_start_at) : null;
+  const elapsed = startAt ? Math.max(0, now.getTime() - startAt.getTime()) : 0;
+  const parts = msToParts(elapsed);
 
-  // Payment required
-  if (paymentRequired) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-6">
-        <GlowBg />
-        <div className="max-w-md w-full space-y-6">
-          <div className="text-center space-y-4">
-            <div className="text-6xl">🔒</div>
-            <h1 className="text-3xl font-bold text-white/95">Unlock This Experience</h1>
-            <p className="text-white/70">A one-time payment reveals this beautiful journey forever</p>
-          </div>
-          
-          <div className="space-y-4">
-            <Button
-              onClick={() => giftIdForPay && fetch('/api/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ giftId: giftIdForPay }),
-              }).then(r => r.json()).then(d => d.url && (window.location.href = d.url))}
-              size="lg"
-              className="w-full rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500"
-            >
-              Unlock for $9.99
-            </Button>
-            
-            <Button
-              onClick={() => window.location.href = "/create"}
-              variant="outline"
-              size="lg"
-              className="w-full rounded-full border-white/20 bg-white/5 hover:bg-white/10"
-            >
-              Create Your Own Instead
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Gift not found
-  if (!gift) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-6">
-        <GlowBg />
-        <div className="text-center space-y-6">
-          <div className="text-6xl">😔</div>
-          <h1 className="text-3xl font-bold text-white/95">Gift Not Found</h1>
-          <p className="text-white/70">This Love Wheel may have been removed or the link is incorrect</p>
-          <Button
-            onClick={() => window.location.href = "/create"}
-            size="lg"
-            className="rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500"
-          >
-            Create Your Love Wheel
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Main experience
   return (
     <div className="min-h-screen text-white overflow-hidden">
       <GlowBg />
@@ -1911,22 +2141,21 @@ const spin = useEvent(async () => {
       
       {showStory && <StoryIntro onComplete={() => setShowStory(false)} />}
       
-      {/* POPUP CORRETO - abre para a cor que realmente caiu na roleta */}
+      {/* CORREÇÃO: Passar o slice correto para o popup - usar landedSlice como fallback */}
       <RevealOverlay
-        open={revealOpen}
-        slice={active} // Esta é a cor que ALEATORIAMENTE caiu
-        onClose={closeReveal}
-        gift={gift}
-      />
-      
+  open={revealOpen}
+  slice={active} // Usar apenas active, sem fallback
+  onClose={closeReveal}
+  gift={normalizedGift}
+/>
+
       <FinalCelebration
         open={finalOpen}
         onClose={() => setFinalOpen(false)}
         onShare={shareExperience}
-        gift={gift}
+        gift={normalizedGift}
       />
 
-      {/* Header */}
       <header className="container mx-auto px-6 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
@@ -1934,8 +2163,8 @@ const spin = useEvent(async () => {
               Love Wheel
             </h1>
             <p className="text-white/70 mt-2">Spin to reveal heartfelt surprises</p>
-            {gift.couple_names && (
-              <p className="text-white/60 text-sm mt-1">For {gift.couple_names}</p>
+            {normalizedGift.couple_names && (
+              <p className="text-white/60 text-sm mt-1">For {normalizedGift.couple_names}</p>
             )}
           </div>
           
@@ -1971,7 +2200,6 @@ const spin = useEvent(async () => {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="container mx-auto px-6 py-12">
         <div className="max-w-6xl mx-auto">
           <Wheel
@@ -1991,7 +2219,6 @@ const spin = useEvent(async () => {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="container mx-auto px-6 py-8 border-t border-white/10">
         <div className="text-center text-white/50 text-sm">
           <p>Made with 💝 using LoveWheel • Share the love with someone special</p>
