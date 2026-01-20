@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
  * - FAQ + How it works NAV scroll to sections (no popup)
  * - QR code generated in LinkReady popup BEFORE payment (ask user to save it)
  * - All copy in English
+ * - Mobile-first design
  */
 
 const PRICE_USD = "$4.90";
@@ -254,6 +255,21 @@ function IconArrowRight({ className }: { className?: string }) {
   );
 }
 
+function IconMenu({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-5 w-5", className)}>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 12h18M3 6h18M3 18h18"
+      />
+    </svg>
+  );
+}
+
 /** ===== Background (dark navy + neon) ===== */
 
 function NeonBg() {
@@ -280,7 +296,7 @@ function NeonBg() {
   );
 }
 
-/** ===== MINI WHEEL PREVIEW - A imagem que você enviou ===== */
+/** ===== MINI WHEEL PREVIEW ===== */
 
 function MiniWheelPreview() {
   const [selectedColor, setSelectedColor] = React.useState<string | null>(null);
@@ -325,32 +341,32 @@ function MiniWheelPreview() {
       {/* Wheel container */}
       <div className="relative rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-b from-gray-900/90 to-gray-950/90 backdrop-blur-lg shadow-2xl shadow-black/50">
         {/* Header */}
-        <div className="p-6 text-center border-b border-white/10">
-          <h3 className="text-2xl font-bold bg-gradient-to-r from-fuchsia-300 via-pink-300 to-violet-300 bg-clip-text text-transparent">
+        <div className="p-4 sm:p-6 text-center border-b border-white/10">
+          <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-fuchsia-300 via-pink-300 to-violet-300 bg-clip-text text-transparent">
             Love Wheel
           </h3>
-          <p className="text-white/70 text-sm mt-1">Spin to reveal heartfelt surprises</p>
+          <p className="text-white/70 text-xs sm:text-sm mt-1">Spin to reveal heartfelt surprises</p>
         </div>
         
         {/* Color options */}
-        <div className="p-6 grid grid-cols-2 gap-4">
+        <div className="p-4 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4">
           {colors.map((color) => (
             <div 
               key={color.name}
-              className={`rounded-2xl p-4 border-2 transition-all duration-300 ${
+              className={`rounded-xl sm:rounded-2xl p-3 border-2 transition-all duration-300 ${
                 selectedColor === color.name 
                   ? 'border-white/30 shadow-lg shadow-white/10' 
                   : 'border-white/10 hover:border-white/20'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full ${color.bg} flex items-center justify-center shadow-inner`}>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${color.bg} flex items-center justify-center shadow-inner`}>
                   {selectedColor === color.name && (
-                    <div className="w-5 h-5 rounded-full bg-white/90 animate-pulse" />
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white/90 animate-pulse" />
                   )}
                 </div>
                 <div className="text-left">
-                  <div className={`font-semibold ${
+                  <div className={`text-sm sm:text-base font-semibold ${
                     color.name === "Gold" ? "text-amber-300" :
                     color.name === "Sapphire" ? "text-blue-400" :
                     color.name === "Emerald" ? "text-emerald-400" :
@@ -358,7 +374,7 @@ function MiniWheelPreview() {
                   }`}>
                     {color.name}
                   </div>
-                  <div className="text-white/70 text-xs">{color.description}</div>
+                  <div className="text-white/70 text-[10px] sm:text-xs">{color.description}</div>
                 </div>
               </div>
             </div>
@@ -366,26 +382,26 @@ function MiniWheelPreview() {
         </div>
         
         {/* Stats */}
-        <div className="px-6 pb-4 grid grid-cols-2 gap-4">
+        <div className="px-4 sm:px-6 pb-3 sm:pb-4 grid grid-cols-2 gap-3 sm:gap-4">
           <div className="rounded-xl bg-white/5 p-3 border border-white/10">
             <div className="text-white/70 text-xs">Surprises Left</div>
-            <div className="text-2xl font-bold text-white mt-1">{spinsLeft}</div>
+            <div className="text-xl sm:text-2xl font-bold text-white mt-1">{spinsLeft}</div>
           </div>
           <div className="rounded-xl bg-white/5 p-3 border border-white/10">
             <div className="text-white/70 text-xs">Choice</div>
-            <div className="text-2xl font-bold text-white mt-1">
+            <div className="text-xl sm:text-2xl font-bold text-white mt-1">
               {selectedColor ? selectedColor.slice(0, 3) : "—"}
             </div>
           </div>
         </div>
         
         {/* Spin info */}
-        <div className="px-6 pb-6">
+        <div className="px-4 sm:px-6 pb-4 sm:pb-6">
           <div className="rounded-xl bg-gradient-to-r from-fuchsia-500/20 to-violet-500/20 p-3 border border-fuchsia-500/30">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-white/70 text-xs">Current Spin</div>
-                <div className="text-xl font-bold text-white">Spin #{4 - spinsLeft + 1}</div>
+                <div className="text-lg sm:text-xl font-bold text-white">Spin #{4 - spinsLeft + 1}</div>
               </div>
               <div className="text-right">
                 <div className="text-white/70 text-xs">Status</div>
@@ -398,38 +414,38 @@ function MiniWheelPreview() {
         </div>
         
         {/* Controls */}
-        <div className="p-6 border-t border-white/10 bg-black/30 grid grid-cols-3 gap-3">
+        <div className="p-4 sm:p-6 border-t border-white/10 bg-black/30 grid grid-cols-3 gap-2 sm:gap-3">
           <button 
-            className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
+            className="flex flex-col items-center justify-center gap-1 p-2 sm:p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
             onClick={() => softHaptic(10)}
           >
-            <IconSound className="h-5 w-5 text-white/80" />
-            <span className="text-xs text-white/70">Sound On</span>
+            <IconSound className="h-4 w-4 sm:h-5 sm:w-5 text-white/80" />
+            <span className="text-[10px] sm:text-xs text-white/70">Sound</span>
           </button>
           
           <button 
-            className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
+            className="flex flex-col items-center justify-center gap-1 p-2 sm:p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
             onClick={handleRestart}
           >
-            <IconRestart className="h-5 w-5 text-white/80" />
-            <span className="text-xs text-white/70">Restart</span>
+            <IconRestart className="h-4 w-4 sm:h-5 sm:w-5 text-white/80" />
+            <span className="text-[10px] sm:text-xs text-white/70">Restart</span>
           </button>
           
           <button 
-            className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
+            className="flex flex-col items-center justify-center gap-1 p-2 sm:p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-95 border border-white/10"
             onClick={() => softHaptic(10)}
           >
-            <IconShare className="h-5 w-5 text-white/80" />
-            <span className="text-xs text-white/70">Share</span>
+            <IconShare className="h-4 w-4 sm:h-5 sm:w-5 text-white/80" />
+            <span className="text-[10px] sm:text-xs text-white/70">Share</span>
           </button>
         </div>
         
         {/* Spin button */}
-        <div className="p-6 pt-0">
+        <div className="p-4 sm:p-6 pt-0">
           <button
             onClick={handleSpin}
             disabled={spinsLeft <= 0 || isSpinning}
-            className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
+            className={`w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all ${
               spinsLeft > 0 && !isSpinning
                 ? 'bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 hover:from-fuchsia-600 hover:via-pink-600 hover:to-violet-600 active:scale-95 shadow-lg shadow-fuchsia-500/30'
                 : 'bg-gray-700/50 cursor-not-allowed'
@@ -437,7 +453,7 @@ function MiniWheelPreview() {
           >
             {isSpinning ? (
               <span className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 Spinning...
               </span>
             ) : spinsLeft > 0 ? (
@@ -450,37 +466,37 @@ function MiniWheelPreview() {
       </div>
       
       {/* Journey section */}
-      <div className="mt-6 rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-b from-gray-900/90 to-gray-950/90 backdrop-blur-lg p-6">
-        <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+      <div className="mt-4 sm:mt-6 rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-b from-gray-900/90 to-gray-950/90 backdrop-blur-lg p-4 sm:p-6">
+        <h4 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4 flex items-center gap-2">
           Your Journey
-          <span className="text-white/70 text-sm font-normal">
+          <span className="text-white/70 text-xs sm:text-sm font-normal">
             {journey.length} of 4
           </span>
         </h4>
         
         {journey.length === 0 ? (
-          <div className="text-center py-8 text-white/50">
-            <div className="text-4xl mb-2">🌀</div>
-            <p>Spin the wheel to start your journey!</p>
-            <p className="text-sm mt-2">Each spin reveals a new surprise</p>
+          <div className="text-center py-6 sm:py-8 text-white/50">
+            <div className="text-3xl sm:text-4xl mb-2">🌀</div>
+            <p className="text-sm sm:text-base">Spin the wheel to start your journey!</p>
+            <p className="text-xs sm:text-sm mt-2">Each spin reveals a new surprise</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {colors.map((color) => (
               <div 
                 key={color.name}
-                className={`rounded-xl p-3 flex items-center gap-3 ${
+                className={`rounded-xl p-2 sm:p-3 flex items-center gap-2 sm:gap-3 ${
                   journey.includes(color.name)
                     ? 'bg-white/10 border border-white/20'
                     : 'bg-white/5 border border-white/10 opacity-50'
                 }`}
               >
-                <div className={`w-8 h-8 rounded-full ${color.bg} flex items-center justify-center`}>
+                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full ${color.bg} flex items-center justify-center`}>
                   {journey.includes(color.name) && (
-                    <div className="w-3 h-3 rounded-full bg-white/90" />
+                    <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white/90" />
                   )}
                 </div>
-                <div className="text-sm font-medium text-white">
+                <div className="text-xs sm:text-sm font-medium text-white">
                   {color.name}
                 </div>
               </div>
@@ -488,7 +504,7 @@ function MiniWheelPreview() {
           </div>
         )}
         
-        <div className="mt-4 text-center text-xs text-white/50">
+        <div className="mt-3 sm:mt-4 text-center text-[10px] sm:text-xs text-white/50">
           Complete all 4 spins to unlock the full experience
         </div>
       </div>
@@ -573,7 +589,7 @@ function InfoModal({
                     <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
                     LoveWheel
                   </div>
-                  <div className="text-2xl font-semibold tracking-tight text-white/90">{title}</div>
+                  <div className="text-xl sm:text-2xl font-semibold tracking-tight text-white/90">{title}</div>
                 </div>
 
                 <button
@@ -590,15 +606,15 @@ function InfoModal({
                 </button>
               </div>
 
-              <div className="mt-5 rounded-2xl border border-white/12 bg-white/6 p-4 text-sm text-white/75 leading-relaxed">
+              <div className="mt-4 sm:mt-5 rounded-2xl border border-white/12 bg-white/6 p-4 text-sm text-white/75 leading-relaxed">
                 {content}
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+              <div className="mt-4 sm:mt-5 flex flex-wrap items-center justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-full border-white/15 bg-white/0 text-white hover:bg-white/10"
+                  className="rounded-full border-white/15 bg-white/0 text-white hover:bg-white/10 text-sm px-4 py-2"
                   onClick={() => onOpenChange(false)}
                 >
                   Close
@@ -606,7 +622,7 @@ function InfoModal({
                 {ctaLabel ? (
                   <Button
                     type="button"
-                    className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95"
+                    className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 text-sm px-4 py-2"
                     onClick={() => {
                       softHaptic([8, 12, 8]);
                       onCta?.();
@@ -799,6 +815,7 @@ function BuilderModal({
 }) {
   const reduce = useReducedMotion();
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   React.useEffect(() => {
     if (!open) return;
@@ -850,16 +867,16 @@ function BuilderModal({
               transition={{ duration: 5.0, ease: "easeInOut", repeat: Infinity }}
             />
 
-            <div className="relative flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+            <div className="relative flex items-center justify-between gap-3 border-b border-white/10 px-4 sm:px-5 py-3 sm:py-4">
               <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-2xl bg-white/8 ring-1 ring-white/12 backdrop-blur flex items-center justify-center">
+                <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-2xl bg-white/8 ring-1 ring-white/12 backdrop-blur flex items-center justify-center">
                   <span className="text-fuchsia-300">
-                    <IconHeart className="h-5 w-5" />
+                    <IconHeart className="h-4 w-4 sm:h-5 sm:w-5" />
                   </span>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-white/90">Create your love moment</div>
-                  <div className="text-[11px] text-white/60">{PRICE_MICROCOPY}</div>
+                  <div className="text-xs sm:text-sm font-semibold text-white/90">Create your love moment</div>
+                  <div className="text-[10px] sm:text-[11px] text-white/60">{PRICE_MICROCOPY}</div>
                 </div>
               </div>
 
@@ -867,17 +884,17 @@ function BuilderModal({
                 type="button"
                 onClick={() => onOpenChange(false)}
                 className={cx(
-                  "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
+                  "inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
                   "hover:bg-white/10 hover:text-white active:scale-[0.98]",
                   "focus:outline-none focus:ring-2 focus:ring-white/15"
                 )}
                 aria-label="Close"
               >
-                <IconX className="h-4 w-4" />
+                <IconX className="h-3 w-3 sm:h-4 sm:w-4" />
               </button>
             </div>
 
-            <div className="relative max-h-[80vh] overflow-auto px-5 py-5 sm:px-6 sm:py-6">{children}</div>
+            <div className="relative max-h-[80vh] overflow-auto px-4 py-4 sm:px-6 sm:py-6">{children}</div>
           </motion.div>
         </motion.div>
       )}
@@ -947,12 +964,12 @@ function MinimalProgress({ step, progress }: { step: StepKey; progress: number }
   const a = stepAccent(step);
 
   return (
-    <div className="mt-5 flex items-center justify-between gap-4">
+    <div className="mt-4 sm:mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
       <div className="text-xs text-white/60">
         <span className="text-white/85">{label}</span> • {progress}%
       </div>
 
-      <div className="relative h-2 w-44 overflow-hidden rounded-full bg-white/10">
+      <div className="relative h-2 w-full sm:w-44 overflow-hidden rounded-full bg-white/10">
         <motion.div
           className={cx("absolute inset-0 opacity-30", "bg-gradient-to-r", a.bar)}
           animate={{ x: ["-30%", "30%", "-30%"] }}
@@ -983,60 +1000,60 @@ function ConfirmPreview({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-sm backdrop-blur">
+      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 shadow-sm backdrop-blur">
         <div className="mb-2 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
-            <IconHeart className="h-4 w-4 text-fuchsia-300" />
+            <IconHeart className="h-3 w-3 sm:h-4 sm:w-4 text-fuchsia-300" />
             Your line
           </span>
-          <span className="h-2 w-2 rounded-full bg-fuchsia-400/80" />
+          <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-fuchsia-400/80" />
         </div>
-        <div className="text-2xl font-semibold leading-snug tracking-tight text-white/90">{red.trim() ? `"${red.trim()}"` : "—"}</div>
-        <div className="mt-3 text-[11px] text-white/60">Make it specific. One private detail beats ten generic compliments.</div>
+        <div className="text-lg sm:text-2xl font-semibold leading-snug tracking-tight text-white/90">{red.trim() ? `"${red.trim()}"` : "—"}</div>
+        <div className="mt-2 sm:mt-3 text-[10px] sm:text-[11px] text-white/60">Make it specific. One private detail beats ten generic compliments.</div>
       </div>
 
-      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-sm backdrop-blur">
+      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 shadow-sm backdrop-blur">
         <div className="mb-2 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
-            <IconSpark className="h-4 w-4 text-emerald-300" />
+            <IconSpark className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-300" />
             Time together
           </span>
-          <span className="h-2 w-2 rounded-full bg-emerald-300/80" />
+          <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-300/80" />
         </div>
         <div className="text-xs text-white/60">Since {startDate || "—"}</div>
-        <div className="mt-1 text-4xl font-semibold tracking-tight text-white/90">{duration}</div>
-        <div className="mt-3 text-[11px] text-white/60">This number is simple — and it lands every time.</div>
+        <div className="mt-1 text-2xl sm:text-4xl font-semibold tracking-tight text-white/90">{duration}</div>
+        <div className="mt-2 sm:mt-3 text-[10px] sm:text-[11px] text-white/60">This number is simple — and it lands every time.</div>
       </div>
 
-      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-sm backdrop-blur">
+      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 shadow-sm backdrop-blur">
         <div className="mb-3 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
-            <IconPhoto className="h-4 w-4 text-sky-300" />
+            <IconPhoto className="h-3 w-3 sm:h-4 sm:w-4 text-sky-300" />
             The photo
           </span>
-          <span className="h-2 w-2 rounded-full bg-sky-300/80" />
+          <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-sky-300/80" />
         </div>
 
         {photoPreviewUrl ? (
-          <div className="relative overflow-hidden rounded-2xl border border-white/12 bg-white/5">
-            <img src={photoPreviewUrl} alt="Couple photo preview" className="h-[220px] w-full object-cover" />
+          <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/12 bg-white/5">
+            <img src={photoPreviewUrl} alt="Couple photo preview" className="h-[180px] sm:h-[220px] w-full object-cover" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
-            <div className="pointer-events-none absolute bottom-3 left-3 text-xs text-white/85">Revealed after payment.</div>
+            <div className="pointer-events-none absolute bottom-2 left-2 sm:bottom-3 sm:left-3 text-xs text-white/85">Revealed after payment.</div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/12 bg-white/5 p-4 text-sm text-white/60">—</div>
+          <div className="rounded-xl sm:rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 text-sm text-white/60">—</div>
         )}
 
-        <div className="mt-3 text-xs text-white/60">Tip: pick a photo that instantly brings you back. A laugh. A trip. A night that felt like forever.</div>
+        <div className="mt-2 sm:mt-3 text-xs text-white/60">Tip: pick a photo that instantly brings you back. A laugh. A trip. A night that felt like forever.</div>
       </div>
 
-      <div className="rounded-3xl border border-white/12 bg-white/6 p-6 shadow-blur">
+      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 shadow-blur">
         <div className="mb-2 flex items-center justify-between text-xs text-white/60">
           <span className="inline-flex items-center gap-2">
-            <IconSpark className="h-4 w-4 text-amber-200" />
+            <IconSpark className="h-3 w-3 sm:h-4 sm:w-4 text-amber-200" />
             The letter
           </span>
-          <span className="h-2 w-2 rounded-full bg-amber-200/80" />
+          <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-amber-200/80" />
         </div>
 
         <div className="space-y-2">
@@ -1053,7 +1070,7 @@ function ConfirmPreview({
           ))}
         </div>
 
-        <div className="mt-5 text-xs text-white/60">
+        <div className="mt-4 sm:mt-5 text-xs text-white/60">
           The premium <span className="text-white/80">spin → reveal</span> unlocks after payment.
         </div>
       </div>
@@ -1104,32 +1121,32 @@ function QrCodeBlock({ value }: { value: string }) {
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-white/12 bg-white/6 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="mt-4 sm:mt-5 rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] text-white/55">Save this QR code before you pay</div>
-          <div className="mt-1 text-sm text-white/80">
+          <div className="text-[10px] sm:text-[11px] text-white/55">Save this QR code before you pay</div>
+          <div className="mt-1 text-xs sm:text-sm text-white/80">
             Print it, tape it into a letter, or keep it for the perfect delivery moment.
           </div>
         </div>
-        <Button type="button" variant="secondary" className="rounded-full" onClick={download} disabled={!dataUrl}>
+        <Button type="button" variant="secondary" className="rounded-full mt-2 sm:mt-0 text-sm px-3 py-2" onClick={download} disabled={!dataUrl}>
           {dataUrl ? "Download QR" : loading ? "Generating…" : "QR unavailable"}
         </Button>
       </div>
 
-      <div className="mt-4 flex items-center justify-center">
+      <div className="mt-3 sm:mt-4 flex items-center justify-center">
         {dataUrl ? (
-          <div className="rounded-2xl bg-white p-3">
-            <img src={dataUrl} alt="QR code for your LoveWheel link" className="h-[220px] w-[220px]" />
+          <div className="rounded-xl sm:rounded-2xl bg-white p-2 sm:p-3">
+            <img src={dataUrl} alt="QR code for your LoveWheel link" className="h-[180px] w-[180px] sm:h-[220px] sm:w-[220px]" />
           </div>
         ) : (
-          <div className="w-full rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
+          <div className="w-full rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 text-xs text-white/60">
             {loading ? "Generating your QR code…" : "Couldn't generate QR code on this device."}
           </div>
         )}
       </div>
 
-      <div className="mt-3 text-[11px] text-white/55">
+      <div className="mt-2 sm:mt-3 text-[10px] sm:text-[11px] text-white/55">
         Tip: on iPhone, you can also long-press the QR image after it appears and save it.
       </div>
     </div>
@@ -1143,14 +1160,12 @@ function LinkReadyPopup({
   onOpenChange,
   slug,
   onCopy,
-  onPreview,
   onPay,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   slug: string;
   onCopy: () => void;
-  onPreview: () => void;
   onPay: () => void;
 }) {
   const reduce = useReducedMotion();
@@ -1210,40 +1225,40 @@ function LinkReadyPopup({
               transition={{ duration: 5.0, ease: "easeInOut", repeat: Infinity }}
             />
 
-            <div className="relative p-6 sm:p-7">
+            <div className="relative p-4 sm:p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
                     <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
                     Link ready ✨
                   </div>
-                  <div className="mt-2 text-2xl font-semibold tracking-tight text-white/90">Your moment is live.</div>
-                  <div className="text-sm text-white/60">
+                  <div className="mt-2 text-xl sm:text-2xl font-semibold tracking-tight text-white/90">Your moment is live.</div>
+                  <div className="text-xs sm:text-sm text-white/60">
                     Before you pay: save your QR code below (for printing / letters). Then unlock the premium wheel + reveal.
                   </div>
-                  <div className="text-[11px] text-white/55">{PRICE_MICROCOPY}</div>
+                  <div className="text-[10px] sm:text-[11px] text-white/55">{PRICE_MICROCOPY}</div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
                   className={cx(
-                    "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
+                    "inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
                     "hover:bg-white/10 hover:text-white active:scale-[0.98]",
                     "focus:outline-none focus:ring-2 focus:ring-white/15"
                   )}
                   aria-label="Close"
                 >
-                  <IconX className="h-4 w-4" />
+                  <IconX className="h-3 w-3 sm:h-4 sm:w-4" />
                 </button>
               </div>
 
-              <div className="mt-5 rounded-2xl border border-white/12 bg-white/6 p-3">
-                <div className="flex items-center justify-between gap-3">
+              <div className="mt-4 sm:mt-5 rounded-2xl border border-white/12 bg-white/6 p-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-[11px] text-white/55">Shareable link</div>
-                    <div className="mt-1 flex items-center gap-2 text-sm text-white/80">
-                      <IconLink className="h-4 w-4 text-white/55" />
+                    <div className="text-[10px] sm:text-[11px] text-white/55">Shareable link</div>
+                    <div className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-white/80">
+                      <IconLink className="h-3 w-3 sm:h-4 sm:w-4 text-white/55" />
                       <div className="min-w-0 truncate">
                         <span className="text-white/55">{origin ? `${origin}` : ""}</span>
                         <span className="font-mono">{path}</span>
@@ -1254,7 +1269,7 @@ function LinkReadyPopup({
                   <Button
                     type="button"
                     variant="secondary"
-                    className="rounded-full"
+                    className="rounded-full mt-2 sm:mt-0 text-sm px-3 py-2"
                     onClick={() => {
                       softHaptic(10);
                       onCopy();
@@ -1268,28 +1283,33 @@ function LinkReadyPopup({
               {/* QR generated BEFORE payment */}
               <QrCodeBlock value={fullLink} />
 
-              <div className="mt-5 grid gap-2 sm:grid-cols-3">
+              <div className="mt-4 sm:mt-5 grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-full border-white/15 bg-white/0 text-white hover:bg-white/10"
-                  onClick={onPreview}
+                  className="rounded-full border-white/15 bg-white/0 text-white hover:bg-white/10 text-sm px-3 py-2"
+                  onClick={() => onOpenChange(false)}
                 >
-                  Open preview
+                  Close
                 </Button>
-                <Button type="button" variant="secondary" className="rounded-full" onClick={onCopy}>
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  className="rounded-full text-sm px-3 py-2"
+                  onClick={onCopy}
+                >
                   Copy link
                 </Button>
                 <Button
                   type="button"
-                  className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95"
+                  className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 text-sm px-3 py-2 col-span-2 sm:col-span-1 mt-2 sm:mt-0"
                   onClick={onPay}
                 >
                   Pay & unlock
                 </Button>
               </div>
 
-              <div className="mt-4 text-[11px] text-white/55">
+              <div className="mt-3 sm:mt-4 text-[10px] sm:text-[11px] text-white/55">
                 Pro tip: after payment, add a 2–3s "premium" animation before the reveal. It makes the moment land.
               </div>
             </div>
@@ -1313,19 +1333,19 @@ function isValidImage(file: File) {
 
 function MobilePreviewSection() {
   return (
-    <div className="md:hidden w-full mt-10">
+    <div className="md:hidden w-full mt-8">
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur mb-4">
           <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
           Live Preview
         </div>
-        <h3 className="text-2xl font-bold text-white mb-2">See it in action</h3>
+        <h3 className="text-xl font-bold text-white mb-2">See it in action</h3>
         <p className="text-white/60 text-sm">Experience the Love Wheel just like your partner will</p>
       </div>
       
       <MiniWheelPreview />
       
-      <div className="mt-8 text-center">
+      <div className="mt-6 text-center">
         <p className="text-white/70 text-sm mb-4">
           This is how your love story will be revealed - one spin at a time.
         </p>
@@ -1369,17 +1389,16 @@ export default function CreatePage() {
   const howItWorksRef = React.useRef<HTMLDivElement | null>(null);
 
   function scrollToSection(
-  ref: React.RefObject<HTMLDivElement | null>,
-  offset = 92
-) {
-  const el = ref.current;
-  if (!el) return;
+    ref: React.RefObject<HTMLDivElement | null>,
+    offset = 80
+  ) {
+    const el = ref.current;
+    if (!el) return;
 
-  const y = el.getBoundingClientRect().top + window.scrollY - offset;
-  window.scrollTo({ top: y, behavior: "smooth" });
-  softHaptic(8);
-}
-
+    const y = el.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: y, behavior: "smooth" });
+    softHaptic(8);
+  }
 
   React.useEffect(() => {
     return () => {
@@ -1850,29 +1869,25 @@ export default function CreatePage() {
           }}
           slug={created.slug}
           onCopy={copyLink}
-          onPreview={() => window.open(`/g/${created.slug}`, "_blank")}
           onPay={payAndUnlock}
         />
       )}
 
       {/* Top nav - Mobile optimized */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/85 backdrop-blur supports-[backdrop-filter]:bg-[#050816]/55">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-5 sm:py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-2xl bg-white/8 ring-1 ring-white/12 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-2xl bg-white/8 ring-1 ring-white/12 flex items-center justify-center">
               <span className="text-fuchsia-300">
-                <IconHeart className="h-4 w-4 sm:h-5 sm:w-5" />
+                <IconHeart className="h-4 w-4" />
               </span>
             </div>
-            <div className="text-sm font-semibold tracking-tight hidden sm:block">
+            <div className="text-sm font-semibold tracking-tight">
               Love<span className="text-fuchsia-300">Wheel</span>
-            </div>
-            <div className="text-sm font-semibold tracking-tight sm:hidden">
-              LW
             </div>
           </div>
 
-          <nav className="hidden items-center gap-5 text-sm text-white/70 md:flex">
+          <nav className="hidden items-center gap-4 text-sm text-white/70 md:flex">
             <button type="button" className="hover:text-white transition" onClick={openPricing}>
               Pricing
             </button>
@@ -1904,18 +1919,18 @@ export default function CreatePage() {
             <Button
               type="button"
               onClick={openBuilder}
-              className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 text-sm px-4 py-2 sm:px-6"
+              className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 text-sm px-4 py-2"
             >
               Create
             </Button>
             
             {/* Mobile menu button */}
             <button 
-              className="md:hidden flex flex-col gap-1 p-2"
+              className="md:hidden p-2"
               onClick={() => {
                 openInfo(
                   "Menu",
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <button 
                       className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
                       onClick={openPricing}
@@ -1944,40 +1959,38 @@ export default function CreatePage() {
                 );
               }}
             >
-              <div className="w-5 h-0.5 bg-white/70"></div>
-              <div className="w-5 h-0.5 bg-white/70"></div>
-              <div className="w-5 h-0.5 bg-white/70"></div>
+              <IconMenu className="h-5 w-5 text-white/70" />
             </button>
           </div>
         </div>
       </header>
 
       {/* HERO - Mobile optimized */}
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-5 sm:py-12 md:py-16">
-        <div className="grid items-center gap-10 lg:grid-cols-2">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+        <div className="grid items-center gap-8 lg:grid-cols-2">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
               Designed to land like a memory
             </div>
 
-            <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
               Surprise{" "}
               <span className="bg-gradient-to-r from-white via-fuchsia-200 to-pink-200 bg-clip-text text-transparent">
                 your love
               </span>
             </h1>
 
-            <p className="mt-4 max-w-xl text-white/65 text-sm sm:text-base">
+            <p className="mt-3 max-w-xl text-white/65 text-sm sm:text-base">
               Create a live relationship counter, a private line, a photo reveal, and a letter. Share via link or QR — then unlock
               the premium spin → reveal.
             </p>
 
-            <div className="mt-6 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
+            <div className="mt-5 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2">
               <Button
                 type="button"
                 onClick={openBuilder}
-                className="h-12 rounded-full px-7 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_20px_80px_-40px_rgba(255,64,169,0.75)] hover:opacity-95 w-full sm:w-auto"
+                className="h-11 rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_20px_80px_-40px_rgba(255,64,169,0.75)] hover:opacity-95 w-full sm:w-auto"
               >
                 Start creating
               </Button>
@@ -1985,7 +1998,7 @@ export default function CreatePage() {
               <Button
                 type="button"
                 variant="secondary"
-                className="h-12 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto"
+                className="h-11 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto text-sm px-4"
                 onClick={() =>
                   toast.message("Quick tip", {
                     description: "The best gifts feel like one private detail. Start there.",
@@ -2005,7 +2018,7 @@ export default function CreatePage() {
               </button>
             </div>
 
-            <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid max-w-xl gap-2 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={() =>
@@ -2019,33 +2032,33 @@ export default function CreatePage() {
                     openBuilder
                   )
                 }
-                className="text-left rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur hover:bg-white/10 transition"
+                className="text-left rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4 backdrop-blur hover:bg-white/10 transition"
               >
                 <div className="text-[11px] text-white/55">Takes</div>
-                <div className="mt-1 text-lg font-semibold text-white/90">2–3 min</div>
+                <div className="mt-1 text-base sm:text-lg font-semibold text-white/90">2–3 min</div>
               </button>
 
               <button
                 type="button"
                 onClick={openQrReader}
-                className="text-left rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur hover:bg-white/10 transition"
+                className="text-left rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4 backdrop-blur hover:bg-white/10 transition"
               >
                 <div className="text-[11px] text-white/55">Share</div>
-                <div className="mt-1 text-lg font-semibold text-white/90">Link + QR</div>
+                <div className="mt-1 text-base sm:text-lg font-semibold text-white/90">Link + QR</div>
               </button>
 
               <button
                 type="button"
                 onClick={openPricing}
-                className="text-left rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur hover:bg-white/10 transition"
+                className="text-left rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4 backdrop-blur hover:bg-white/10 transition"
               >
                 <div className="text-[11px] text-white/55">Unlock</div>
-                <div className="mt-1 text-lg font-semibold text-white/90">{PRICE_USD}</div>
+                <div className="mt-1 text-base sm:text-lg font-semibold text-white/90">{PRICE_USD}</div>
               </button>
             </div>
           </div>
 
-          {/* Mobile Preview - Hidden on desktop */}
+          {/* Mobile Preview */}
           <div className="lg:hidden">
             <MiniWheelPreview />
           </div>
@@ -2056,7 +2069,7 @@ export default function CreatePage() {
           </div>
         </div>
 
-        <div className="mt-10 flex items-center justify-center gap-6 text-white/55">
+        <div className="mt-8 flex items-center justify-center gap-6 text-white/55">
           <div className="hidden sm:block text-xs">+723 happy couples</div>
         </div>
 
@@ -2064,18 +2077,18 @@ export default function CreatePage() {
         <MobilePreviewSection />
 
         {/* Sections with click → popup */}
-        <div className="mt-12 grid gap-5 md:grid-cols-2">
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
           {/* Pricing */}
           <button
             type="button"
             onClick={openPricing}
-            className="text-left rounded-3xl border border-white/12 bg-white/6 p-6 backdrop-blur transition hover:bg-white/10"
+            className="text-left rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 backdrop-blur transition hover:bg-white/10"
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
               Pricing
             </div>
-            <div className="mt-3 text-2xl font-semibold text-white/90">{PRICE_USD} to unlock</div>
+            <div className="mt-3 text-xl sm:text-2xl font-semibold text-white/90">{PRICE_USD} to unlock</div>
             <div className="mt-2 text-sm text-white/65">The number is small. The emotional value is outrageous. Click to see what's included.</div>
           </button>
 
@@ -2083,21 +2096,21 @@ export default function CreatePage() {
           <button
             type="button"
             onClick={openQrReader}
-            className="text-left rounded-3xl border border-white/12 bg-white/6 p-6 backdrop-blur transition hover:bg-white/10"
+            className="text-left rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 backdrop-blur transition hover:bg-white/10"
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
               QR Reader
             </div>
-            <div className="mt-3 text-2xl font-semibold text-white/90">Print it. Seal it. Deliver it.</div>
+            <div className="mt-3 text-xl sm:text-2xl font-semibold text-white/90">Print it. Seal it. Deliver it.</div>
             <div className="mt-2 text-sm text-white/65">We generate a QR code for your link so you can place it inside a letter for the ultimate surprise.</div>
           </button>
         </div>
 
         {/* FAQ */}
-        <div ref={faqRef} className="mt-10 scroll-mt-28">
+        <div ref={faqRef} className="mt-8 sm:mt-10 scroll-mt-24">
           <div className="flex items-center justify-between">
-            <div className="text-xl font-semibold text-white/90">FAQ</div>
+            <div className="text-lg sm:text-xl font-semibold text-white/90">FAQ</div>
             <button
               type="button"
               onClick={() =>
@@ -2115,7 +2128,7 @@ export default function CreatePage() {
             </button>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-3 grid gap-2 sm:gap-3 md:grid-cols-2">
             {[
               { id: "what-is", q: "What exactly is LoveWheel?" },
               { id: "is-it-private", q: "Is it private?" },
@@ -2126,7 +2139,7 @@ export default function CreatePage() {
                 key={item.id}
                 type="button"
                 onClick={() => openFaqItem(item.id)}
-                className="text-left rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur transition hover:bg-white/10"
+                className="text-left rounded-xl sm:rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4 backdrop-blur transition hover:bg-white/10"
               >
                 <div className="text-sm font-semibold text-white/90">{item.q}</div>
                 <div className="mt-1 text-xs text-white/60">Click to open the full answer.</div>
@@ -2136,10 +2149,10 @@ export default function CreatePage() {
         </div>
 
         {/* How it works */}
-        <div ref={howItWorksRef} className="mt-10 scroll-mt-28">
-          <div className="text-xl font-semibold text-white/90">How it works</div>
+        <div ref={howItWorksRef} className="mt-8 sm:mt-10 scroll-mt-24">
+          <div className="text-lg sm:text-xl font-semibold text-white/90">How it works</div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="mt-3 grid gap-2 sm:gap-3 md:grid-cols-3">
             {[
               { id: "build", title: "Build", desc: "Write the four pieces that make it real." },
               { id: "share", title: "Share", desc: "Send by link or a printed QR in a letter." },
@@ -2149,15 +2162,15 @@ export default function CreatePage() {
                 key={item.id}
                 type="button"
                 onClick={() => openHowItWorksItem(item.id)}
-                className="text-left rounded-2xl border border-white/12 bg-white/6 p-5 backdrop-blur transition hover:bg-white/10"
+                className="text-left rounded-xl sm:rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur transition hover:bg-white/10"
               >
                 <div className="inline-flex items-center gap-2 text-xs text-white/60">
                   <IconSpark className="h-4 w-4 text-white/55" />
                   Step
                 </div>
-                <div className="mt-2 text-lg font-semibold text-white/90">{item.title}</div>
+                <div className="mt-2 text-base sm:text-lg font-semibold text-white/90">{item.title}</div>
                 <div className="mt-1 text-sm text-white/65">{item.desc}</div>
-                <div className="mt-3 text-xs text-white/60">Click to open details.</div>
+                <div className="mt-2 text-xs text-white/60">Click to open details.</div>
               </button>
             ))}
           </div>
@@ -2173,13 +2186,13 @@ export default function CreatePage() {
           else softHaptic(8);
         }}
       >
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-4 sm:mb-5">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
             <span className={cx("h-1.5 w-1.5 rounded-full", a.dot)} />
             Premium builder
           </div>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white/90 sm:text-3xl">{headline}</h2>
-          <p className="mt-2 text-sm text-white/60">{sub}</p>
+          <h2 className="mt-3 text-xl sm:text-2xl font-semibold tracking-tight text-white/90">{headline}</h2>
+          <p className="mt-2 text-xs sm:text-sm text-white/60">{sub}</p>
           <MinimalProgress step={step} progress={progress} />
         </motion.div>
 
@@ -2192,7 +2205,7 @@ export default function CreatePage() {
 
           <div className={cx("relative rounded-[32px] ring-1", a.ring)}>
             <Card className="border border-white/12 bg-white/6 shadow-[0_30px_140px_-80px_rgba(0,0,0,0.9)] backdrop-blur">
-              <CardContent className="relative p-6 sm:p-8">
+              <CardContent className="relative p-4 sm:p-6">
                 {!reduce && (
                   <AnimatePresence>
                     {typing && (
@@ -2220,22 +2233,22 @@ export default function CreatePage() {
                 <AnimatePresence mode="wait">
                   {/* STEP: RED */}
                   {step === "red" && (
-                    <motion.div key="red" {...scene} className="space-y-6">
-                      <div className="flex items-end justify-between gap-4">
+                    <motion.div key="red" {...scene} className="space-y-4 sm:space-y-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3">
                         <div>
                           <div className="text-xs text-white/55">Step 1 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Write the line that stops them.</div>
-                          <div className="mt-2 text-sm text-white/60">
+                          <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Write the line that stops them.</div>
+                          <div className="mt-2 text-xs sm:text-sm text-white/60">
                             Aim for <span className="text-white/85">specific</span>, not perfect.
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
+                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60 self-end">
                           <span className="text-white/85">{redLen}</span>/80
                         </div>
                       </div>
 
-                      <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
+                      <div className={cx("rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6", a.stroke)}>
                         <Label htmlFor="redPhrase" className="text-xs text-white/60">
                           Your line (the one they'll replay)
                         </Label>
@@ -2265,7 +2278,7 @@ export default function CreatePage() {
                                   });
                                   pingTyping();
                                 }}
-                                className="relative h-12 rounded-2xl text-base bg-white/5 text-white placeholder:text-white/35 border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
+                                className="relative h-11 sm:h-12 rounded-2xl text-sm sm:text-base bg-white/5 text-white placeholder:text-white/35 border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
                               />
                             );
                           })()}
@@ -2273,21 +2286,21 @@ export default function CreatePage() {
 
                         <FieldError msg={form.formState.errors.redPhrase?.message} />
 
-                        <div className="mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
+                        <div className="mt-3 rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 text-xs text-white/60">
                           <div className="font-medium text-white/85">Make it hit:</div>
-                          <div className="mt-2 grid gap-1">
+                          <div className="mt-2 space-y-1">
                             <div>• Mention a shared thing: a place, a joke, a habit.</div>
                             <div>• Keep it short enough to screenshot.</div>
                             <div>• Avoid "you're amazing" — say why, once.</div>
                           </div>
                         </div>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
+                        <div className="mt-3 flex flex-wrap gap-2">
                           {quickLine.map((t) => (
                             <GhostChip
                               key={t}
                               step={step}
-                              icon={<IconHeart className="h-4 w-4" />}
+                              icon={<IconHeart className="h-3 w-3 sm:h-4 sm:w-4" />}
                               onClick={() => {
                                 form.setValue("redPhrase", t, { shouldValidate: true, shouldDirty: true });
                                 toast.message("Inserted", { description: "Now tweak it to sound like you." });
@@ -2300,11 +2313,11 @@ export default function CreatePage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                         <Button
                           type="button"
                           variant="secondary"
-                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto text-sm px-4 py-2"
                           onClick={() => {
                             setBuilderOpen(false);
                             softHaptic(8);
@@ -2313,7 +2326,7 @@ export default function CreatePage() {
                           Close
                         </Button>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto">
                           <KeyHint>
                             <span className="font-mono">Enter</span> to continue
                           </KeyHint>
@@ -2321,7 +2334,7 @@ export default function CreatePage() {
                             type="button"
                             onClick={next}
                             disabled={!canAdvanceFrom("red")}
-                            className="rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 disabled:opacity-60"
+                            className="rounded-full px-5 sm:px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 disabled:opacity-60 w-full sm:w-auto text-sm py-2"
                           >
                             Continue
                           </Button>
@@ -2332,20 +2345,20 @@ export default function CreatePage() {
 
                   {/* STEP: GREEN */}
                   {step === "green" && (
-                    <motion.div key="green" {...scene} className="space-y-6">
-                      <div className="flex items-end justify-between gap-4">
+                    <motion.div key="green" {...scene} className="space-y-4 sm:space-y-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3">
                         <div>
                           <div className="text-xs text-white/55">Step 2 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Pick the day it began.</div>
-                          <div className="mt-2 text-sm text-white/60">This powers the live counter.</div>
+                          <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Pick the day it began.</div>
+                          <div className="mt-2 text-xs sm:text-sm text-white/60">This powers the live counter.</div>
                         </div>
 
-                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
+                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60 self-end">
                           <span className="text-white/85">{duration}</span>
                         </div>
                       </div>
 
-                      <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
+                      <div className={cx("rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6", a.stroke)}>
                         <Label htmlFor="relationshipStartAt" className="text-xs text-white/60">
                           Relationship start date
                         </Label>
@@ -2375,7 +2388,7 @@ export default function CreatePage() {
                                   });
                                   pingTyping();
                                 }}
-                                className="relative h-12 rounded-2xl text-base bg-white/5 text-white border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
+                                className="relative h-11 sm:h-12 rounded-2xl text-sm sm:text-base bg-white/5 text-white border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
                               />
                             );
                           })()}
@@ -2383,21 +2396,21 @@ export default function CreatePage() {
 
                         <FieldError msg={form.formState.errors.relationshipStartAt?.message} />
 
-                        <div className="mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
+                        <div className="mt-3 rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 text-xs text-white/60">
                           Choose the date that feels true — the first "we" moment, not the first message.
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                         <Button
                           type="button"
                           variant="secondary"
-                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto text-sm px-4 py-2"
                           onClick={back}
                         >
                           Back
                         </Button>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto">
                           <KeyHint>
                             <span className="font-mono">Enter</span> to continue
                           </KeyHint>
@@ -2405,7 +2418,7 @@ export default function CreatePage() {
                             type="button"
                             onClick={next}
                             disabled={!canAdvanceFrom("green")}
-                            className="rounded-full px-6 bg-gradient-to-r from-emerald-400 via-sky-400 to-fuchsia-500 text-white hover:opacity-95 disabled:opacity-60"
+                            className="rounded-full px-5 sm:px-6 bg-gradient-to-r from-emerald-400 via-sky-400 to-fuchsia-500 text-white hover:opacity-95 disabled:opacity-60 w-full sm:w-auto text-sm py-2"
                           >
                             Continue
                           </Button>
@@ -2416,34 +2429,34 @@ export default function CreatePage() {
 
                   {/* STEP: PHOTO */}
                   {step === "photo" && (
-                    <motion.div key="photo" {...scene} className="space-y-6">
-                      <div className="flex items-end justify-between gap-4">
+                    <motion.div key="photo" {...scene} className="space-y-4 sm:space-y-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3">
                         <div>
                           <div className="text-xs text-white/55">Step 3 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Choose the photo that says everything.</div>
-                          <div className="mt-2 text-sm text-white/60">
+                          <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Choose the photo that says everything.</div>
+                          <div className="mt-2 text-xs sm:text-sm text-white/60">
                             This is the <span className="text-white/85">reveal</span>. Pick the most meaningful one.
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
+                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60 self-end">
                           <span className="text-white/85">{photoFile ? "Selected" : "Missing"}</span>
                         </div>
                       </div>
 
-                      <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
-                        <div className="flex items-center justify-between gap-3">
+                      <div className={cx("rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6", a.stroke)}>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                           <div>
                             <div className="text-sm font-semibold tracking-tight text-white/90">Couple photo</div>
                             <div className="mt-1 text-xs text-white/55">JPG/PNG/WebP • up to {MAX_PHOTO_MB}MB</div>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <GhostChip step={step} icon={<IconPhoto className="h-4 w-4" />} onClick={() => fileInputRef.current?.click()}>
+                          <div className="flex items-center gap-2 self-end sm:self-auto">
+                            <GhostChip step={step} icon={<IconPhoto className="h-3 w-3 sm:h-4 sm:w-4" />} onClick={() => fileInputRef.current?.click()}>
                               Choose
                             </GhostChip>
                             {photoFile && (
-                              <GhostChip step={step} icon={<IconSpark className="h-4 w-4" />} onClick={() => setPhoto(null)}>
+                              <GhostChip step={step} icon={<IconSpark className="h-3 w-3 sm:h-4 sm:w-4" />} onClick={() => setPhoto(null)}>
                                 Remove
                               </GhostChip>
                             )}
@@ -2464,15 +2477,15 @@ export default function CreatePage() {
                             if (f) setPhoto(f);
                           }}
                           className={cx(
-                            "mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 transition",
+                            "mt-3 rounded-xl sm:rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 transition",
                             "hover:bg-white/8",
                             "focus-within:ring-2 focus-within:ring-white/15"
                           )}
                         >
                           {!photoPreviewUrl ? (
-                            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+                            <div className="flex flex-col items-center justify-center gap-2 py-6 sm:py-8 text-center">
                               <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
-                                <IconPhoto className="h-4 w-4 text-sky-300" />
+                                <IconPhoto className="h-3 w-3 sm:h-4 sm:w-4 text-sky-300" />
                                 Drag & drop or click "Choose"
                               </div>
                               <div className="max-w-sm text-xs text-white/60">
@@ -2480,11 +2493,11 @@ export default function CreatePage() {
                               </div>
                             </div>
                           ) : (
-                            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                              <div className="relative overflow-hidden rounded-2xl border border-white/12 bg-white/5">
-                                <img src={photoPreviewUrl} alt="Selected couple photo preview" className="h-[260px] w-full object-cover" />
+                            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2 sm:space-y-3">
+                              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/12 bg-white/5">
+                                <img src={photoPreviewUrl} alt="Selected couple photo preview" className="h-[180px] sm:h-[260px] w-full object-cover" />
                                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-                                <div className="pointer-events-none absolute bottom-3 left-3 text-xs text-white/85">This will be revealed after payment.</div>
+                                <div className="pointer-events-none absolute bottom-2 left-2 sm:bottom-3 sm:left-3 text-xs text-white/85">This will be revealed after payment.</div>
                               </div>
 
                               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60">
@@ -2498,22 +2511,22 @@ export default function CreatePage() {
                         </div>
 
                         {!photoFile ? (
-                          <div className="mt-3 text-xs text-white/60">Choose carefully — this is the "oh wow" moment.</div>
+                          <div className="mt-2 text-xs text-white/60">Choose carefully — this is the "oh wow" moment.</div>
                         ) : (
-                          <div className="mt-3 text-xs text-white/60">Perfect. This is the moment.</div>
+                          <div className="mt-2 text-xs text-white/60">Perfect. This is the moment.</div>
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                         <Button
                           type="button"
                           variant="secondary"
-                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto text-sm px-4 py-2"
                           onClick={back}
                         >
                           Back
                         </Button>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto">
                           <KeyHint>
                             <span className="font-mono">Enter</span> to continue
                           </KeyHint>
@@ -2521,7 +2534,7 @@ export default function CreatePage() {
                             type="button"
                             onClick={next}
                             disabled={!canAdvanceFrom("photo")}
-                            className="rounded-full px-6 bg-gradient-to-r from-sky-400 via-violet-500 to-fuchsia-500 text-white hover:opacity-95 disabled:opacity-60"
+                            className="rounded-full px-5 sm:px-6 bg-gradient-to-r from-sky-400 via-violet-500 to-fuchsia-500 text-white hover:opacity-95 disabled:opacity-60 w-full sm:w-auto text-sm py-2"
                           >
                             Continue
                           </Button>
@@ -2532,20 +2545,20 @@ export default function CreatePage() {
 
                   {/* STEP: YELLOW */}
                   {step === "yellow" && (
-                    <motion.div key="yellow" {...scene} className="space-y-6">
-                      <div className="flex items-end justify-between gap-4">
+                    <motion.div key="yellow" {...scene} className="space-y-4 sm:space-y-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3">
                         <div>
                           <div className="text-xs text-white/55">Step 4 of 4</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Write the letter they'll keep.</div>
-                          <div className="mt-2 text-sm text-white/60">One memory + one gratitude + one promise. Keep it real.</div>
+                          <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Write the letter they'll keep.</div>
+                          <div className="mt-2 text-xs sm:text-sm text-white/60">One memory + one gratitude + one promise. Keep it real.</div>
                         </div>
 
-                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
+                        <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60 self-end">
                           <span className="text-white/85">{letterLen}</span>/4000
                         </div>
                       </div>
 
-                      <div className={cx("rounded-3xl border border-white/12 bg-white/6 p-6", a.stroke)}>
+                      <div className={cx("rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6", a.stroke)}>
                         <Label htmlFor="loveLetter" className="text-xs text-white/60">
                           Your letter (make it undeniable)
                         </Label>
@@ -2575,7 +2588,7 @@ export default function CreatePage() {
                                   });
                                   pingTyping();
                                 }}
-                                className="relative min-h-[240px] rounded-2xl text-base bg-white/5 text-white placeholder:text-white/35 border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
+                                className="relative min-h-[180px] sm:min-h-[240px] rounded-2xl text-sm sm:text-base bg-white/5 text-white placeholder:text-white/35 border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
                               />
                             );
                           })()}
@@ -2583,21 +2596,21 @@ export default function CreatePage() {
 
                         <FieldError msg={form.formState.errors.loveLetter?.message} />
 
-                        <div className="mt-4 rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
+                        <div className="mt-3 rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 text-xs text-white/60">
                           <div className="font-medium text-white/85">A simple structure that works:</div>
-                          <div className="mt-2 grid gap-1">
+                          <div className="mt-2 space-y-1">
                             <div>• A memory: "I still think about…"</div>
                             <div>• A thank you: "You changed my life by…"</div>
                             <div>• A promise: "I will always…"</div>
                           </div>
                         </div>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
+                        <div className="mt-3 flex flex-wrap gap-2">
                           {quickPrompts.map((t) => (
                             <GhostChip
                               key={t}
                               step={step}
-                              icon={<IconSpark className="h-4 w-4" />}
+                              icon={<IconSpark className="h-3 w-3 sm:h-4 sm:w-4" />}
                               onClick={() => {
                                 const curr = form.getValues("loveLetter") || "";
                                 const nextVal = curr.trim() ? curr.replace(/\s*$/, "") + "\n" + t + " " : t + " ";
@@ -2612,16 +2625,16 @@ export default function CreatePage() {
                           ))}
                         </div>
 
-                        <div className="mt-4 text-xs text-white/55">
+                        <div className="mt-3 text-xs text-white/55">
                           Shortcut: <span className="font-mono">Ctrl+Enter</span> to continue.
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                         <Button
                           type="button"
                           variant="secondary"
-                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto text-sm px-4 py-2"
                           onClick={back}
                         >
                           Back
@@ -2630,7 +2643,7 @@ export default function CreatePage() {
                           type="button"
                           onClick={next}
                           disabled={!canAdvanceFrom("yellow")}
-                          className="rounded-full px-6 bg-gradient-to-r from-amber-300 via-fuchsia-500 to-sky-400 text-[#050816] hover:opacity-95 disabled:opacity-60"
+                          className="rounded-full px-5 sm:px-6 bg-gradient-to-r from-amber-300 via-fuchsia-500 to-sky-400 text-[#050816] hover:opacity-95 disabled:opacity-60 w-full sm:w-auto text-sm py-2"
                         >
                           Review
                         </Button>
@@ -2640,28 +2653,28 @@ export default function CreatePage() {
 
                   {/* STEP: CONFIRM */}
                   {step === "confirm" && (
-                    <motion.div key="confirm" {...scene} className="space-y-6">
-                      <div className="flex flex-wrap items-end justify-between gap-3">
+                    <motion.div key="confirm" {...scene} className="space-y-4 sm:space-y-6">
+                      <div className="flex flex-col items-start justify-between gap-3">
                         <div>
                           <div className="text-xs text-white/55">Preview</div>
-                          <div className="mt-1 text-2xl font-semibold tracking-tight text-white/90">Preview it like it's already theirs.</div>
-                          <div className="mt-2 text-sm text-white/60">If it hits, create the link — we'll open your unlock popup immediately.</div>
-                          <button type="button" onClick={openPricing} className="mt-2 text-[11px] text-white/55 hover:text-white transition">
+                          <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Preview it like it's already theirs.</div>
+                          <div className="mt-2 text-xs sm:text-sm text-white/60">If it hits, create the link — we'll open your unlock popup immediately.</div>
+                          <button type="button" onClick={openPricing} className="mt-2 text-[10px] sm:text-[11px] text-white/55 hover:text-white transition">
                             {PRICE_MICROCOPY}
                           </button>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <GhostChip step={step} onClick={() => doStepChange("red")} icon={<IconHeart className="h-4 w-4" />}>
+                        <div className="flex flex-wrap gap-2 self-start">
+                          <GhostChip step={step} onClick={() => doStepChange("red")} icon={<IconHeart className="h-3 w-3 sm:h-4 sm:w-4" />}>
                             Edit line
                           </GhostChip>
-                          <GhostChip step={step} onClick={() => doStepChange("green")} icon={<IconSpark className="h-4 w-4" />}>
+                          <GhostChip step={step} onClick={() => doStepChange("green")} icon={<IconSpark className="h-3 w-3 sm:h-4 sm:w-4" />}>
                             Edit date
                           </GhostChip>
-                          <GhostChip step={step} onClick={() => doStepChange("photo")} icon={<IconPhoto className="h-4 w-4" />}>
+                          <GhostChip step={step} onClick={() => doStepChange("photo")} icon={<IconPhoto className="h-3 w-3 sm:h-4 sm:w-4" />}>
                             Edit photo
                           </GhostChip>
-                          <GhostChip step={step} onClick={() => doStepChange("yellow")} icon={<IconSpark className="h-4 w-4" />}>
+                          <GhostChip step={step} onClick={() => doStepChange("yellow")} icon={<IconSpark className="h-3 w-3 sm:h-4 sm:w-4" />}>
                             Edit letter
                           </GhostChip>
                         </div>
@@ -2669,26 +2682,26 @@ export default function CreatePage() {
 
                       <ConfirmPreview red={v.redPhrase} startDate={v.relationshipStartAt} duration={duration} letter={v.loveLetter} photoPreviewUrl={photoPreviewUrl} />
 
-                      <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                         <Button
                           type="button"
                           variant="secondary"
-                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10"
+                          className="rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto text-sm px-4 py-2"
                           onClick={back}
                         >
                           Back
                         </Button>
 
-                        <div className="flex flex-col items-end gap-1">
+                        <div className="flex flex-col items-end gap-1 w-full sm:w-auto">
                           <Button
                             type="button"
                             onClick={form.handleSubmit(onCreate)}
                             disabled={!canSubmit}
-                            className="rounded-full px-6 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white hover:opacity-95 disabled:opacity-60"
+                            className="rounded-full px-5 sm:px-6 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white hover:opacity-95 disabled:opacity-60 w-full sm:w-auto text-sm py-2"
                           >
                             {isSubmitting ? "Creating…" : "Create gift link"}
                           </Button>
-                          <button type="button" onClick={openPricing} className="text-[11px] text-white/55 hover:text-white transition">
+                          <button type="button" onClick={openPricing} className="text-[10px] sm:text-[11px] text-white/55 hover:text-white transition">
                             You'll pay to unlock the reveal next · <span className="text-white/85">{PRICE_USD}</span>
                           </button>
                         </div>
@@ -2701,7 +2714,7 @@ export default function CreatePage() {
           </div>
         </div>
 
-        <div className="mt-5 text-center text-xs text-white/55">You're not filling a form — you're setting up a moment.</div>
+        <div className="mt-4 text-center text-xs text-white/55">You're not filling a form — you're setting up a moment.</div>
       </BuilderModal>
     </div>
   );
