@@ -272,6 +272,23 @@ function useLowEndMode() {
   return low;
 }
 
+/** ✅ “mobile feel”: mesmo em iPhone top, deixa a roleta mais cinematográfica no fim */
+function useIsMobile() {
+  const [mobile, setMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+      const small = window.matchMedia?.("(max-width: 768px)").matches ?? false;
+      setMobile(coarse || small);
+    } catch {
+      setMobile(false);
+    }
+  }, []);
+
+  return mobile;
+}
+
 /* =============================================================================
    Gift normalization
 ============================================================================= */
@@ -849,7 +866,9 @@ function RevealOverlay({
             exit={{ y: 10, scale: 0.99 }}
             transition={{ type: "spring", damping: 22 }}
           >
-            <div className={`rounded-3xl border border-white/15 bg-gradient-to-b ${sliceTheme} backdrop-blur-2xl shadow-2xl`}>
+            <div
+              className={`rounded-3xl border border-white/15 bg-gradient-to-b ${sliceTheme} backdrop-blur-2xl shadow-2xl`}
+            >
               <div className="p-5 sm:p-8">
                 <div className="flex items-start justify-between gap-4 mb-5">
                   <div>
@@ -1467,7 +1486,11 @@ function Wheel({
               ].join(" ")}
             >
               <span className={`h-2 w-2 rounded-full ${colorDotClass(lastResult.slice)}`} />
-              {lastResult.guessedRight ? <>🎯 Perfect match! You chose right!</> : <>Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫</>}
+              {lastResult.guessedRight ? (
+                <>🎯 Perfect match! You chose right!</>
+              ) : (
+                <>Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫</>
+              )}
             </div>
           </m.div>
         )}
@@ -1482,6 +1505,7 @@ function Wheel({
 export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const lowEnd = useLowEndMode();
+  const isMobile = useIsMobile();
 
   const normalizedGift = React.useMemo(() => (gift ? normalizeGift(gift as any) : null), [gift]);
 
@@ -1687,57 +1711,79 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
     const START_ROTATION = rotationMV.get();
 
-    // ✅ SLOW SPIN TUNING
-    // Mais suspense = mais tempo + desaceleração mais longa.
-    // 1) Aumenta voltas (spins)
-    // 2) Aumenta duration
-    // 3) Ajusta ease pra desacelerar “cinematográfico”
+    // ✅ NOVO: “FAST START → SLOW END” (mais emoção, especialmente no celular)
+    // Ideia: 2 fases:
+    //  - Fase 1: gira rápido (linear-ish)
+    //  - Fase 2: desacelera bastante e “encaixa” no resultado
     const spins = (() => {
-      if (prefersReducedMotion || lowEnd) return 2; // mantém curto no low-end
-      // antes: ~6 a 9
-      // agora: ~10 a 14 (cresce levemente com spinCount)
-      return Math.floor(10 + Math.min(4, spinCount * 0.6));
+      if (prefersReducedMotion || lowEnd) return 2;
+      // no mobile, menos voltas mas duração maior = menos “furadeira”, mais controle
+      if (isMobile) return Math.floor(7 + Math.min(3, spinCount * 0.45)); // ~7..10
+      return Math.floor(9 + Math.min(5, spinCount * 0.55)); // ~9..14
     })();
 
     const targetMod = mod360(360 - seg.center);
     const currentMod = mod360(START_ROTATION);
     const delta = mod360(targetMod - currentMod);
-    const totalDegrees = START_ROTATION + spins * 360 + delta;
+
+    const totalDelta = spins * 360 + delta;
+    const totalDegrees = START_ROTATION + totalDelta;
 
     if (spinAnimationRef.current) spinAnimationRef.current.stop();
     lastSegmentIndex.current = -1;
 
     const duration = (() => {
-      if (prefersReducedMotion || lowEnd) return 1.3; // um pouco mais lento que antes, mas ainda seguro
-      // antes: clamp(3.8 + spinCount*0.1, 3.8, 5.0)
-      // agora: 6.2s a 8.8s (cresce um pouco a cada spin)
-      return clamp(6.2 + spinCount * 0.25, 6.2, 8.8);
+      if (prefersReducedMotion || lowEnd) return 1.6;
+      if (isMobile) return clamp(7.8 + spinCount * 0.25, 7.8, 10.8); // MAIS lento no mobile
+      return clamp(6.6 + spinCount * 0.22, 6.6, 9.2);
     })();
 
-    // Ease com desaceleração mais “dramática” no final
-    const easeCurve: any = prefersReducedMotion || lowEnd ? "easeOut" : [0.08, 0.92, 0.08, 0.995];
+    // quanto do tempo fica na fase lenta (fim)
+    const slowFrac = prefersReducedMotion || lowEnd ? 1 : isMobile ? 0.78 : 0.70;
+    const d2 = clamp(duration * slowFrac, 0.9, duration);
+    const d1 = clamp(duration - d2, 0.2, duration);
 
-    const phase1 = animate(rotationMV, totalDegrees, {
-      duration,
-      ease: easeCurve,
-      onUpdate: (latest) => {
-        const wheelAtPointer = mod360(-latest);
-        const idx = Math.floor(wheelAtPointer / step) % remainingBefore.length;
+    // ponto intermediário (não precisa alinhar em slice — é só estética)
+    const midDegrees = START_ROTATION + totalDelta * (1 - slowFrac);
 
-        if (idx !== lastSegmentIndex.current) {
-          lastSegmentIndex.current = idx;
+    const phase1Ease: any = prefersReducedMotion || lowEnd ? "easeOut" : "linear";
+    // fase 2 bem “cinematográfica”: desacelera MUITO no final
+    const phase2Ease: any = prefersReducedMotion || lowEnd ? "easeOut" : [0.08, 0.9, 0.12, 0.995];
 
-          const progress = (latest - START_ROTATION) / (totalDegrees - START_ROTATION);
-          if (progress > 0.78) audio.segmentPass();
-          else audio.tick();
+    const onUpdate = (latest: number) => {
+      const wheelAtPointer = mod360(-latest);
+      const idx = Math.floor(wheelAtPointer / step) % remainingBefore.length;
 
-          setPointerPulse((p) => p + 1);
-        }
-      },
+      if (idx !== lastSegmentIndex.current) {
+        lastSegmentIndex.current = idx;
+
+        const progress = (latest - START_ROTATION) / (totalDegrees - START_ROTATION);
+
+        // ticks normais no começo, e “segment_pass” mais frequente no final
+        if (progress > 0.78) audio.segmentPass();
+        else audio.tick();
+
+        setPointerPulse((p) => p + 1);
+      }
+    };
+
+    // Fase 1 (rápido)
+    const ctrl1 = animate(rotationMV, midDegrees, {
+      duration: d1,
+      ease: phase1Ease,
+      onUpdate,
     });
+    spinAnimationRef.current = ctrl1;
+    await ctrl1.finished;
 
-    spinAnimationRef.current = phase1;
-    await phase1.finished;
+    // Fase 2 (lento / suspense)
+    const ctrl2 = animate(rotationMV, totalDegrees, {
+      duration: d2,
+      ease: phase2Ease,
+      onUpdate,
+    });
+    spinAnimationRef.current = ctrl2;
+    await ctrl2.finished;
 
     rotationMV.set(mod360(totalDegrees));
 
@@ -1767,7 +1813,7 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
       setBet(null);
 
       if (nextRemainingLen > 1) resetRotation();
-    }, lowEnd ? 600 : 950);
+    }, lowEnd ? 650 : isMobile ? 1050 : 950);
   });
 
   const reset = useEvent(() => {
@@ -1867,7 +1913,13 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
         <RevealOverlay open={revealOpen} slice={active} onClose={closeReveal} gift={normalizedGift} lowEnd={lowEnd} />
 
-        <FinalCelebration open={finalOpen} onClose={() => setFinalOpen(false)} onShare={shareExperience} gift={normalizedGift} lowEnd={lowEnd} />
+        <FinalCelebration
+          open={finalOpen}
+          onClose={() => setFinalOpen(false)}
+          onShare={shareExperience}
+          gift={normalizedGift}
+          lowEnd={lowEnd}
+        />
 
         <header className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
@@ -1876,7 +1928,9 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
                 Love Wheel
               </h1>
               <p className="text-white/70 mt-2 text-sm sm:text-base">Spin to reveal heartfelt surprises</p>
-              {normalizedGift.couple_names && <p className="text-white/60 text-sm mt-1">For {normalizedGift.couple_names}</p>}
+              {normalizedGift.couple_names && (
+                <p className="text-white/60 text-sm mt-1">For {normalizedGift.couple_names}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full md:w-auto">
@@ -1890,7 +1944,9 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
                 }
                 className={[
                   "px-4 py-2 rounded-full border backdrop-blur-sm flex items-center justify-center gap-2 w-full transition-colors",
-                  audioOn ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300" : "border-white/20 bg-white/5 text-white/70",
+                  audioOn
+                    ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300"
+                    : "border-white/20 bg-white/5 text-white/70",
                 ].join(" ")}
                 suppressHydrationWarning
               >
@@ -1906,7 +1962,10 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
                 Restart
               </Button>
 
-              <Button onClick={shareExperience} className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90 w-full">
+              <Button
+                onClick={shareExperience}
+                className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90 w-full"
+              >
                 <IconShare className="w-4 h-4 mr-2" />
                 Share
               </Button>
