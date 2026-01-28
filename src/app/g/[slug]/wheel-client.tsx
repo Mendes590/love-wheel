@@ -1208,7 +1208,6 @@ function Wheel({
   });
 
   const pointerScale = useSpring(1, { stiffness: 700, damping: 20 });
-
   const counterRotate = useTransform(rotationMV, (v) => -v);
 
   React.useEffect(() => {
@@ -1522,8 +1521,7 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
   }, []);
 
   /** ✅ FIX “inverter” no reset:
-   *  Em vez de animar direto para 0 (que pode fazer o Framer ir “pra trás”),
-   *  a gente anima SEMPRE no sentido horário até fechar no próximo múltiplo de 360,
+   *  anima SEMPRE no sentido horário até fechar no próximo múltiplo de 360,
    *  e depois seta pra 0.
    */
   const resetRotation = useEvent(() => {
@@ -1543,7 +1541,6 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
         rotationMV.set(0);
       })
       .catch(() => {
-        // ignore
         rotationMV.set(0);
       });
   });
@@ -1689,7 +1686,18 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
     const seg = map.get(chosen)!;
 
     const START_ROTATION = rotationMV.get();
-    const spins = prefersReducedMotion || lowEnd ? 2 : Math.floor(6 + Math.min(3, spinCount * 0.4));
+
+    // ✅ SLOW SPIN TUNING
+    // Mais suspense = mais tempo + desaceleração mais longa.
+    // 1) Aumenta voltas (spins)
+    // 2) Aumenta duration
+    // 3) Ajusta ease pra desacelerar “cinematográfico”
+    const spins = (() => {
+      if (prefersReducedMotion || lowEnd) return 2; // mantém curto no low-end
+      // antes: ~6 a 9
+      // agora: ~10 a 14 (cresce levemente com spinCount)
+      return Math.floor(10 + Math.min(4, spinCount * 0.6));
+    })();
 
     const targetMod = mod360(360 - seg.center);
     const currentMod = mod360(START_ROTATION);
@@ -1699,11 +1707,19 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
     if (spinAnimationRef.current) spinAnimationRef.current.stop();
     lastSegmentIndex.current = -1;
 
-    const duration = prefersReducedMotion || lowEnd ? 1.1 : clamp(3.8 + spinCount * 0.1, 3.8, 5.0);
+    const duration = (() => {
+      if (prefersReducedMotion || lowEnd) return 1.3; // um pouco mais lento que antes, mas ainda seguro
+      // antes: clamp(3.8 + spinCount*0.1, 3.8, 5.0)
+      // agora: 6.2s a 8.8s (cresce um pouco a cada spin)
+      return clamp(6.2 + spinCount * 0.25, 6.2, 8.8);
+    })();
+
+    // Ease com desaceleração mais “dramática” no final
+    const easeCurve: any = prefersReducedMotion || lowEnd ? "easeOut" : [0.08, 0.92, 0.08, 0.995];
 
     const phase1 = animate(rotationMV, totalDegrees, {
       duration,
-      ease: [0.12, 0.78, 0.08, 0.99],
+      ease: easeCurve,
       onUpdate: (latest) => {
         const wheelAtPointer = mod360(-latest);
         const idx = Math.floor(wheelAtPointer / step) % remainingBefore.length;
@@ -1750,9 +1766,8 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
       setRevealOpen(true);
       setBet(null);
 
-      // ✅ aqui continua igual, mas com reset “sempre pra frente”
       if (nextRemainingLen > 1) resetRotation();
-    }, lowEnd ? 500 : 750);
+    }, lowEnd ? 600 : 950);
   });
 
   const reset = useEvent(() => {
