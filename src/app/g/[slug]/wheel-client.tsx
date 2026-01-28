@@ -274,6 +274,8 @@ function useLowEndMode() {
       const hc = navigator.hardwareConcurrency ?? 4;
       const dm = (navigator as any).deviceMemory ?? 4;
       const saveData = (navigator as any).connection?.saveData ?? false;
+
+      // NOTE: don't treat *all* mobile as low-end; we only lower when small + low cpu/mem or saveData.
       const small = window.matchMedia("(max-width: 640px)").matches;
       const prefersData = !!saveData;
       const lowGuess = prefersData || (small && (hc <= 4 || dm <= 4));
@@ -301,6 +303,18 @@ function useIsMobile() {
   }, []);
 
   return mobile;
+}
+
+/** Used for spin speed calibration */
+function useViewportWidth() {
+  const [w, setW] = React.useState<number>(0);
+  React.useEffect(() => {
+    const update = () => setW(window.innerWidth || 0);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return w;
 }
 
 /* =============================================================================
@@ -842,7 +856,7 @@ function useLiveTimeCounter(startDate: Date | null, lowEnd: boolean) {
       () => setCurrentTime(new Date()),
       lowEnd ? 2000 : 1000
     );
-    return () => clearInterval(interval);
+    return () => clearTimeout(interval as any);
   }, [startDate, lowEnd]);
 
   if (!startDate) return null;
@@ -1057,9 +1071,7 @@ function RevealOverlay({
                             A SPECIAL LINE FOR YOU
                           </div>
                           <div className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
-                            &quot;
-                            {gift.red_phrase || "A special phrase just for you"}
-                            &quot;
+                            &quot;{gift.red_phrase || "A special phrase just for you"}&quot;
                           </div>
                           <p className="mt-4 text-white/70 text-sm sm:text-base">
                             Words meant only for your heart
@@ -1074,10 +1086,7 @@ function RevealOverlay({
                               LOVE TIMELINE
                             </div>
                             <div className="text-xl sm:text-2xl font-semibold text-white/90 mt-2">
-                              Since{" "}
-                              {formatDate(
-                                new Date(gift.relationship_start_at)
-                              )}
+                              Since {formatDate(new Date(gift.relationship_start_at))}
                             </div>
                           </div>
 
@@ -1105,9 +1114,7 @@ function RevealOverlay({
                           <div className="text-center mt-2">
                             <div className="inline-block px-4 py-2 bg-white/5 rounded-full border border-white/10">
                               <div className="text-xs sm:text-sm text-white/70">
-                                Total:{" "}
-                                {liveParts.totalSeconds.toLocaleString()}{" "}
-                                seconds
+                                Total: {liveParts.totalSeconds.toLocaleString()} seconds
                               </div>
                             </div>
                           </div>
@@ -1128,16 +1135,14 @@ function RevealOverlay({
                           <div className="max-h-[52vh] sm:max-h-[420px] overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
                             {gift.love_letter ? (
                               <div className="space-y-4">
-                                {safeSplitLines(gift.love_letter).map(
-                                  (line, i) => (
-                                    <p
-                                      key={i}
-                                      className="text-white/90 leading-relaxed text-sm sm:text-base"
-                                    >
-                                      {line}
-                                    </p>
-                                  )
-                                )}
+                                {safeSplitLines(gift.love_letter).map((line, i) => (
+                                  <p
+                                    key={i}
+                                    className="text-white/90 leading-relaxed text-sm sm:text-base"
+                                  >
+                                    {line}
+                                  </p>
+                                ))}
                               </div>
                             ) : (
                               <div className="text-center py-10">
@@ -1239,11 +1244,7 @@ function FinalCelebration({
 
   return (
     <>
-      <ConfettiExplosion
-        trigger={confettiTrigger}
-        intensity={2}
-        lowEnd={lowEnd}
-      />
+      <ConfettiExplosion trigger={confettiTrigger} intensity={2} lowEnd={lowEnd} />
       <AnimatePresence>
         {open && (
           <m.div
@@ -1280,17 +1281,11 @@ function FinalCelebration({
                 <div className="grid grid-cols-2 gap-4 mb-8">
                   <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
                     <div className="text-2xl font-bold text-white/95">4</div>
-                    <div className="text-sm text-white/70">
-                      Surprises Revealed
-                    </div>
+                    <div className="text-sm text-white/70">Surprises Revealed</div>
                   </div>
                   <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
-                    <div className="text-2xl font-bold text-white/95">
-                      100%
-                    </div>
-                    <div className="text-sm text-white/70">
-                      Emotional Journey
-                    </div>
+                    <div className="text-2xl font-bold text-white/95">100%</div>
+                    <div className="text-sm text-white/70">Emotional Journey</div>
                   </div>
                 </div>
 
@@ -1352,6 +1347,7 @@ function Wheel({
   onShare,
   spinCount,
   lowEnd,
+  isMobile,
 }: {
   rotationMV: ReturnType<typeof useMotionValue<number>>;
   spinning: boolean;
@@ -1366,15 +1362,13 @@ function Wheel({
   onShare: () => void;
   spinCount: number;
   lowEnd: boolean;
+  isMobile: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const wheelRef = React.useRef<HTMLDivElement>(null);
 
   const layout = React.useMemo(() => buildWheelLayout(remaining), [remaining]);
-  const wheelBg = React.useMemo(
-    () => buildConicGradient(remaining),
-    [remaining]
-  );
+  const wheelBg = React.useMemo(() => buildConicGradient(remaining), [remaining]);
 
   const spinScale = useSpring(spinning && !prefersReducedMotion ? 1.015 : 1, {
     stiffness: 200,
@@ -1410,23 +1404,28 @@ function Wheel({
 
       if (key && key !== bet) {
         setBet(key);
-        toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
-          description: "Choice set",
-        });
+        // on mobile: lighter toast (less annoying)
+        if (!isMobile) {
+          toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
+            description: "Choice set",
+          });
+        } else {
+          toast(`Picked ${SLICE_PUBLIC[key].colorName} ${SLICE_PUBLIC[key].emoji}`);
+        }
       }
     },
-    [remaining, spinning, disabled, rotationMV, layout.step, bet, setBet]
+    [remaining, spinning, disabled, rotationMV, layout.step, bet, setBet, isMobile]
   );
 
   const wheelMax = lowEnd
-    ? "max-w-[360px] sm:max-w-[460px]"
+    ? "max-w-[330px] sm:max-w-[440px]"
     : "max-w-[420px] sm:max-w-[520px] lg:max-w-[600px]";
-  const topPillsOffset = "-top-16 sm:-top-20";
+  const topPillsOffset = isMobile ? "-top-14 sm:-top-18" : "-top-16 sm:-top-20";
 
   const ambientDotCount = React.useMemo(() => {
-    if (prefersReducedMotion || lowEnd) return 0;
+    if (prefersReducedMotion || lowEnd || isMobile) return 0;
     return clamp(8 + spinCount, 8, 14);
-  }, [prefersReducedMotion, lowEnd, spinCount]);
+  }, [prefersReducedMotion, lowEnd, isMobile, spinCount]);
 
   return (
     <div className="relative">
@@ -1434,12 +1433,13 @@ function Wheel({
         className={`absolute ${topPillsOffset} left-0 right-0 flex flex-wrap justify-center gap-2 sm:gap-4 px-2`}
       >
         <Pill dotClassName="bg-fuchsia-400" glow={remaining.length === 1}>
-          {remaining.length}{" "}
-          {remaining.length === 1 ? "Surprise Left" : "Surprises Left"}
+          {remaining.length} {remaining.length === 1 ? "Surprise Left" : "Surprises Left"}
         </Pill>
         <Pill dotClassName="bg-sky-400">
           {bet
             ? `${SLICE_PUBLIC[bet].emoji} ${SLICE_PUBLIC[bet].colorName}`
+            : isMobile
+            ? "Tap a color below"
             : "Pick a Color"}
         </Pill>
         <Pill dotClassName="bg-amber-400">Spin #{spinCount + 1}</Pill>
@@ -1486,9 +1486,7 @@ function Wheel({
             background: wheelBg,
             transformStyle: "preserve-3d",
           }}
-          whileHover={
-            !spinning && !disabled && remaining.length > 0 ? { scale: 1.01 } : {}
-          }
+          whileHover={!spinning && !disabled && remaining.length > 0 ? { scale: 1.01 } : {}}
         >
           <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.14)_0%,transparent_70%)]" />
 
@@ -1510,7 +1508,7 @@ function Wheel({
             const visualAngle = centerAngle + POINTER_OFFSET;
             const rad = (visualAngle * Math.PI) / 180;
 
-            const radius = lowEnd ? 30 : 33;
+            const radius = lowEnd ? 28 : isMobile ? 31 : 33;
             const x = 50 + radius * Math.cos(rad);
             const y = 50 + radius * Math.sin(rad);
 
@@ -1526,16 +1524,10 @@ function Wheel({
               >
                 <m.div style={{ rotate: counterRotate }}>
                   <div className="flex flex-col items-center gap-1">
-                    <span
-                      className={
-                        lowEnd
-                          ? "text-2xl drop-shadow"
-                          : "text-xl sm:text-2xl drop-shadow-lg"
-                      }
-                    >
+                    <span className={lowEnd ? "text-2xl drop-shadow" : "text-xl sm:text-2xl drop-shadow-lg"}>
                       {SLICE_PUBLIC[key].emoji}
                     </span>
-                    {!lowEnd && (
+                    {!lowEnd && !isMobile && (
                       <span className="text-[11px] sm:text-xs font-semibold text-white/90 bg-black/40 px-2 py-1 rounded-full backdrop-blur-sm">
                         {SLICE_PUBLIC[key].colorName}
                       </span>
@@ -1547,6 +1539,7 @@ function Wheel({
           })}
         </m.div>
 
+        {/* pointer */}
         <m.div
           className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 will-change-transform"
           style={{ scale: pointerScale }}
@@ -1554,32 +1547,21 @@ function Wheel({
           <div className="relative">
             <div className="h-7 sm:h-8 w-14 sm:w-16 bg-gradient-to-b from-white/25 to-transparent rounded-t-full" />
             <div className="h-0 w-0 border-l-[18px] sm:border-l-[20px] border-r-[18px] sm:border-r-[20px] border-t-[26px] sm:border-t-[30px] border-l-transparent border-r-transparent border-t-white/95 mx-auto" />
-            {!lowEnd && (
+            {!lowEnd && !isMobile && (
               <m.div
                 className="absolute -top-3 left-1/2 -translate-x-1/2 h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-gradient-to-br from-white to-amber-200"
                 animate={spinning ? { scale: [1, 1.22, 1] } : {}}
-                transition={
-                  spinning
-                    ? { duration: 0.45, repeat: Infinity, ease: "easeInOut" }
-                    : {}
-                }
+                transition={spinning ? { duration: 0.45, repeat: Infinity, ease: "easeInOut" } : {}}
               />
             )}
           </div>
         </m.div>
 
+        {/* center spin button */}
         <div className="absolute inset-0 flex items-center justify-center">
           <m.div
-            whileHover={
-              !spinning && !disabled && remaining.length > 0 && bet
-                ? { scale: 1.04 }
-                : {}
-            }
-            whileTap={
-              !spinning && !disabled && remaining.length > 0 && bet
-                ? { scale: 0.96 }
-                : {}
-            }
+            whileHover={!spinning && !disabled && remaining.length > 0 && bet ? { scale: 1.04 } : {}}
+            whileTap={!spinning && !disabled && remaining.length > 0 && bet ? { scale: 0.96 } : {}}
           >
             <button
               onClick={onSpin}
@@ -1592,16 +1574,13 @@ function Wheel({
                 "transition-all duration-300 will-change-transform",
               ].join(" ")}
             >
-              <div className="text-3xl sm:text-4xl">
-                {spinning ? "🌀" : remaining.length === 0 ? "🎉" : "✨"}
-              </div>
+              <div className="text-3xl sm:text-4xl">{spinning ? "🌀" : remaining.length === 0 ? "🎉" : "✨"}</div>
               <div className="text-[10px] sm:text-xs font-semibold tracking-wider">
-                {spinning
-                  ? "SPINNING..."
-                  : remaining.length === 0
-                  ? "COMPLETE!"
-                  : "SPIN NOW!"}
+                {spinning ? "SPINNING..." : remaining.length === 0 ? "COMPLETE!" : bet ? "SPIN NOW!" : "PICK COLOR"}
               </div>
+              {isMobile && !bet && (
+                <div className="mt-1 text-[10px] text-white/55">Choose below</div>
+              )}
             </button>
           </m.div>
         </div>
@@ -1615,7 +1594,7 @@ function Wheel({
           </div>
           <div className="relative">
             <Progress value={((4 - remaining.length) / 4) * 100} className="h-2" />
-            {!lowEnd && (
+            {!lowEnd && !isMobile && (
               <m.div
                 className="absolute top-0 left-0 h-2 w-1 bg-white/70 rounded-full"
                 animate={{ x: ["0%", "100%"] }}
@@ -1625,6 +1604,7 @@ function Wheel({
           </div>
         </div>
 
+        {/* mobile: color buttons are primary */}
         <div className="flex flex-wrap justify-center gap-2 sm:gap-3 px-1">
           {remaining.map((key) => (
             <button
@@ -1633,15 +1613,11 @@ function Wheel({
               className={[
                 "relative px-3 sm:px-4 py-2 rounded-full border backdrop-blur-sm",
                 "flex items-center gap-2 transition-all duration-200",
-                bet === key
-                  ? "border-fuchsia-500/50 bg-fuchsia-500/20"
-                  : "border-white/20 bg-white/5 hover:bg-white/10",
+                bet === key ? "border-fuchsia-500/50 bg-fuchsia-500/20" : "border-white/20 bg-white/5 hover:bg-white/10",
               ].join(" ")}
             >
               <span className={`h-2 w-2 rounded-full ${colorDotClass(key)}`} />
-              <span className="font-semibold text-sm">
-                {SLICE_PUBLIC[key].colorName}
-              </span>
+              <span className="font-semibold text-sm">{SLICE_PUBLIC[key].colorName}</span>
               <span className="opacity-70">{SLICE_PUBLIC[key].emoji}</span>
             </button>
           ))}
@@ -1692,17 +1668,12 @@ function Wheel({
                   : "bg-white/10 text-white/80 border-white/20",
               ].join(" ")}
             >
-              <span
-                className={`h-2 w-2 rounded-full ${colorDotClass(
-                  lastResult.slice
-                )}`}
-              />
+              <span className={`h-2 w-2 rounded-full ${colorDotClass(lastResult.slice)}`} />
               {lastResult.guessedRight ? (
                 <>🎯 Perfect match! You chose right!</>
               ) : (
                 <>
-                  Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next
-                  time! 💫
+                  Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫
                 </>
               )}
             </div>
@@ -1716,24 +1687,15 @@ function Wheel({
 /* =============================================================================
    Main component (hydration-safe + mobile performance)
 ============================================================================= */
-export default function GiftWheelClient({
-  slug,
-  gift,
-  needsPayment,
-}: GiftWheelClientProps) {
+export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const lowEnd = useLowEndMode();
   const isMobile = useIsMobile();
+  const vw = useViewportWidth();
 
-  const normalizedGift = React.useMemo(
-    () => (gift ? normalizeGift(gift as any) : null),
-    [gift]
-  );
+  const normalizedGift = React.useMemo(() => (gift ? normalizeGift(gift as any) : null), [gift]);
 
-  const [audioOn, setAudioOn, mounted] = useLocalStorageBooleanHydrated(
-    "lw_audio_on",
-    true
-  );
+  const [audioOn, setAudioOn, mounted] = useLocalStorageBooleanHydrated("lw_audio_on", true);
   const audio = useTickAudio(audioOn, lowEnd);
 
   const [showStory, setShowStory] = React.useState(true);
@@ -1747,10 +1709,7 @@ export default function GiftWheelClient({
   const [revealOpen, setRevealOpen] = React.useState(false);
   const [spotlight, setSpotlight] = React.useState<SliceKey | null>(null);
   const [bet, setBet] = React.useState<SliceKey | null>(null);
-  const [lastResult, setLastResult] = React.useState<{
-    slice: SliceKey;
-    guessedRight: boolean;
-  } | null>(null);
+  const [lastResult, setLastResult] = React.useState<{ slice: SliceKey; guessedRight: boolean } | null>(null);
   const [pointerPulse, setPointerPulse] = React.useState(0);
 
   const [confettiTrigger, setConfettiTrigger] = React.useState(false);
@@ -1816,30 +1775,22 @@ export default function GiftWheelClient({
                   <div className="inline-block p-4 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 mb-4">
                     <IconHeart className="w-12 h-12 text-white" />
                   </div>
-                  <h1 className="text-3xl font-bold text-white/95 mb-2">
-                    Special Gift
-                  </h1>
-                  <p className="text-white/70">
-                    &quot;I&apos;d choose you again. Every time.&quot;
-                  </p>
+                  <h1 className="text-3xl font-bold text-white/95 mb-2">Special Gift</h1>
+                  <p className="text-white/70">&quot;I&apos;d choose you again. Every time.&quot;</p>
                 </div>
 
                 <div className="space-y-6 mb-8">
                   {giftObj.red_phrase && (
                     <div className="rounded-2xl border border-white/15 bg-white/5 p-6 text-center">
                       <div className="text-sm text-white/60 mb-2">PREVIEW</div>
-                      <p className="text-xl text-white/90 italic">
-                        &quot;{giftObj.red_phrase}&quot;
-                      </p>
+                      <p className="text-xl text-white/90 italic">&quot;{giftObj.red_phrase}&quot;</p>
                     </div>
                   )}
 
                   {giftObj.relationship_start_at && (
                     <div className="flex items-center justify-center gap-2 text-white/80">
                       <span className="text-sm">Together since:</span>
-                      <span className="font-semibold">
-                        {formatDate(new Date(giftObj.relationship_start_at))}
-                      </span>
+                      <span className="font-semibold">{formatDate(new Date(giftObj.relationship_start_at))}</span>
                     </div>
                   )}
                 </div>
@@ -1848,15 +1799,9 @@ export default function GiftWheelClient({
 
                 <div className="text-center space-y-6">
                   <div>
-                    <h2 className="text-xl font-bold text-white/95 mb-2">
-                      Unlock the Full Experience
-                    </h2>
+                    <h2 className="text-xl font-bold text-white/95 mb-2">Unlock the Full Experience</h2>
                     <p className="text-white/70 mb-4">
-                      Pay only{" "}
-                      <strong className="text-2xl text-fuchsia-400">
-                        $4.99
-                      </strong>{" "}
-                      to reveal everything
+                      Pay only <strong className="text-2xl text-fuchsia-400">$4.99</strong> to reveal everything
                     </p>
                   </div>
 
@@ -1917,9 +1862,7 @@ export default function GiftWheelClient({
           <div className="text-center space-y-6">
             <div className="text-6xl">😔</div>
             <h1 className="text-3xl font-bold text-white/95">Gift Not Found</h1>
-            <p className="text-white/70">
-              This Love Wheel may have been removed or the link is incorrect
-            </p>
+            <p className="text-white/70">This Love Wheel may have been removed or the link is incorrect</p>
             <Button
               onClick={() => (window.location.href = "/create")}
               size="lg"
@@ -1936,10 +1879,10 @@ export default function GiftWheelClient({
   /* ------------------------------ Spin logic ------------------------------ */
 
   /**
-   * ✅ Giro 100% contínuo (sem “parar e voltar a girar”):
-   * - 1 única animação com easing “power ease-out”
-   * - Começa bem rápido e desacelera sempre, até ficar bem devagar no final
-   * - Sem fases/Promises encadeadas => sem micro-pausas
+   * ✅ MOBILE FIX:
+   * - cap degrees-per-second so it NEVER looks “fast” on phones
+   * - fewer spins on mobile, longer duration, heavier ease-out tail
+   * - still 1 single animation (no micro-pauses)
    */
   const spin = useEvent(async () => {
     if (spinning || !bet || remaining.length === 0) return;
@@ -1962,40 +1905,50 @@ export default function GiftWheelClient({
     const START_ROTATION = rotationMV.get();
 
     // easing “power”: velocidade alta no começo, queda contínua e cauda longa
-    const easeOutPow = (power: number) => (t: number) =>
-      1 - Math.pow(1 - t, power);
+    const easeOutPow = (power: number) => (t: number) => 1 - Math.pow(1 - t, power);
 
-    // perfis por device: mais duração no mobile pra ficar “bem devagar” no fim
+    // device profiles (base targets). Actual duration is clamped by MAX_DPS below.
     const profile = (() => {
       if (prefersReducedMotion || lowEnd) {
         return {
           spins: 2,
-          duration: 1.9,
-          ease: easeOutPow(5),
-          fxThrottleMs: 92,
+          baseDuration: 2.2,
+          ease: easeOutPow(6),
+          fxThrottleMs: 110,
+          maxDps: 720,
         };
       }
+
       if (isMobile) {
-        const spins = clamp(Math.round(6 + spinCount * 0.25), 6, 9);
-        const duration = clamp(7.4 + spinCount * 0.18, 7.4, 9.4);
+        // very slow, cinematic tail on mobile
+        // smaller screens feel faster => fewer spins, longer time.
+        const spins = clamp(Math.round(5 + spinCount * 0.18), 5, 7);
+
+        // base duration scales with viewport: smaller width => longer time
+        const widthFactor = vw > 0 ? clamp(430 / vw, 0.95, 1.35) : 1.2;
+        const baseDuration = clamp((10.8 + spinCount * 0.28) * widthFactor, 10.5, 14.5);
+
         return {
           spins,
-          duration,
-          ease: easeOutPow(7),
-          fxThrottleMs: 104,
+          baseDuration,
+          ease: easeOutPow(9),
+          fxThrottleMs: 125,
+          maxDps: 380, // cap speed hard on mobile
         };
       }
+
       const spins = clamp(Math.round(9 + spinCount * 0.35), 9, 13);
-      const duration = clamp(5.8 + spinCount * 0.2, 5.8, 7.9);
+      const baseDuration = clamp(6.2 + spinCount * 0.22, 6.2, 8.6);
       return {
         spins,
-        duration,
-        ease: easeOutPow(6),
-        fxThrottleMs: 86,
+        baseDuration,
+        ease: easeOutPow(7),
+        fxThrottleMs: 92,
+        maxDps: 640,
       };
     })();
 
-    // alinhar ponteiro no centro do segmento escolhido (sempre “pra frente”)
+    // align pointer to center of chosen segment (always forward)
     const targetMod = mod360(360 - seg.center);
     const currentMod = mod360(START_ROTATION);
     const delta = mod360(targetMod - currentMod);
@@ -2003,11 +1956,14 @@ export default function GiftWheelClient({
     const totalDelta = profile.spins * 360 + delta;
     const totalDegrees = START_ROTATION + totalDelta;
 
-    // cancelar giro anterior
+    // ✅ absolute cap so it never “flies” on phone
+    const minDurationBySpeed = totalDelta / profile.maxDps; // seconds
+    const duration = Math.max(profile.baseDuration, minDurationBySpeed);
+
+    // cancel previous spin
     if (spinAnimationRef.current) spinAnimationRef.current.stop();
     lastSegmentIndex.current = -1;
 
-    // FX throttle (som + pulse)
     let lastFxAt = 0;
 
     const onUpdate = (latest: number) => {
@@ -2016,8 +1972,7 @@ export default function GiftWheelClient({
       lastFxAt = now;
 
       const wheelAtPointer = mod360(-latest);
-      const idx =
-        Math.floor(wheelAtPointer / step) % remainingBefore.length;
+      const idx = Math.floor(wheelAtPointer / step) % remainingBefore.length;
 
       if (idx !== lastSegmentIndex.current) {
         lastSegmentIndex.current = idx;
@@ -2033,7 +1988,7 @@ export default function GiftWheelClient({
     };
 
     const ctrl = animate(rotationMV, totalDegrees, {
-      duration: profile.duration,
+      duration,
       ease: profile.ease as any,
       onUpdate,
     });
@@ -2042,7 +1997,6 @@ export default function GiftWheelClient({
     try {
       await ctrl.finished;
     } catch {
-      // stop() / cancel
       setSpinning(false);
       return;
     }
@@ -2053,7 +2007,7 @@ export default function GiftWheelClient({
     setPointerPulse((p) => p + 1);
 
     if (!lowEnd && navigator.vibrate) {
-      navigator.vibrate(isMobile ? [40, 30, 70] : [90, 30, 90]);
+      navigator.vibrate(isMobile ? [25, 30, 60] : [90, 30, 90]);
     }
 
     const guessedRight = chosen === bet;
@@ -2070,6 +2024,9 @@ export default function GiftWheelClient({
     setRemaining((r) => r.filter((x) => x !== chosen));
     const nextRemainingLen = remainingBefore.length - 1;
 
+    // mobile: show reveal slightly later so it feels premium (not abrupt)
+    const revealDelay = lowEnd ? 650 : isMobile ? 1350 : 950;
+
     setTimeout(() => {
       setSpinning(false);
       setActive(chosen);
@@ -2077,7 +2034,7 @@ export default function GiftWheelClient({
       setBet(null);
 
       if (nextRemainingLen > 1) resetRotation();
-    }, lowEnd ? 650 : isMobile ? 1150 : 950);
+    }, revealDelay);
   });
 
   const reset = useEvent(() => {
@@ -2114,18 +2071,16 @@ export default function GiftWheelClient({
     if (navigator.share) {
       navigator.share({ title: "Love Wheel", text, url });
     } else {
-      navigator.clipboard.writeText(`${text} ${url}`);
-      toast.success("Link copied to clipboard!");
+      navigator.clipboard
+        .writeText(`${text} ${url}`)
+        .then(() => toast.success("Link copied to clipboard!"))
+        .catch(() => toast.success("Copy this link from the address bar!"));
     }
   });
 
   React.useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      )
-        return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       switch (e.key) {
         case " ":
@@ -2168,17 +2123,9 @@ export default function GiftWheelClient({
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [
-    spin,
-    reset,
-    revealOpen,
-    finalOpen,
-    remaining,
-    closeReveal,
-    spinning,
-    bet,
-    setAudioOn,
-  ]);
+  }, [spin, reset, revealOpen, finalOpen, remaining, closeReveal, spinning, bet, setAudioOn]);
+
+  const soundLabel = mounted ? `Sound ${audioOn ? "On" : "Off"}` : "Sound";
 
   return (
     <LazyMotion features={domAnimation}>
@@ -2190,31 +2137,13 @@ export default function GiftWheelClient({
         }}
       >
         <GlowBg lowEnd={lowEnd} />
-        <ConfettiExplosion
-          trigger={confettiTrigger}
-          intensity={remaining.length === 1 ? 2 : 1}
-          lowEnd={lowEnd}
-        />
+        <ConfettiExplosion trigger={confettiTrigger} intensity={remaining.length === 1 ? 2 : 1} lowEnd={lowEnd} />
 
-        {showStory && (
-          <StoryIntro lowEnd={lowEnd} onComplete={() => setShowStory(false)} />
-        )}
+        {showStory && <StoryIntro lowEnd={lowEnd} onComplete={() => setShowStory(false)} />}
 
-        <RevealOverlay
-          open={revealOpen}
-          slice={active}
-          onClose={closeReveal}
-          gift={normalizedGift}
-          lowEnd={lowEnd}
-        />
+        <RevealOverlay open={revealOpen} slice={active} onClose={closeReveal} gift={normalizedGift} lowEnd={lowEnd} />
 
-        <FinalCelebration
-          open={finalOpen}
-          onClose={() => setFinalOpen(false)}
-          onShare={shareExperience}
-          gift={normalizedGift}
-          lowEnd={lowEnd}
-        />
+        <FinalCelebration open={finalOpen} onClose={() => setFinalOpen(false)} onShare={shareExperience} gift={normalizedGift} lowEnd={lowEnd} />
 
         <header className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
@@ -2222,14 +2151,8 @@ export default function GiftWheelClient({
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
                 Love Wheel
               </h1>
-              <p className="text-white/70 mt-2 text-sm sm:text-base">
-                Spin to reveal heartfelt surprises
-              </p>
-              {normalizedGift.couple_names && (
-                <p className="text-white/60 text-sm mt-1">
-                  For {normalizedGift.couple_names}
-                </p>
-              )}
+              <p className="text-white/70 mt-2 text-sm sm:text-base">Spin to reveal heartfelt surprises</p>
+              {normalizedGift.couple_names && <p className="text-white/60 text-sm mt-1">For {normalizedGift.couple_names}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full md:w-auto">
@@ -2245,18 +2168,12 @@ export default function GiftWheelClient({
                 }
                 className={[
                   "px-4 py-2 rounded-full border backdrop-blur-sm flex items-center justify-center gap-2 w-full transition-colors",
-                  audioOn
-                    ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300"
-                    : "border-white/20 bg-white/5 text-white/70",
+                  audioOn ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300" : "border-white/20 bg-white/5 text-white/70",
                 ].join(" ")}
                 suppressHydrationWarning
               >
-                {audioOn ? (
-                  <IconVolumeOn className="w-4 h-4" />
-                ) : (
-                  <IconVolumeOff className="w-4 h-4" />
-                )}
-                Sound {audioOn ? "On" : "Off"}
+                {audioOn ? <IconVolumeOn className="w-4 h-4" /> : <IconVolumeOff className="w-4 h-4" />}
+                {soundLabel}
               </button>
 
               <Button
@@ -2282,6 +2199,11 @@ export default function GiftWheelClient({
               Tip: pick a color first, then spin • Press M to toggle sound
             </p>
           )}
+          {isMobile && !lowEnd && (
+            <p className="mt-2 text-center text-xs text-white/55">
+              Mobile tuned: slower spin + longer “cinematic” finish ✨
+            </p>
+          )}
         </header>
 
         <main className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -2300,6 +2222,7 @@ export default function GiftWheelClient({
               onShare={shareExperience}
               spinCount={spinCount}
               lowEnd={lowEnd}
+              isMobile={isMobile}
             />
           </div>
         </main>
@@ -2317,7 +2240,6 @@ export default function GiftWheelClient({
                 Create Your Own Love Wheel
               </Button>
             </div>
-            {/* <div className="mt-3 text-[10px] text-white/30">mounted={String(mounted)} lowEnd={String(lowEnd)}</div> */}
           </div>
         </footer>
       </div>
