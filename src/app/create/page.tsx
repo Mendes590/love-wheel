@@ -15,12 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 /**
- * Mobile-first performance fixes:
- * - Reduce heavy animations on mobile automatically
- * - Compress photo preview before rendering
- * - Modal: header fixed, body scroll, footer sticky
- * - Avoid huge re-render triggers from form.watch() (useWatch instead)
- * - Fix Tailwind opacity syntax (/[0.xx])
+ * Changes made per your request:
+ * ✅ Removed “little messages” (toast.message / toast.success) that were popping on every user action
+ * ✅ Photo upload: clicking ANYWHERE in the upload square opens the file picker
+ * ✅ Prevent “Choose/Remove” chips from bubbling click and also opening the picker unintentionally
  */
 
 const PRICE_USD = "$4.90";
@@ -290,7 +288,9 @@ function GhostChip({
   return (
     <button
       type="button"
-      onClick={() => {
+      onClick={(e) => {
+        // IMPORTANT: stop bubbling so clicks don't trigger parent (photo square click-to-upload)
+        e.stopPropagation();
         softHaptic(8);
         onClick?.();
       }}
@@ -501,6 +501,7 @@ function InfoModal({
 function QrCodeBlock({ value }: { value: string }) {
   const [dataUrl, setDataUrl] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -534,7 +535,9 @@ function QrCodeBlock({ value }: { value: string }) {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    toast.success("QR saved.", { description: "Perfect. Now you can print it or place it in a letter." });
+
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2200);
     softHaptic([8, 12, 8]);
   }
 
@@ -547,8 +550,14 @@ function QrCodeBlock({ value }: { value: string }) {
             Print it, tape it into a letter, or keep it for the perfect delivery moment.
           </div>
         </div>
-        <Button type="button" variant="secondary" className="rounded-full mt-2 sm:mt-0 text-sm px-3 py-2" onClick={download} disabled={!dataUrl}>
-          {dataUrl ? "Download QR" : loading ? "Generating…" : "QR unavailable"}
+        <Button
+          type="button"
+          variant="secondary"
+          className="rounded-full mt-2 sm:mt-0 text-sm px-3 py-2"
+          onClick={download}
+          disabled={!dataUrl}
+        >
+          {saved ? "Saved ✓" : dataUrl ? "Download QR" : loading ? "Generating…" : "QR unavailable"}
         </Button>
       </div>
 
@@ -977,9 +986,7 @@ export default function CreatePage() {
       if (step === "red") await form.trigger("redPhrase");
       if (step === "green") await form.trigger("relationshipStartAt");
       if (step === "yellow") await form.trigger("loveLetter");
-      if (step === "photo") toast.message("Pick a photo that *says* something.", { description: "The reveal moment lives or dies on this choice." });
-
-      toast.message("Almost there…", { description: "Complete this step to continue." });
+      // removed all “toast.message” micro-notifications
       softHaptic(18);
       return;
     }
@@ -1074,9 +1081,8 @@ export default function CreatePage() {
 
     setPhotoFile(file);
 
-    // IMPORTANT: compress preview for mobile smoothness
+    // IMPORTANT: compress preview for mobile smoothness (removed “Preparing preview…” toast)
     try {
-      toast.message("Preparing preview…", { description: "Optimizing for smooth mobile performance." });
       const blob = await compressForPreview(file, 1280, 0.82);
       const url = URL.createObjectURL(blob);
       setPhotoPreviewUrl(url);
@@ -1086,15 +1092,17 @@ export default function CreatePage() {
       setPhotoPreviewUrl(url);
     }
 
-    toast.message("Photo locked in.", { description: "Pick the one that instantly brings you back." });
     softHaptic([10, 14, 10]);
     pingTyping();
   }
 
-  const handlePhotoChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    void setPhoto(file);
-  }, [photoPreviewUrl]);
+  const handlePhotoChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] || null;
+      void setPhoto(file);
+    },
+    [photoPreviewUrl]
+  );
 
   const quickLine = React.useMemo(
     () => [
@@ -1126,7 +1134,6 @@ export default function CreatePage() {
       form.setValue("redPhrase", text, { shouldDirty: true, shouldTouch: true, shouldValidate: false });
       // validate after a tick
       window.setTimeout(() => void form.trigger("redPhrase"), 0);
-      toast.message("Inserted", { description: "Now tweak it to sound like you." });
       pingTyping();
       window.setTimeout(() => redRef.current?.focus(), 40);
     },
@@ -1139,7 +1146,6 @@ export default function CreatePage() {
       const nextVal = curr.trim() ? curr.replace(/\s*$/, "") + "\n" + text + " " : text + " ";
       form.setValue("loveLetter", nextVal, { shouldDirty: true, shouldTouch: true, shouldValidate: false });
       window.setTimeout(() => void form.trigger("loveLetter"), 0);
-      toast.message("Added", { description: "Now make it yours with details." });
       pingTyping();
       window.setTimeout(() => letterRef.current?.focus(), 40);
     },
@@ -1183,7 +1189,6 @@ export default function CreatePage() {
       setCreated({ id: data.id, slug: data.slug });
       setLinkPopupOpen(true);
 
-      toast.success("Link created.", { description: "Save your QR code, then unlock the premium reveal ✨" });
       softHaptic([10, 14, 10]);
     } catch (e: any) {
       toast.error(e?.message ?? "Something went wrong.");
@@ -1217,7 +1222,6 @@ export default function CreatePage() {
     const link = `${window.location.origin}/g/${created.slug}`;
     try {
       await navigator.clipboard.writeText(link);
-      toast.success("Link copied.", { description: "Send it when you want the moment to land." });
       softHaptic(10);
     } catch {
       toast.error("Couldn't copy.");
@@ -1274,7 +1278,10 @@ export default function CreatePage() {
         title: "What exactly is LoveWheel?",
         body: (
           <div className="space-y-3">
-            <div>It's a private gift page you create in minutes: a short line, a "time together" counter, a photo reveal, and a love letter.</div>
+            <div>
+              It's a private gift page you create in minutes: a short line, a "time together" counter, a photo reveal, and a love
+              letter.
+            </div>
             <div>Your partner spins the wheel and discovers each piece. It feels like a game, but lands like a memory.</div>
           </div>
         ),
@@ -1545,7 +1552,17 @@ export default function CreatePage() {
                 type="button"
                 variant="secondary"
                 className="h-11 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto text-sm px-4"
-                onClick={() => toast.message("Quick tip", { description: "The best gifts feel like one private detail. Start there." })}
+                onClick={() =>
+                  openInfo(
+                    "Quick tip",
+                    <div className="space-y-3">
+                      <div>Start with one private detail.</div>
+                      <div className="text-white/80">Specific beats poetic — every time.</div>
+                    </div>,
+                    "Start creating",
+                    openBuilder
+                  )
+                }
               >
                 Quick tip
               </Button>
@@ -1607,7 +1624,7 @@ export default function CreatePage() {
             <div className="text-xs text-white/55 mt-2">Build → Share → Pay → Reveal</div>
           </div>
 
-          {/* Desktop placeholder (your HeroArt can come back later, but it’s heavy) */}
+          {/* Desktop placeholder */}
           <div className="hidden lg:block rounded-[34px] border border-white/12 bg-white/6 p-6 backdrop-blur">
             <div className="text-xs text-white/60">Hero mock</div>
             <div className="mt-2 text-2xl font-semibold text-white/90">"{heroPhrase}"</div>
@@ -1752,7 +1769,9 @@ export default function CreatePage() {
                           <div>
                             <div className="text-xs text-white/55">Step 1 of 4</div>
                             <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Write the line that stops them.</div>
-                            <div className="mt-2 text-xs sm:text-sm text-white/60">Aim for <span className="text-white/85">specific</span>, not perfect.</div>
+                            <div className="mt-2 text-xs sm:text-sm text-white/60">
+                              Aim for <span className="text-white/85">specific</span>, not perfect.
+                            </div>
                           </div>
                           <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
                             <span className="text-white/85">{redLen}</span>/80
@@ -1885,7 +1904,17 @@ export default function CreatePage() {
 
                           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
 
+                          {/* ✅ CLICK ANYWHERE to open picker */}
                           <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => fileInputRef.current?.click()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                fileInputRef.current?.click();
+                              }
+                            }}
                             onDragOver={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1898,15 +1927,15 @@ export default function CreatePage() {
                             }}
                             className={cx(
                               "mt-3 rounded-xl sm:rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 transition",
-                              "hover:bg-white/8",
-                              "focus-within:ring-2 focus-within:ring-white/15"
+                              "hover:bg-white/8 cursor-pointer",
+                              "focus:outline-none focus-within:ring-2 focus-within:ring-white/15"
                             )}
                           >
                             {!photoPreviewUrl ? (
                               <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
                                 <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
                                   <IconPhoto className="h-4 w-4 text-sky-300" />
-                                  Drag & drop or click "Choose"
+                                  Click anywhere, drag & drop, or use “Choose”
                                 </div>
                                 <div className="max-w-sm text-xs text-white/60">Pick the photo that makes your chest feel warm.</div>
                               </div>
@@ -1981,7 +2010,9 @@ export default function CreatePage() {
                             ))}
                           </div>
 
-                          <div className="mt-3 text-xs text-white/55">Shortcut: <span className="font-mono">Ctrl+Enter</span> to continue.</div>
+                          <div className="mt-3 text-xs text-white/55">
+                            Shortcut: <span className="font-mono">Ctrl+Enter</span> to continue.
+                          </div>
                         </div>
                       </motion.div>
                     )}

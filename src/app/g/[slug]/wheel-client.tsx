@@ -1101,9 +1101,7 @@ function RevealOverlay({
                             </div>
                             <div className="text-xl sm:text-2xl font-semibold text-white/90 mt-2">
                               Since{" "}
-                              {formatDate(
-                                new Date(gift.relationship_start_at)
-                              )}
+                              {formatDate(new Date(gift.relationship_start_at))}
                             </div>
                           </div>
 
@@ -1360,6 +1358,172 @@ function FinalCelebration({
 }
 
 /* =============================================================================
+   ✅ NEW: Color Picker Popup (only shows available colors)
+============================================================================= */
+function ColorPickerModal({
+  open,
+  options,
+  onSelect,
+  onClose,
+  lowEnd,
+}: {
+  open: boolean;
+  options: SliceKey[];
+  onSelect: (k: SliceKey) => void;
+  onClose: () => void;
+  lowEnd: boolean;
+}) {
+  React.useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  React.useEffect(() => {
+    // safety: if nothing available, auto-close
+    if (open && options.length === 0) onClose();
+  }, [open, options.length, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <m.div
+          className="fixed inset-0 z-50 grid place-items-center px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={onClose}
+            aria-label="Close color picker"
+          />
+          <m.div
+            className="relative w-full max-w-md"
+            initial={{ y: 14, scale: 0.99 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: 10, scale: 0.99 }}
+            transition={{ type: "spring", damping: 22 }}
+          >
+            <div className="rounded-3xl border border-white/15 bg-gradient-to-b from-white/12 to-white/6 backdrop-blur-2xl shadow-2xl overflow-hidden">
+              <div className="p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <div className="text-xs text-white/60 tracking-wider">
+                      PICK A COLOR
+                    </div>
+                    <h3 className="text-xl font-bold text-white/95 mt-1">
+                      Choose your next surprise ✨
+                    </h3>
+                    <p className="text-sm text-white/65 mt-1">
+                      Only available colors are shown.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="h-10 w-10 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 grid place-items-center"
+                    aria-label="Close"
+                  >
+                    <svg
+                      className="w-5 h-5 text-white/80"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {options.map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => onSelect(key)}
+                      className={[
+                        "group rounded-2xl border border-white/15 bg-white/5 hover:bg-white/10 transition-colors",
+                        "p-4 text-left flex items-center gap-3",
+                      ].join(" ")}
+                    >
+                      <div
+                        className={[
+                          "h-10 w-10 rounded-2xl border border-white/10 grid place-items-center",
+                          "bg-black/20",
+                        ].join(" ")}
+                        style={{
+                          boxShadow: lowEnd
+                            ? undefined
+                            : `0 0 18px ${sliceFillRGBA(key, 0.25)}`,
+                        }}
+                      >
+                        <div className="text-2xl">{SLICE_PUBLIC[key].emoji}</div>
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={[
+                              "h-2 w-2 rounded-full",
+                              colorDotClass(key),
+                            ].join(" ")}
+                          />
+                          <div className="font-semibold text-white/90">
+                            {SLICE_PUBLIC[key].colorName}
+                          </div>
+                        </div>
+                        <div className="text-xs text-white/60 mt-1 line-clamp-2">
+                          {SLICE_PUBLIC[key].preview}
+                        </div>
+                      </div>
+
+                      <div className="ml-auto text-white/50 group-hover:text-white/80 transition-colors">
+                        →
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-5 flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-full border-white/20 bg-white/5 hover:bg-white/10"
+                    onClick={onClose}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+
+                <p className="mt-4 text-[11px] text-white/55 text-center">
+                  Tip: you can also tap directly on the wheel slices.
+                </p>
+              </div>
+            </div>
+          </m.div>
+        </m.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* =============================================================================
    Wheel (heavy part optimized)
 ============================================================================= */
 function Wheel({
@@ -1402,6 +1566,9 @@ function Wheel({
 }) {
   const prefersReducedMotion = useReducedMotion();
   const wheelRef = React.useRef<HTMLDivElement>(null);
+
+  // ✅ NEW: popup for Pick Color when center clicked and bet is null
+  const [pickOpen, setPickOpen] = React.useState(false);
 
   // ✅ FIX: layout + bg always based on ALL_SLICES (stable)
   const layout = React.useMemo(() => buildWheelLayout(ALL_SLICES), []);
@@ -1469,8 +1636,49 @@ function Wheel({
     return clamp(8 + spinCount, 8, 14);
   }, [prefersReducedMotion, lowEnd, isMobile, spinCount]);
 
+  const handleCenterClick = React.useCallback(() => {
+    if (spinning || disabled || remaining.length === 0) return;
+
+    // ✅ if no bet, open popup (only available colors)
+    if (!bet) {
+      setPickOpen(true);
+      if (!isMobile) {
+        toast("Pick a color", { description: "Choose one to spin" });
+      }
+      return;
+    }
+
+    onSpin();
+  }, [spinning, disabled, remaining.length, bet, onSpin, isMobile]);
+
+  const handleSelectFromPopup = React.useCallback(
+    (key: SliceKey) => {
+      if (opened[key]) return;
+      setBet(key);
+      setPickOpen(false);
+
+      if (!isMobile) {
+        toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
+          description: "Choice set",
+        });
+      } else {
+        toast(`Picked ${SLICE_PUBLIC[key].colorName} ${SLICE_PUBLIC[key].emoji}`);
+      }
+    },
+    [opened, setBet, isMobile]
+  );
+
   return (
     <div className="relative">
+      {/* ✅ popup */}
+      <ColorPickerModal
+        open={pickOpen}
+        options={remaining}
+        onSelect={handleSelectFromPopup}
+        onClose={() => setPickOpen(false)}
+        lowEnd={lowEnd}
+      />
+
       <div
         className={`absolute ${topPillsOffset} left-0 right-0 flex flex-wrap justify-center gap-2 sm:gap-4 px-2`}
       >
@@ -1493,7 +1701,9 @@ function Wheel({
           className="absolute -inset-10 sm:-inset-12 rounded-full blur-3xl"
           style={{
             background: `radial-gradient(circle at center, ${
-              spotlight ? sliceFillRGBA(spotlight, 0.85) : "rgba(255,255,255,0.08)"
+              spotlight
+                ? sliceFillRGBA(spotlight, 0.85)
+                : "rgba(255,255,255,0.08)"
             } 0%, transparent 70%)`,
             opacity: glowIntensity,
           }}
@@ -1629,19 +1839,17 @@ function Wheel({
         <div className="absolute inset-0 flex items-center justify-center">
           <m.div
             whileHover={
-              !spinning && !disabled && remaining.length > 0 && bet
-                ? { scale: 1.04 }
-                : {}
+              !spinning && !disabled && remaining.length > 0 ? { scale: 1.04 } : {}
             }
             whileTap={
-              !spinning && !disabled && remaining.length > 0 && bet
-                ? { scale: 0.96 }
-                : {}
+              !spinning && !disabled && remaining.length > 0 ? { scale: 0.96 } : {}
             }
           >
             <button
-              onClick={onSpin}
-              disabled={spinning || disabled || remaining.length === 0 || !bet}
+              onClick={handleCenterClick}
+              // ✅ IMPORTANT: do NOT disable just because bet is null.
+              // When bet is null, we want click => popup with available colors.
+              disabled={spinning || disabled || remaining.length === 0}
               className={[
                 "relative h-24 w-24 sm:h-28 sm:w-28 rounded-full border-2 border-white/20",
                 "bg-gradient-to-br from-white/14 to-white/8 backdrop-blur-xl",
@@ -1651,11 +1859,7 @@ function Wheel({
               ].join(" ")}
             >
               <div className="text-3xl sm:text-4xl">
-                {spinning
-                  ? "🌀"
-                  : remaining.length === 0
-                  ? "🎉"
-                  : "✨"}
+                {spinning ? "🌀" : remaining.length === 0 ? "🎉" : "✨"}
               </div>
               <div className="text-[10px] sm:text-xs font-semibold tracking-wider">
                 {spinning
@@ -1668,7 +1872,7 @@ function Wheel({
               </div>
               {isMobile && !bet && (
                 <div className="mt-1 text-[10px] text-white/55">
-                  Choose below
+                  Tap to choose
                 </div>
               )}
             </button>
@@ -1770,7 +1974,10 @@ function Wheel({
               {lastResult.guessedRight ? (
                 <>🎯 Perfect match! You chose right!</>
               ) : (
-                <>Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫</>
+                <>
+                  Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time!
+                  💫
+                </>
               )}
             </div>
           </m.div>
@@ -1933,9 +2140,7 @@ export default function GiftWheelClient({
                     </h2>
                     <p className="text-white/70 mb-4">
                       Pay only{" "}
-                      <strong className="text-2xl text-fuchsia-400">
-                        $4.99
-                      </strong>{" "}
+                      <strong className="text-2xl text-fuchsia-400">$4.99</strong>{" "}
                       to reveal everything
                     </p>
                   </div>
@@ -2258,7 +2463,17 @@ export default function GiftWheelClient({
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [spin, reset, revealOpen, finalOpen, closeReveal, spinning, bet, setAudioOn, opened]);
+  }, [
+    spin,
+    reset,
+    revealOpen,
+    finalOpen,
+    closeReveal,
+    spinning,
+    bet,
+    setAudioOn,
+    opened,
+  ]);
 
   const soundLabel = mounted ? `Sound ${audioOn ? "On" : "Off"}` : "Sound";
 
