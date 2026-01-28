@@ -173,11 +173,12 @@ function colorDotClass(k: SliceKey) {
     : "bg-amber-300/90";
 }
 
-function sliceFillRGBA(k: SliceKey) {
-  if (k === "blue") return "rgba(56,189,248,.85)";
-  if (k === "red") return "rgba(236,72,153,.85)";
-  if (k === "green") return "rgba(52,211,153,.85)";
-  return "rgba(251,191,36,.85)";
+function sliceFillRGBA(k: SliceKey, alpha = 0.85) {
+  const a = clamp(alpha, 0, 1);
+  if (k === "blue") return `rgba(56,189,248,${a})`;
+  if (k === "red") return `rgba(236,72,153,${a})`;
+  if (k === "green") return `rgba(52,211,153,${a})`;
+  return `rgba(251,191,36,${a})`;
 }
 
 function buildWheelLayout(keys: SliceKey[]) {
@@ -199,12 +200,21 @@ function buildWheelLayout(keys: SliceKey[]) {
   return { step, map, keys: safe, count: n };
 }
 
-function buildConicGradient(keys: SliceKey[]) {
+/**
+ * ✅ Wheel agora SEMPRE tem 4 fatias (ALL_SLICES).
+ * As já abertas ficam "apagadas" (alpha menor).
+ */
+function buildConicGradient(
+  keys: SliceKey[],
+  opened?: Partial<Record<SliceKey, boolean>>
+) {
   const n = Math.max(1, keys.length);
   const stops = keys.map((k, i) => {
     const p0 = (i / n) * 100;
     const p1 = ((i + 1) / n) * 100;
-    return `${sliceFillRGBA(k)} ${p0}% ${p1}%`;
+    const disabled = !!opened?.[k];
+    const fill = sliceFillRGBA(k, disabled ? 0.18 : 0.85);
+    return `${fill} ${p0}% ${p1}%`;
   });
   return `conic-gradient(from 0deg, ${stops.join(",")})`;
 }
@@ -275,7 +285,6 @@ function useLowEndMode() {
       const dm = (navigator as any).deviceMemory ?? 4;
       const saveData = (navigator as any).connection?.saveData ?? false;
 
-      // NOTE: don't treat *all* mobile as low-end; we only lower when small + low cpu/mem or saveData.
       const small = window.matchMedia("(max-width: 640px)").matches;
       const prefersData = !!saveData;
       const lowGuess = prefersData || (small && (hc <= 4 || dm <= 4));
@@ -851,15 +860,18 @@ function useLiveTimeCounter(startDate: Date | null, lowEnd: boolean) {
   const [currentTime, setCurrentTime] = React.useState<Date>(() => new Date());
 
   React.useEffect(() => {
-    if (!startDate) return;
-    const interval = setInterval(
+    if (!startDate || Number.isNaN(startDate.getTime())) return;
+
+    const interval = window.setInterval(
       () => setCurrentTime(new Date()),
       lowEnd ? 2000 : 1000
     );
-    return () => clearTimeout(interval as any);
+
+    // ✅ FIX: era clearTimeout; aqui é interval
+    return () => window.clearInterval(interval);
   }, [startDate, lowEnd]);
 
-  if (!startDate) return null;
+  if (!startDate || Number.isNaN(startDate.getTime())) return null;
   const elapsed = Math.max(0, currentTime.getTime() - startDate.getTime());
   return msToParts(elapsed);
 }
@@ -1071,7 +1083,9 @@ function RevealOverlay({
                             A SPECIAL LINE FOR YOU
                           </div>
                           <div className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
-                            &quot;{gift.red_phrase || "A special phrase just for you"}&quot;
+                            &quot;
+                            {gift.red_phrase || "A special phrase just for you"}
+                            &quot;
                           </div>
                           <p className="mt-4 text-white/70 text-sm sm:text-base">
                             Words meant only for your heart
@@ -1086,7 +1100,10 @@ function RevealOverlay({
                               LOVE TIMELINE
                             </div>
                             <div className="text-xl sm:text-2xl font-semibold text-white/90 mt-2">
-                              Since {formatDate(new Date(gift.relationship_start_at))}
+                              Since{" "}
+                              {formatDate(
+                                new Date(gift.relationship_start_at)
+                              )}
                             </div>
                           </div>
 
@@ -1114,7 +1131,9 @@ function RevealOverlay({
                           <div className="text-center mt-2">
                             <div className="inline-block px-4 py-2 bg-white/5 rounded-full border border-white/10">
                               <div className="text-xs sm:text-sm text-white/70">
-                                Total: {liveParts.totalSeconds.toLocaleString()} seconds
+                                Total:{" "}
+                                {liveParts.totalSeconds.toLocaleString()}{" "}
+                                seconds
                               </div>
                             </div>
                           </div>
@@ -1135,14 +1154,16 @@ function RevealOverlay({
                           <div className="max-h-[52vh] sm:max-h-[420px] overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
                             {gift.love_letter ? (
                               <div className="space-y-4">
-                                {safeSplitLines(gift.love_letter).map((line, i) => (
-                                  <p
-                                    key={i}
-                                    className="text-white/90 leading-relaxed text-sm sm:text-base"
-                                  >
-                                    {line}
-                                  </p>
-                                ))}
+                                {safeSplitLines(gift.love_letter).map(
+                                  (line, i) => (
+                                    <p
+                                      key={i}
+                                      className="text-white/90 leading-relaxed text-sm sm:text-base"
+                                    >
+                                      {line}
+                                    </p>
+                                  )
+                                )}
                               </div>
                             ) : (
                               <div className="text-center py-10">
@@ -1244,7 +1265,11 @@ function FinalCelebration({
 
   return (
     <>
-      <ConfettiExplosion trigger={confettiTrigger} intensity={2} lowEnd={lowEnd} />
+      <ConfettiExplosion
+        trigger={confettiTrigger}
+        intensity={2}
+        lowEnd={lowEnd}
+      />
       <AnimatePresence>
         {open && (
           <m.div
@@ -1281,11 +1306,15 @@ function FinalCelebration({
                 <div className="grid grid-cols-2 gap-4 mb-8">
                   <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
                     <div className="text-2xl font-bold text-white/95">4</div>
-                    <div className="text-sm text-white/70">Surprises Revealed</div>
+                    <div className="text-sm text-white/70">
+                      Surprises Revealed
+                    </div>
                   </div>
                   <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
                     <div className="text-2xl font-bold text-white/95">100%</div>
-                    <div className="text-sm text-white/70">Emotional Journey</div>
+                    <div className="text-sm text-white/70">
+                      Emotional Journey
+                    </div>
                   </div>
                 </div>
 
@@ -1340,6 +1369,7 @@ function Wheel({
   disabled,
   spotlight,
   remaining,
+  opened,
   bet,
   setBet,
   lastResult,
@@ -1354,7 +1384,13 @@ function Wheel({
   onSpin: () => void;
   disabled: boolean;
   spotlight: SliceKey | null;
+
+  /** still used for UI + pickRandom */
   remaining: SliceKey[];
+
+  /** ✅ NEW: opened map so wheel keeps 4 fixed slices */
+  opened: Record<SliceKey, boolean>;
+
   bet: SliceKey | null;
   setBet: (k: SliceKey | null) => void;
   lastResult: { slice: SliceKey; guessedRight: boolean } | null;
@@ -1367,8 +1403,12 @@ function Wheel({
   const prefersReducedMotion = useReducedMotion();
   const wheelRef = React.useRef<HTMLDivElement>(null);
 
-  const layout = React.useMemo(() => buildWheelLayout(remaining), [remaining]);
-  const wheelBg = React.useMemo(() => buildConicGradient(remaining), [remaining]);
+  // ✅ FIX: layout + bg always based on ALL_SLICES (stable)
+  const layout = React.useMemo(() => buildWheelLayout(ALL_SLICES), []);
+  const wheelBg = React.useMemo(
+    () => buildConicGradient(ALL_SLICES, opened),
+    [opened]
+  );
 
   const spinScale = useSpring(spinning && !prefersReducedMotion ? 1.015 : 1, {
     stiffness: 200,
@@ -1392,19 +1432,21 @@ function Wheel({
 
   const onWheelClick = React.useCallback(
     (e: React.MouseEvent) => {
-      if (!remaining.length || spinning || disabled) return;
+      if (spinning || disabled) return;
       const el = wheelRef.current;
       if (!el) return;
 
       const deg = angleFromTopClockwiseFromEvent(e, el);
       const wheelDeg = mod360(deg - rotationMV.get());
 
-      const idx = Math.floor(wheelDeg / layout.step) % remaining.length;
-      const key = remaining[idx];
+      const idx = Math.floor(wheelDeg / layout.step) % ALL_SLICES.length;
+      const key = ALL_SLICES[idx];
 
-      if (key && key !== bet) {
+      // ✅ ignore already opened slice
+      if (!key || opened[key]) return;
+
+      if (key !== bet) {
         setBet(key);
-        // on mobile: lighter toast (less annoying)
         if (!isMobile) {
           toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
             description: "Choice set",
@@ -1414,7 +1456,7 @@ function Wheel({
         }
       }
     },
-    [remaining, spinning, disabled, rotationMV, layout.step, bet, setBet, isMobile]
+    [spinning, disabled, rotationMV, layout.step, bet, setBet, isMobile, opened]
   );
 
   const wheelMax = lowEnd
@@ -1433,7 +1475,8 @@ function Wheel({
         className={`absolute ${topPillsOffset} left-0 right-0 flex flex-wrap justify-center gap-2 sm:gap-4 px-2`}
       >
         <Pill dotClassName="bg-fuchsia-400" glow={remaining.length === 1}>
-          {remaining.length} {remaining.length === 1 ? "Surprise Left" : "Surprises Left"}
+          {remaining.length}{" "}
+          {remaining.length === 1 ? "Surprise Left" : "Surprises Left"}
         </Pill>
         <Pill dotClassName="bg-sky-400">
           {bet
@@ -1450,7 +1493,7 @@ function Wheel({
           className="absolute -inset-10 sm:-inset-12 rounded-full blur-3xl"
           style={{
             background: `radial-gradient(circle at center, ${
-              spotlight ? sliceFillRGBA(spotlight) : "rgba(255,255,255,0.08)"
+              spotlight ? sliceFillRGBA(spotlight, 0.85) : "rgba(255,255,255,0.08)"
             } 0%, transparent 70%)`,
             opacity: glowIntensity,
           }}
@@ -1486,12 +1529,13 @@ function Wheel({
             background: wheelBg,
             transformStyle: "preserve-3d",
           }}
-          whileHover={!spinning && !disabled && remaining.length > 0 ? { scale: 1.01 } : {}}
+          whileHover={!spinning && !disabled ? { scale: 1.01 } : {}}
         >
           <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.14)_0%,transparent_70%)]" />
 
-          {remaining.length > 1 &&
-            remaining.map((_, i) => {
+          {/* separators always 4 */}
+          {ALL_SLICES.length > 1 &&
+            ALL_SLICES.map((_, i) => {
               const angle = i * layout.step;
               return (
                 <div
@@ -1502,7 +1546,8 @@ function Wheel({
               );
             })}
 
-          {remaining.map((key, i) => {
+          {/* labels always 4, opened slices are dimmed/locked */}
+          {ALL_SLICES.map((key, i) => {
             const POINTER_OFFSET = -90;
             const centerAngle = (i + 0.5) * layout.step;
             const visualAngle = centerAngle + POINTER_OFFSET;
@@ -1511,6 +1556,8 @@ function Wheel({
             const radius = lowEnd ? 28 : isMobile ? 31 : 33;
             const x = 50 + radius * Math.cos(rad);
             const y = 50 + radius * Math.sin(rad);
+
+            const isOpened = !!opened[key];
 
             return (
               <div
@@ -1523,12 +1570,29 @@ function Wheel({
                 }}
               >
                 <m.div style={{ rotate: counterRotate }}>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className={lowEnd ? "text-2xl drop-shadow" : "text-xl sm:text-2xl drop-shadow-lg"}>
-                      {SLICE_PUBLIC[key].emoji}
+                  <div
+                    className={[
+                      "flex flex-col items-center gap-1",
+                      isOpened ? "opacity-40" : "opacity-100",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={
+                        lowEnd
+                          ? "text-2xl drop-shadow"
+                          : "text-xl sm:text-2xl drop-shadow-lg"
+                      }
+                    >
+                      {isOpened ? "🔒" : SLICE_PUBLIC[key].emoji}
                     </span>
+
                     {!lowEnd && !isMobile && (
-                      <span className="text-[11px] sm:text-xs font-semibold text-white/90 bg-black/40 px-2 py-1 rounded-full backdrop-blur-sm">
+                      <span
+                        className={[
+                          "text-[11px] sm:text-xs font-semibold text-white/90 bg-black/40 px-2 py-1 rounded-full backdrop-blur-sm",
+                          isOpened ? "line-through opacity-70" : "",
+                        ].join(" ")}
+                      >
                         {SLICE_PUBLIC[key].colorName}
                       </span>
                     )}
@@ -1551,7 +1615,11 @@ function Wheel({
               <m.div
                 className="absolute -top-3 left-1/2 -translate-x-1/2 h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-gradient-to-br from-white to-amber-200"
                 animate={spinning ? { scale: [1, 1.22, 1] } : {}}
-                transition={spinning ? { duration: 0.45, repeat: Infinity, ease: "easeInOut" } : {}}
+                transition={
+                  spinning
+                    ? { duration: 0.45, repeat: Infinity, ease: "easeInOut" }
+                    : {}
+                }
               />
             )}
           </div>
@@ -1560,8 +1628,16 @@ function Wheel({
         {/* center spin button */}
         <div className="absolute inset-0 flex items-center justify-center">
           <m.div
-            whileHover={!spinning && !disabled && remaining.length > 0 && bet ? { scale: 1.04 } : {}}
-            whileTap={!spinning && !disabled && remaining.length > 0 && bet ? { scale: 0.96 } : {}}
+            whileHover={
+              !spinning && !disabled && remaining.length > 0 && bet
+                ? { scale: 1.04 }
+                : {}
+            }
+            whileTap={
+              !spinning && !disabled && remaining.length > 0 && bet
+                ? { scale: 0.96 }
+                : {}
+            }
           >
             <button
               onClick={onSpin}
@@ -1574,12 +1650,26 @@ function Wheel({
                 "transition-all duration-300 will-change-transform",
               ].join(" ")}
             >
-              <div className="text-3xl sm:text-4xl">{spinning ? "🌀" : remaining.length === 0 ? "🎉" : "✨"}</div>
+              <div className="text-3xl sm:text-4xl">
+                {spinning
+                  ? "🌀"
+                  : remaining.length === 0
+                  ? "🎉"
+                  : "✨"}
+              </div>
               <div className="text-[10px] sm:text-xs font-semibold tracking-wider">
-                {spinning ? "SPINNING..." : remaining.length === 0 ? "COMPLETE!" : bet ? "SPIN NOW!" : "PICK COLOR"}
+                {spinning
+                  ? "SPINNING..."
+                  : remaining.length === 0
+                  ? "COMPLETE!"
+                  : bet
+                  ? "SPIN NOW!"
+                  : "PICK COLOR"}
               </div>
               {isMobile && !bet && (
-                <div className="mt-1 text-[10px] text-white/55">Choose below</div>
+                <div className="mt-1 text-[10px] text-white/55">
+                  Choose below
+                </div>
               )}
             </button>
           </m.div>
@@ -1613,11 +1703,15 @@ function Wheel({
               className={[
                 "relative px-3 sm:px-4 py-2 rounded-full border backdrop-blur-sm",
                 "flex items-center gap-2 transition-all duration-200",
-                bet === key ? "border-fuchsia-500/50 bg-fuchsia-500/20" : "border-white/20 bg-white/5 hover:bg-white/10",
+                bet === key
+                  ? "border-fuchsia-500/50 bg-fuchsia-500/20"
+                  : "border-white/20 bg-white/5 hover:bg-white/10",
               ].join(" ")}
             >
               <span className={`h-2 w-2 rounded-full ${colorDotClass(key)}`} />
-              <span className="font-semibold text-sm">{SLICE_PUBLIC[key].colorName}</span>
+              <span className="font-semibold text-sm">
+                {SLICE_PUBLIC[key].colorName}
+              </span>
               <span className="opacity-70">{SLICE_PUBLIC[key].emoji}</span>
             </button>
           ))}
@@ -1668,13 +1762,15 @@ function Wheel({
                   : "bg-white/10 text-white/80 border-white/20",
               ].join(" ")}
             >
-              <span className={`h-2 w-2 rounded-full ${colorDotClass(lastResult.slice)}`} />
+              <span
+                className={`h-2 w-2 rounded-full ${colorDotClass(
+                  lastResult.slice
+                )}`}
+              />
               {lastResult.guessedRight ? (
                 <>🎯 Perfect match! You chose right!</>
               ) : (
-                <>
-                  Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫
-                </>
+                <>Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫</>
               )}
             </div>
           </m.div>
@@ -1687,21 +1783,43 @@ function Wheel({
 /* =============================================================================
    Main component (hydration-safe + mobile performance)
 ============================================================================= */
-export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelClientProps) {
+export default function GiftWheelClient({
+  slug,
+  gift,
+  needsPayment,
+}: GiftWheelClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const lowEnd = useLowEndMode();
   const isMobile = useIsMobile();
   const vw = useViewportWidth();
 
-  const normalizedGift = React.useMemo(() => (gift ? normalizeGift(gift as any) : null), [gift]);
+  const normalizedGift = React.useMemo(
+    () => (gift ? normalizeGift(gift as any) : null),
+    [gift]
+  );
 
-  const [audioOn, setAudioOn, mounted] = useLocalStorageBooleanHydrated("lw_audio_on", true);
+  const [audioOn, setAudioOn, mounted] = useLocalStorageBooleanHydrated(
+    "lw_audio_on",
+    true
+  );
   const audio = useTickAudio(audioOn, lowEnd);
 
   const [showStory, setShowStory] = React.useState(true);
   const [loading, setLoading] = React.useState(false);
 
-  const [remaining, setRemaining] = React.useState<SliceKey[]>(ALL_SLICES);
+  // ✅ NEW: opened map (wheel stays 4 slices always)
+  const [opened, setOpened] = React.useState<Record<SliceKey, boolean>>({
+    blue: false,
+    red: false,
+    green: false,
+    yellow: false,
+  });
+
+  const remaining = React.useMemo(
+    () => ALL_SLICES.filter((k) => !opened[k]),
+    [opened]
+  );
+
   const [active, setActive] = React.useState<SliceKey | null>(null);
   const [spinning, setSpinning] = React.useState(false);
   const rotationMV = useMotionValue(0);
@@ -1709,7 +1827,10 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
   const [revealOpen, setRevealOpen] = React.useState(false);
   const [spotlight, setSpotlight] = React.useState<SliceKey | null>(null);
   const [bet, setBet] = React.useState<SliceKey | null>(null);
-  const [lastResult, setLastResult] = React.useState<{ slice: SliceKey; guessedRight: boolean } | null>(null);
+  const [lastResult, setLastResult] = React.useState<{
+    slice: SliceKey;
+    guessedRight: boolean;
+  } | null>(null);
   const [pointerPulse, setPointerPulse] = React.useState(0);
 
   const [confettiTrigger, setConfettiTrigger] = React.useState(false);
@@ -1775,22 +1896,30 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
                   <div className="inline-block p-4 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 mb-4">
                     <IconHeart className="w-12 h-12 text-white" />
                   </div>
-                  <h1 className="text-3xl font-bold text-white/95 mb-2">Special Gift</h1>
-                  <p className="text-white/70">&quot;I&apos;d choose you again. Every time.&quot;</p>
+                  <h1 className="text-3xl font-bold text-white/95 mb-2">
+                    Special Gift
+                  </h1>
+                  <p className="text-white/70">
+                    &quot;I&apos;d choose you again. Every time.&quot;
+                  </p>
                 </div>
 
                 <div className="space-y-6 mb-8">
                   {giftObj.red_phrase && (
                     <div className="rounded-2xl border border-white/15 bg-white/5 p-6 text-center">
                       <div className="text-sm text-white/60 mb-2">PREVIEW</div>
-                      <p className="text-xl text-white/90 italic">&quot;{giftObj.red_phrase}&quot;</p>
+                      <p className="text-xl text-white/90 italic">
+                        &quot;{giftObj.red_phrase}&quot;
+                      </p>
                     </div>
                   )}
 
                   {giftObj.relationship_start_at && (
                     <div className="flex items-center justify-center gap-2 text-white/80">
                       <span className="text-sm">Together since:</span>
-                      <span className="font-semibold">{formatDate(new Date(giftObj.relationship_start_at))}</span>
+                      <span className="font-semibold">
+                        {formatDate(new Date(giftObj.relationship_start_at))}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1799,9 +1928,15 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
                 <div className="text-center space-y-6">
                   <div>
-                    <h2 className="text-xl font-bold text-white/95 mb-2">Unlock the Full Experience</h2>
+                    <h2 className="text-xl font-bold text-white/95 mb-2">
+                      Unlock the Full Experience
+                    </h2>
                     <p className="text-white/70 mb-4">
-                      Pay only <strong className="text-2xl text-fuchsia-400">$4.99</strong> to reveal everything
+                      Pay only{" "}
+                      <strong className="text-2xl text-fuchsia-400">
+                        $4.99
+                      </strong>{" "}
+                      to reveal everything
                     </p>
                   </div>
 
@@ -1862,7 +1997,9 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
           <div className="text-center space-y-6">
             <div className="text-6xl">😔</div>
             <h1 className="text-3xl font-bold text-white/95">Gift Not Found</h1>
-            <p className="text-white/70">This Love Wheel may have been removed or the link is incorrect</p>
+            <p className="text-white/70">
+              This Love Wheel may have been removed or the link is incorrect
+            </p>
             <Button
               onClick={() => (window.location.href = "/create")}
               size="lg"
@@ -1878,12 +2015,6 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
   /* ------------------------------ Spin logic ------------------------------ */
 
-  /**
-   * ✅ MOBILE FIX:
-   * - cap degrees-per-second so it NEVER looks “fast” on phones
-   * - fewer spins on mobile, longer duration, heavier ease-out tail
-   * - still 1 single animation (no micro-pauses)
-   */
   const spin = useEvent(async () => {
     if (spinning || !bet || remaining.length === 0) return;
 
@@ -1899,15 +2030,17 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
     const chosen = pickRandom(remainingBefore);
     setSpotlight(chosen);
 
-    const { map, step } = buildWheelLayout(remainingBefore);
+    // ✅ layout fixed (ALL_SLICES) so landing is always consistent
+    const { map, step } = buildWheelLayout(ALL_SLICES);
     const seg = map.get(chosen)!;
 
     const START_ROTATION = rotationMV.get();
 
-    // easing “power”: velocidade alta no começo, queda contínua e cauda longa
-    const easeOutPow = (power: number) => (t: number) => 1 - Math.pow(1 - t, power);
+    const easeOutPow =
+      (power: number) =>
+      (t: number) =>
+        1 - Math.pow(1 - t, power);
 
-    // device profiles (base targets). Actual duration is clamped by MAX_DPS below.
     const profile = (() => {
       if (prefersReducedMotion || lowEnd) {
         return {
@@ -1920,20 +2053,20 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
       }
 
       if (isMobile) {
-        // very slow, cinematic tail on mobile
-        // smaller screens feel faster => fewer spins, longer time.
         const spins = clamp(Math.round(5 + spinCount * 0.18), 5, 7);
-
-        // base duration scales with viewport: smaller width => longer time
         const widthFactor = vw > 0 ? clamp(430 / vw, 0.95, 1.35) : 1.2;
-        const baseDuration = clamp((10.8 + spinCount * 0.28) * widthFactor, 10.5, 14.5);
+        const baseDuration = clamp(
+          (10.8 + spinCount * 0.28) * widthFactor,
+          10.5,
+          14.5
+        );
 
         return {
           spins,
           baseDuration,
           ease: easeOutPow(9),
           fxThrottleMs: 125,
-          maxDps: 380, // cap speed hard on mobile
+          maxDps: 380,
         };
       }
 
@@ -1948,7 +2081,6 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
       };
     })();
 
-    // align pointer to center of chosen segment (always forward)
     const targetMod = mod360(360 - seg.center);
     const currentMod = mod360(START_ROTATION);
     const delta = mod360(targetMod - currentMod);
@@ -1956,11 +2088,9 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
     const totalDelta = profile.spins * 360 + delta;
     const totalDegrees = START_ROTATION + totalDelta;
 
-    // ✅ absolute cap so it never “flies” on phone
-    const minDurationBySpeed = totalDelta / profile.maxDps; // seconds
+    const minDurationBySpeed = totalDelta / profile.maxDps;
     const duration = Math.max(profile.baseDuration, minDurationBySpeed);
 
-    // cancel previous spin
     if (spinAnimationRef.current) spinAnimationRef.current.stop();
     lastSegmentIndex.current = -1;
 
@@ -1972,7 +2102,7 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
       lastFxAt = now;
 
       const wheelAtPointer = mod360(-latest);
-      const idx = Math.floor(wheelAtPointer / step) % remainingBefore.length;
+      const idx = Math.floor(wheelAtPointer / step) % ALL_SLICES.length;
 
       if (idx !== lastSegmentIndex.current) {
         lastSegmentIndex.current = idx;
@@ -2021,10 +2151,11 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
     if (guessedRight) audio.success();
     else audio.reveal();
 
-    setRemaining((r) => r.filter((x) => x !== chosen));
+    // ✅ mark opened (instead of removing slice layout)
+    setOpened((o) => ({ ...o, [chosen]: true }));
+
     const nextRemainingLen = remainingBefore.length - 1;
 
-    // mobile: show reveal slightly later so it feels premium (not abrupt)
     const revealDelay = lowEnd ? 650 : isMobile ? 1350 : 950;
 
     setTimeout(() => {
@@ -2038,7 +2169,7 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
   });
 
   const reset = useEvent(() => {
-    setRemaining(ALL_SLICES);
+    setOpened({ blue: false, red: false, green: false, yellow: false });
     setActive(null);
     setRevealOpen(false);
     setSpinning(false);
@@ -2080,7 +2211,11 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
   React.useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
 
       switch (e.key) {
         case " ":
@@ -2107,23 +2242,23 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
           if (finalOpen) setFinalOpen(false);
           break;
         case "1":
-          if (remaining.includes("blue")) setBet("blue");
+          if (!opened.blue) setBet("blue");
           break;
         case "2":
-          if (remaining.includes("red")) setBet("red");
+          if (!opened.red) setBet("red");
           break;
         case "3":
-          if (remaining.includes("green")) setBet("green");
+          if (!opened.green) setBet("green");
           break;
         case "4":
-          if (remaining.includes("yellow")) setBet("yellow");
+          if (!opened.yellow) setBet("yellow");
           break;
       }
     };
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [spin, reset, revealOpen, finalOpen, remaining, closeReveal, spinning, bet, setAudioOn]);
+  }, [spin, reset, revealOpen, finalOpen, closeReveal, spinning, bet, setAudioOn, opened]);
 
   const soundLabel = mounted ? `Sound ${audioOn ? "On" : "Off"}` : "Sound";
 
@@ -2137,13 +2272,31 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
         }}
       >
         <GlowBg lowEnd={lowEnd} />
-        <ConfettiExplosion trigger={confettiTrigger} intensity={remaining.length === 1 ? 2 : 1} lowEnd={lowEnd} />
+        <ConfettiExplosion
+          trigger={confettiTrigger}
+          intensity={remaining.length === 1 ? 2 : 1}
+          lowEnd={lowEnd}
+        />
 
-        {showStory && <StoryIntro lowEnd={lowEnd} onComplete={() => setShowStory(false)} />}
+        {showStory && (
+          <StoryIntro lowEnd={lowEnd} onComplete={() => setShowStory(false)} />
+        )}
 
-        <RevealOverlay open={revealOpen} slice={active} onClose={closeReveal} gift={normalizedGift} lowEnd={lowEnd} />
+        <RevealOverlay
+          open={revealOpen}
+          slice={active}
+          onClose={closeReveal}
+          gift={normalizedGift}
+          lowEnd={lowEnd}
+        />
 
-        <FinalCelebration open={finalOpen} onClose={() => setFinalOpen(false)} onShare={shareExperience} gift={normalizedGift} lowEnd={lowEnd} />
+        <FinalCelebration
+          open={finalOpen}
+          onClose={() => setFinalOpen(false)}
+          onShare={shareExperience}
+          gift={normalizedGift}
+          lowEnd={lowEnd}
+        />
 
         <header className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
@@ -2151,8 +2304,14 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
                 Love Wheel
               </h1>
-              <p className="text-white/70 mt-2 text-sm sm:text-base">Spin to reveal heartfelt surprises</p>
-              {normalizedGift.couple_names && <p className="text-white/60 text-sm mt-1">For {normalizedGift.couple_names}</p>}
+              <p className="text-white/70 mt-2 text-sm sm:text-base">
+                Spin to reveal heartfelt surprises
+              </p>
+              {normalizedGift.couple_names && (
+                <p className="text-white/60 text-sm mt-1">
+                  For {normalizedGift.couple_names}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full md:w-auto">
@@ -2168,11 +2327,17 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
                 }
                 className={[
                   "px-4 py-2 rounded-full border backdrop-blur-sm flex items-center justify-center gap-2 w-full transition-colors",
-                  audioOn ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300" : "border-white/20 bg-white/5 text-white/70",
+                  audioOn
+                    ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300"
+                    : "border-white/20 bg-white/5 text-white/70",
                 ].join(" ")}
                 suppressHydrationWarning
               >
-                {audioOn ? <IconVolumeOn className="w-4 h-4" /> : <IconVolumeOff className="w-4 h-4" />}
+                {audioOn ? (
+                  <IconVolumeOn className="w-4 h-4" />
+                ) : (
+                  <IconVolumeOff className="w-4 h-4" />
+                )}
                 {soundLabel}
               </button>
 
@@ -2215,6 +2380,7 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
               disabled={spinning || remaining.length === 0}
               spotlight={spotlight}
               remaining={remaining}
+              opened={opened}
               bet={bet}
               setBet={setBet}
               lastResult={lastResult}
