@@ -12,7 +12,6 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -867,7 +866,6 @@ function useLiveTimeCounter(startDate: Date | null, lowEnd: boolean) {
       lowEnd ? 2000 : 1000
     );
 
-    // ✅ FIX: era clearTimeout; aqui é interval
     return () => window.clearInterval(interval);
   }, [startDate, lowEnd]);
 
@@ -1358,7 +1356,7 @@ function FinalCelebration({
 }
 
 /* =============================================================================
-   ✅ NEW: Color Picker Popup (only shows available colors)
+   ✅ Color Picker Popup (only shows available colors)
 ============================================================================= */
 function ColorPickerModal({
   open,
@@ -1387,7 +1385,6 @@ function ColorPickerModal({
   }, [open, onClose]);
 
   React.useEffect(() => {
-    // safety: if nothing available, auto-close
     if (open && options.length === 0) onClose();
   }, [open, options.length, onClose]);
 
@@ -1525,6 +1522,9 @@ function ColorPickerModal({
 
 /* =============================================================================
    Wheel (heavy part optimized)
+   ✅ Changes:
+   - Removed ALL corner-toasts (Sonner).
+   - If popup opened from center click, selecting a color auto-spins immediately.
 ============================================================================= */
 function Wheel({
   rotationMV,
@@ -1542,17 +1542,18 @@ function Wheel({
   spinCount,
   lowEnd,
   isMobile,
+  shareCopied,
 }: {
   rotationMV: ReturnType<typeof useMotionValue<number>>;
   spinning: boolean;
-  onSpin: () => void;
+
+  // ✅ allow override so popup can trigger spin immediately without waiting state
+  onSpin: (betOverride?: SliceKey) => void;
+
   disabled: boolean;
   spotlight: SliceKey | null;
 
-  /** still used for UI + pickRandom */
   remaining: SliceKey[];
-
-  /** ✅ NEW: opened map so wheel keeps 4 fixed slices */
   opened: Record<SliceKey, boolean>;
 
   bet: SliceKey | null;
@@ -1563,14 +1564,15 @@ function Wheel({
   spinCount: number;
   lowEnd: boolean;
   isMobile: boolean;
+  shareCopied: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const wheelRef = React.useRef<HTMLDivElement>(null);
 
-  // ✅ NEW: popup for Pick Color when center clicked and bet is null
+  // popup for Pick Color when center clicked and bet is null
   const [pickOpen, setPickOpen] = React.useState(false);
 
-  // ✅ FIX: layout + bg always based on ALL_SLICES (stable)
+  // layout + bg always based on ALL_SLICES (stable)
   const layout = React.useMemo(() => buildWheelLayout(ALL_SLICES), []);
   const wheelBg = React.useMemo(
     () => buildConicGradient(ALL_SLICES, opened),
@@ -1609,21 +1611,12 @@ function Wheel({
       const idx = Math.floor(wheelDeg / layout.step) % ALL_SLICES.length;
       const key = ALL_SLICES[idx];
 
-      // ✅ ignore already opened slice
+      // ignore already opened slice
       if (!key || opened[key]) return;
 
-      if (key !== bet) {
-        setBet(key);
-        if (!isMobile) {
-          toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
-            description: "Choice set",
-          });
-        } else {
-          toast(`Picked ${SLICE_PUBLIC[key].colorName} ${SLICE_PUBLIC[key].emoji}`);
-        }
-      }
+      if (key !== bet) setBet(key);
     },
-    [spinning, disabled, rotationMV, layout.step, bet, setBet, isMobile, opened]
+    [spinning, disabled, rotationMV, layout.step, bet, setBet, opened]
   );
 
   const wheelMax = lowEnd
@@ -1639,38 +1632,32 @@ function Wheel({
   const handleCenterClick = React.useCallback(() => {
     if (spinning || disabled || remaining.length === 0) return;
 
-    // ✅ if no bet, open popup (only available colors)
+    // if no bet, open popup (only available colors)
     if (!bet) {
       setPickOpen(true);
-      if (!isMobile) {
-        toast("Pick a color", { description: "Choose one to spin" });
-      }
       return;
     }
 
     onSpin();
-  }, [spinning, disabled, remaining.length, bet, onSpin, isMobile]);
+  }, [spinning, disabled, remaining.length, bet, onSpin]);
 
+  // ✅ Select from popup => set bet + auto spin (no second click)
   const handleSelectFromPopup = React.useCallback(
     (key: SliceKey) => {
       if (opened[key]) return;
+
       setBet(key);
       setPickOpen(false);
 
-      if (!isMobile) {
-        toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
-          description: "Choice set",
-        });
-      } else {
-        toast(`Picked ${SLICE_PUBLIC[key].colorName} ${SLICE_PUBLIC[key].emoji}`);
-      }
+      // Let React paint bet selection, then spin immediately with override
+      requestAnimationFrame(() => onSpin(key));
     },
-    [opened, setBet, isMobile]
+    [opened, setBet, onSpin]
   );
 
   return (
     <div className="relative">
-      {/* ✅ popup */}
+      {/* popup */}
       <ColorPickerModal
         open={pickOpen}
         options={remaining}
@@ -1847,8 +1834,8 @@ function Wheel({
           >
             <button
               onClick={handleCenterClick}
-              // ✅ IMPORTANT: do NOT disable just because bet is null.
-              // When bet is null, we want click => popup with available colors.
+              // do NOT disable just because bet is null.
+              // When bet is null, click => popup with available colors.
               disabled={spinning || disabled || remaining.length === 0}
               className={[
                 "relative h-24 w-24 sm:h-28 sm:w-28 rounded-full border-2 border-white/20",
@@ -1871,9 +1858,7 @@ function Wheel({
                   : "PICK COLOR"}
               </div>
               {isMobile && !bet && (
-                <div className="mt-1 text-[10px] text-white/55">
-                  Tap to choose
-                </div>
+                <div className="mt-1 text-[10px] text-white/55">Tap to choose</div>
               )}
             </button>
           </m.div>
@@ -1913,9 +1898,7 @@ function Wheel({
               ].join(" ")}
             >
               <span className={`h-2 w-2 rounded-full ${colorDotClass(key)}`} />
-              <span className="font-semibold text-sm">
-                {SLICE_PUBLIC[key].colorName}
-              </span>
+              <span className="font-semibold text-sm">{SLICE_PUBLIC[key].colorName}</span>
               <span className="opacity-70">{SLICE_PUBLIC[key].emoji}</span>
             </button>
           ))}
@@ -1939,7 +1922,7 @@ function Wheel({
             className="rounded-full border-white/20 bg-white/5 hover:bg-white/10 w-full sm:w-auto"
           >
             <IconShare className="w-4 h-4 mr-2" />
-            Share
+            {shareCopied ? "Copied!" : "Share"}
           </Button>
 
           <Button
@@ -1967,17 +1950,12 @@ function Wheel({
               ].join(" ")}
             >
               <span
-                className={`h-2 w-2 rounded-full ${colorDotClass(
-                  lastResult.slice
-                )}`}
+                className={`h-2 w-2 rounded-full ${colorDotClass(lastResult.slice)}`}
               />
               {lastResult.guessedRight ? (
                 <>🎯 Perfect match! You chose right!</>
               ) : (
-                <>
-                  Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time!
-                  💫
-                </>
+                <>Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫</>
               )}
             </div>
           </m.div>
@@ -2013,8 +1991,9 @@ export default function GiftWheelClient({
 
   const [showStory, setShowStory] = React.useState(true);
   const [loading, setLoading] = React.useState(false);
+  const [payError, setPayError] = React.useState<string | null>(null);
 
-  // ✅ NEW: opened map (wheel stays 4 slices always)
+  // opened map (wheel stays 4 slices always)
   const [opened, setOpened] = React.useState<Record<SliceKey, boolean>>({
     blue: false,
     red: false,
@@ -2048,6 +2027,9 @@ export default function GiftWheelClient({
   const [spinCount, setSpinCount] = React.useState(0);
   const lastSegmentIndex = React.useRef(-1);
 
+  const [shareCopied, setShareCopied] = React.useState(false);
+  const shareTimerRef = React.useRef<number | null>(null);
+
   React.useEffect(() => {
     return () => {
       if (spinAnimationRef.current) {
@@ -2055,6 +2037,7 @@ export default function GiftWheelClient({
           spinAnimationRef.current.stop();
         } catch {}
       }
+      if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
     };
   }, []);
 
@@ -2148,7 +2131,9 @@ export default function GiftWheelClient({
                   <Button
                     onClick={async () => {
                       try {
+                        setPayError(null);
                         setLoading(true);
+
                         const response = await fetch("/api/checkout", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
@@ -2157,10 +2142,10 @@ export default function GiftWheelClient({
 
                         const data = await response.json();
 
-                        if (data.url) window.location.href = data.url;
-                        else toast.error("Error creating checkout");
+                        if (data?.url) window.location.href = data.url;
+                        else setPayError("Could not create checkout. Try again.");
                       } catch {
-                        toast.error("Payment processing error");
+                        setPayError("Payment error. Please try again.");
                       } finally {
                         setLoading(false);
                       }
@@ -2180,6 +2165,12 @@ export default function GiftWheelClient({
                       </>
                     )}
                   </Button>
+
+                  {payError && (
+                    <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                      {payError}
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-white/60">
                     <span>Secure payment via Stripe • Lifetime access</span>
@@ -2220,8 +2211,9 @@ export default function GiftWheelClient({
 
   /* ------------------------------ Spin logic ------------------------------ */
 
-  const spin = useEvent(async () => {
-    if (spinning || !bet || remaining.length === 0) return;
+  const spin = useEvent(async (betOverride?: SliceKey) => {
+    const betToUse = betOverride ?? bet;
+    if (spinning || !betToUse || remaining.length === 0) return;
 
     const remainingBefore = remaining.slice();
 
@@ -2235,7 +2227,7 @@ export default function GiftWheelClient({
     const chosen = pickRandom(remainingBefore);
     setSpotlight(chosen);
 
-    // ✅ layout fixed (ALL_SLICES) so landing is always consistent
+    // layout fixed (ALL_SLICES) so landing is always consistent
     const { map, step } = buildWheelLayout(ALL_SLICES);
     const seg = map.get(chosen)!;
 
@@ -2345,7 +2337,7 @@ export default function GiftWheelClient({
       navigator.vibrate(isMobile ? [25, 30, 60] : [90, 30, 90]);
     }
 
-    const guessedRight = chosen === bet;
+    const guessedRight = chosen === betToUse;
     setLastResult({ slice: chosen, guessedRight });
 
     if (!lowEnd) {
@@ -2356,11 +2348,10 @@ export default function GiftWheelClient({
     if (guessedRight) audio.success();
     else audio.reveal();
 
-    // ✅ mark opened (instead of removing slice layout)
+    // mark opened
     setOpened((o) => ({ ...o, [chosen]: true }));
 
     const nextRemainingLen = remainingBefore.length - 1;
-
     const revealDelay = lowEnd ? 650 : isMobile ? 1350 : 950;
 
     setTimeout(() => {
@@ -2388,7 +2379,6 @@ export default function GiftWheelClient({
     hasShownFinal.current = false;
 
     resetRotation();
-    toast("Journey reset", { description: "Start fresh with all surprises" });
   });
 
   const closeReveal = useEvent(() => {
@@ -2404,14 +2394,28 @@ export default function GiftWheelClient({
   const shareExperience = useEvent(() => {
     const url = window.location.href;
     const text = `Just experienced this Love Wheel journey! 💝`;
+
+    const flashCopied = () => {
+      setShareCopied(true);
+      if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
+      shareTimerRef.current = window.setTimeout(() => setShareCopied(false), 1200);
+    };
+
     if (navigator.share) {
-      navigator.share({ title: "Love Wheel", text, url });
-    } else {
-      navigator.clipboard
-        .writeText(`${text} ${url}`)
-        .then(() => toast.success("Link copied to clipboard!"))
-        .catch(() => toast.success("Copy this link from the address bar!"));
+      navigator
+        .share({ title: "Love Wheel", text, url })
+        .catch(() => {
+          // ignore
+        });
+      return;
     }
+
+    navigator.clipboard
+      .writeText(`${text} ${url}`)
+      .then(flashCopied)
+      .catch(() => {
+        // if clipboard fails, do nothing (no corner messages)
+      });
   });
 
   React.useEffect(() => {
@@ -2434,13 +2438,7 @@ export default function GiftWheelClient({
           break;
         case "m":
         case "M":
-          setAudioOn((v) => {
-            const next = !v;
-            toast.success(`Sound ${next ? "On" : "Off"}`, {
-              description: "Audio settings updated",
-            });
-            return next;
-          });
+          setAudioOn((v) => !v);
           break;
         case "Escape":
           if (revealOpen) closeReveal();
@@ -2463,17 +2461,7 @@ export default function GiftWheelClient({
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [
-    spin,
-    reset,
-    revealOpen,
-    finalOpen,
-    closeReveal,
-    spinning,
-    bet,
-    setAudioOn,
-    opened,
-  ]);
+  }, [spin, reset, revealOpen, finalOpen, closeReveal, spinning, bet, setAudioOn, opened]);
 
   const soundLabel = mounted ? `Sound ${audioOn ? "On" : "Off"}` : "Sound";
 
@@ -2531,15 +2519,7 @@ export default function GiftWheelClient({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full md:w-auto">
               <button
-                onClick={() =>
-                  setAudioOn((v) => {
-                    const next = !v;
-                    toast.success(`Sound ${next ? "On" : "Off"}`, {
-                      description: "Audio settings updated",
-                    });
-                    return next;
-                  })
-                }
+                onClick={() => setAudioOn((v) => !v)}
                 className={[
                   "px-4 py-2 rounded-full border backdrop-blur-sm flex items-center justify-center gap-2 w-full transition-colors",
                   audioOn
@@ -2569,7 +2549,7 @@ export default function GiftWheelClient({
                 className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90 w-full"
               >
                 <IconShare className="w-4 h-4 mr-2" />
-                Share
+                {shareCopied ? "Copied!" : "Share"}
               </Button>
             </div>
           </div>
@@ -2604,6 +2584,7 @@ export default function GiftWheelClient({
               spinCount={spinCount}
               lowEnd={lowEnd}
               isMobile={isMobile}
+              shareCopied={shareCopied}
             />
           </div>
         </main>

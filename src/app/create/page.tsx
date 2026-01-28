@@ -15,10 +15,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 /**
- * Changes made per your request:
- * ✅ Removed “little messages” (toast.message / toast.success) that were popping on every user action
- * ✅ Photo upload: clicking ANYWHERE in the upload square opens the file picker
- * ✅ Prevent “Choose/Remove” chips from bubbling click and also opening the picker unintentionally
+ * CLEAN redesign inspired by your reference print:
+ * - Minimal top nav
+ * - Clean hero (headline + short sub + 1 primary CTA)
+ * - Right-side premium visual (QR + phone mock)
+ * - Fewer tiles / less noise
+ * - Builder flow preserved (steps, upload, create link, QR, checkout)
+ * - All UI in English
  */
 
 const PRICE_USD = "$4.90";
@@ -42,7 +45,6 @@ function clamp(n: number, min: number, max: number) {
 }
 
 function dateToStableIso(dateStr: string) {
-  // keeps date stable across TZ differences
   return `${dateStr}T12:00:00.000Z`;
 }
 
@@ -72,7 +74,6 @@ function formatDuration(from: Date, to: Date) {
 function prefersVibration() {
   return typeof navigator !== "undefined" && "vibrate" in navigator;
 }
-
 function softHaptic(pattern: number | number[] = 10) {
   if (typeof window === "undefined") return;
   try {
@@ -82,7 +83,9 @@ function softHaptic(pattern: number | number[] = 10) {
   }
 }
 
-/** ===== Icons (memoized) ===== */
+/* =============================================================================
+   Icons (tiny, clean)
+============================================================================= */
 
 const IconHeart = React.memo(function IconHeart({ className }: { className?: string }) {
   return (
@@ -154,11 +157,11 @@ const IconMenu = React.memo(function IconMenu({ className }: { className?: strin
   );
 });
 
-const IconArrowRight = React.memo(function IconArrowRight({ className }: { className?: string }) {
+const IconChevron = React.memo(function IconChevron({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-4 w-4", className)}>
       <path
-        d="M13 7l5 5-5 5m-6-10l5 5-5 5"
+        d="M6 9l6 6 6-6"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
@@ -169,108 +172,155 @@ const IconArrowRight = React.memo(function IconArrowRight({ className }: { class
   );
 });
 
-/** ===== Accent system (fixed Tailwind opacity syntax) ===== */
+/* =============================================================================
+   Accent helpers
+============================================================================= */
 
 function stepAccent(step: StepKey) {
-  if (step === "red")
-    return {
-      dot: "bg-fuchsia-500",
-      ring: "ring-fuchsia-500/[0.20]",
-      glow: "from-fuchsia-500/[0.18] via-pink-500/[0.10] to-violet-500/[0.10]",
-      chip: "hover:border-fuchsia-500/25 hover:text-foreground",
-      bar: "from-fuchsia-500 via-pink-500 to-violet-500",
-      stroke: "border-fuchsia-500/15",
-      icon: "text-fuchsia-400/85",
-    };
   if (step === "green")
     return {
       dot: "bg-emerald-400",
-      ring: "ring-emerald-400/[0.18]",
-      glow: "from-emerald-400/[0.14] via-sky-400/[0.10] to-fuchsia-500/[0.10]",
-      chip: "hover:border-emerald-400/25 hover:text-foreground",
+      ring: "ring-emerald-400/[0.16]",
       bar: "from-emerald-400 via-sky-400 to-fuchsia-500",
-      stroke: "border-emerald-400/15",
-      icon: "text-emerald-300/90",
+      stroke: "border-emerald-400/12",
+      chip: "hover:border-emerald-400/25 hover:text-foreground",
+      icon: "text-emerald-200/90",
     };
   if (step === "photo")
     return {
       dot: "bg-sky-400",
-      ring: "ring-sky-400/[0.18]",
-      glow: "from-sky-400/[0.14] via-violet-500/[0.10] to-fuchsia-500/[0.10]",
-      chip: "hover:border-sky-400/25 hover:text-foreground",
+      ring: "ring-sky-400/[0.16]",
       bar: "from-sky-400 via-violet-500 to-fuchsia-500",
-      stroke: "border-sky-400/15",
-      icon: "text-sky-300/90",
+      stroke: "border-sky-400/12",
+      chip: "hover:border-sky-400/25 hover:text-foreground",
+      icon: "text-sky-200/90",
     };
   if (step === "yellow")
     return {
       dot: "bg-amber-300",
-      ring: "ring-amber-300/[0.18]",
-      glow: "from-amber-300/[0.12] via-fuchsia-500/[0.10] to-sky-400/[0.10]",
-      chip: "hover:border-amber-300/25 hover:text-foreground",
+      ring: "ring-amber-300/[0.16]",
       bar: "from-amber-300 via-fuchsia-500 to-sky-400",
-      stroke: "border-amber-300/15",
+      stroke: "border-amber-300/12",
+      chip: "hover:border-amber-300/25 hover:text-foreground",
       icon: "text-amber-200/90",
     };
   if (step === "confirm")
     return {
       dot: "bg-violet-500",
-      ring: "ring-violet-500/[0.18]",
-      glow: "from-violet-500/[0.14] via-fuchsia-500/[0.10] to-sky-400/[0.10]",
-      chip: "hover:border-violet-500/25 hover:text-foreground",
+      ring: "ring-violet-500/[0.16]",
       bar: "from-violet-500 via-fuchsia-500 to-sky-400",
-      stroke: "border-violet-500/15",
-      icon: "text-violet-300/90",
+      stroke: "border-violet-500/12",
+      chip: "hover:border-violet-500/25 hover:text-foreground",
+      icon: "text-violet-200/90",
     };
 
+  // default / red / hero
   return {
     dot: "bg-fuchsia-500",
-    ring: "ring-white/10",
-    glow: "from-fuchsia-500/[0.18] via-pink-500/[0.10] to-violet-500/[0.10]",
-    chip: "hover:border-white/15 hover:text-foreground",
+    ring: "ring-fuchsia-500/[0.16]",
     bar: "from-fuchsia-500 via-pink-500 to-violet-500",
     stroke: "border-white/10",
-    icon: "text-fuchsia-400/85",
+    chip: "hover:border-fuchsia-500/25 hover:text-foreground",
+    icon: "text-fuchsia-200/90",
   };
 }
 
-/** ===== Background (reduce motion on mobile too) ===== */
+/* =============================================================================
+   Background + hero visual (clean, premium)
+============================================================================= */
 
 function NeonBg({ reduceAll }: { reduceAll: boolean }) {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_20%_20%,rgba(255,255,255,0.06),transparent_55%),radial-gradient(900px_circle_at_85%_25%,rgba(255,64,169,0.10),transparent_55%),radial-gradient(900px_circle_at_70%_85%,rgba(155,81,224,0.10),transparent_60%),linear-gradient(180deg,#050816_0%,#050816_45%,#040513_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_50%_45%,transparent_40%,rgba(0,0,0,0.70)_100%)]" />
-      <div className="absolute inset-0 opacity-[0.08] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:10px_10px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_18%,rgba(255,255,255,0.06),transparent_60%),radial-gradient(900px_circle_at_78%_26%,rgba(255,64,169,0.10),transparent_60%),radial-gradient(900px_circle_at_70%_85%,rgba(155,81,224,0.10),transparent_60%),linear-gradient(180deg,#050816_0%,#050816_55%,#040513_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_50%_40%,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
+      <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:11px_11px]" />
 
       {!reduceAll && (
         <motion.div
-          className="absolute -inset-14 opacity-[0.30]"
-          animate={{ y: [0, -10, 0], x: [0, 6, 0] }}
-          transition={{ duration: 10, ease: "easeInOut", repeat: Infinity }}
+          className="absolute -inset-20 opacity-[0.20]"
+          animate={{ y: [0, -8, 0], x: [0, 6, 0] }}
+          transition={{ duration: 12, ease: "easeInOut", repeat: Infinity }}
         >
-          <div className="absolute left-[10%] top-[25%] h-28 w-28 rounded-full bg-fuchsia-500/10 blur-3xl" />
-          <div className="absolute left-[72%] top-[18%] h-32 w-32 rounded-full bg-violet-500/12 blur-3xl" />
-          <div className="absolute left-[55%] top-[72%] h-36 w-36 rounded-full bg-pink-500/10 blur-3xl" />
+          <div className="absolute left-[12%] top-[18%] h-40 w-40 rounded-full bg-fuchsia-500/10 blur-3xl" />
+          <div className="absolute left-[72%] top-[16%] h-44 w-44 rounded-full bg-violet-500/12 blur-3xl" />
+          <div className="absolute left-[60%] top-[74%] h-52 w-52 rounded-full bg-pink-500/10 blur-3xl" />
         </motion.div>
       )}
     </div>
   );
 }
 
-/** ===== Helpers ===== */
+function HeroVisual({ reduceAll }: { reduceAll: boolean }) {
+  return (
+    <div className="relative mx-auto w-full max-w-[520px]">
+      <div className="absolute -inset-10 rounded-[48px] bg-gradient-to-r from-fuchsia-500/18 via-pink-500/10 to-violet-500/14 blur-3xl" />
+      <div className="relative rounded-[34px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur">
+        {!reduceAll && (
+          <motion.div
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[380px] w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-fuchsia-500/18 via-pink-500/10 to-violet-500/18 blur-2xl"
+            animate={{ rotate: [0, 360] }}
+            transition={{ duration: 18, ease: "linear", repeat: Infinity }}
+          />
+        )}
+
+        <div className="relative">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] text-white/70">
+            <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+            Share by QR
+          </div>
+
+          <div className="mt-3 grid grid-cols-9 gap-[3px] rounded-2xl bg-white p-3 shadow-[0_18px_80px_-40px_rgba(255,64,169,0.55)]">
+            {Array.from({ length: 81 }).map((_, i) => {
+              const on = (i * 17 + 11) % 7 < 3 || (i % 9 === 0 && i % 2 === 0) || (i % 5 === 0 && i % 7 === 0);
+              return <div key={i} className={cx("h-[10px] w-[10px] rounded-[2px]", on ? "bg-black" : "bg-white")} />;
+            })}
+          </div>
+        </div>
+
+        <div className="relative mt-6 flex justify-end">
+          <div className="relative w-[245px] rotate-[10deg] rounded-[28px] border border-white/14 bg-[#0B0E22]/70 p-3 shadow-[0_40px_160px_-90px_rgba(0,0,0,0.95)]">
+            <div className="mb-2 flex items-center justify-between px-2 text-[10px] text-white/55">
+              <span>19:47</span>
+              <span className="h-1 w-8 rounded-full bg-white/15" />
+            </div>
+
+            <div className="overflow-hidden rounded-[18px] border border-white/10 bg-white/5">
+              <div className="h-[210px] bg-[radial-gradient(120px_circle_at_30%_25%,rgba(255,255,255,0.10),transparent_55%),linear-gradient(180deg,rgba(255,64,169,0.10),rgba(155,81,224,0.08))]">
+                <div className="p-3">
+                  <div className="h-2 w-24 rounded-full bg-white/12" />
+                  <div className="mt-2 h-2 w-40 rounded-full bg-white/10" />
+                </div>
+                <div className="mx-3 mt-4 h-[130px] rounded-2xl bg-white/8 border border-white/10" />
+                <div className="px-3 py-3">
+                  <div className="h-2 w-28 rounded-full bg-white/12" />
+                  <div className="mt-2 h-2 w-20 rounded-full bg-white/10" />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-white/55">
+              <span className="h-2 w-2 rounded-full bg-pink-300/80" />
+              <span>spin → reveal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =============================================================================
+   Small UI helpers
+============================================================================= */
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-2 text-xs text-fuchsia-300">
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-2 text-xs text-fuchsia-200">
       {msg}
     </motion.div>
   );
-}
-
-function KeyHint({ children }: { children: React.ReactNode }) {
-  return <div className="text-[11px] text-white/55">{children}</div>;
 }
 
 function GhostChip({
@@ -289,7 +339,6 @@ function GhostChip({
     <button
       type="button"
       onClick={(e) => {
-        // IMPORTANT: stop bubbling so clicks don't trigger parent (photo square click-to-upload)
         e.stopPropagation();
         softHaptic(8);
         onClick?.();
@@ -310,29 +359,29 @@ function GhostChip({
 function MinimalProgress({ step, progress, reduceAll }: { step: StepKey; progress: number; reduceAll: boolean }) {
   const label =
     step === "red"
-      ? "Your line"
+      ? "Line"
       : step === "green"
-      ? "Your date"
+      ? "Date"
       : step === "photo"
-      ? "Your photo"
+      ? "Photo"
       : step === "yellow"
-      ? "Your letter"
+      ? "Letter"
       : "Preview";
 
   const a = stepAccent(step);
 
   return (
-    <div className="mt-4 sm:mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+    <div className="mt-4 sm:mt-5 flex items-center justify-between gap-4">
       <div className="text-xs text-white/60">
         <span className="text-white/85">{label}</span> • {progress}%
       </div>
 
-      <div className="relative h-2 w-full sm:w-44 overflow-hidden rounded-full bg-white/10">
+      <div className="relative h-2 w-44 overflow-hidden rounded-full bg-white/10">
         {!reduceAll && (
           <motion.div
             className={cx("absolute inset-0 opacity-30", "bg-gradient-to-r", a.bar)}
             animate={{ x: ["-30%", "30%", "-30%"] }}
-            transition={{ duration: 3.8, ease: "easeInOut", repeat: Infinity }}
+            transition={{ duration: 3.6, ease: "easeInOut", repeat: Infinity }}
           />
         )}
         <div className={cx("relative h-full rounded-full bg-gradient-to-r transition-all", a.bar)} style={{ width: `${progress}%` }} />
@@ -341,7 +390,9 @@ function MinimalProgress({ step, progress, reduceAll }: { step: StepKey; progres
   );
 }
 
-/** ===== Photo compression for mobile smoothness ===== */
+/* =============================================================================
+   Photo compression for mobile smoothness
+============================================================================= */
 
 const MAX_PHOTO_MB = 8;
 const MAX_BYTES = MAX_PHOTO_MB * 1024 * 1024;
@@ -351,7 +402,6 @@ function isValidImage(file: File) {
 }
 
 async function compressForPreview(file: File, maxSide = 1280, quality = 0.82): Promise<Blob> {
-  // If browser doesn't support createImageBitmap, fallback to original
   if (typeof createImageBitmap === "undefined") return file;
 
   const bitmap = await createImageBitmap(file);
@@ -379,7 +429,9 @@ async function compressForPreview(file: File, maxSide = 1280, quality = 0.82): P
   return blob;
 }
 
-/** ===== InfoModal (scroll ok on mobile) ===== */
+/* =============================================================================
+   InfoModal (clean, reusable)
+============================================================================= */
 
 function InfoModal({
   open,
@@ -438,7 +490,7 @@ function InfoModal({
             <div className="relative p-5 sm:p-7">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70">
                     <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
                     LoveWheel
                   </div>
@@ -449,7 +501,7 @@ function InfoModal({
                   type="button"
                   onClick={() => onOpenChange(false)}
                   className={cx(
-                    "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
+                    "inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 transition",
                     "hover:bg-white/10 hover:text-white active:scale-[0.98]",
                     "focus:outline-none focus:ring-2 focus:ring-white/15"
                   )}
@@ -496,7 +548,9 @@ function InfoModal({
   );
 }
 
-/** ===== QR generator ===== */
+/* =============================================================================
+   QR generator block
+============================================================================= */
 
 function QrCodeBlock({ value }: { value: string }) {
   const [dataUrl, setDataUrl] = React.useState<string | null>(null);
@@ -545,10 +599,8 @@ function QrCodeBlock({ value }: { value: string }) {
     <div className="mt-4 sm:mt-5 rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] sm:text-[11px] text-white/55">Save this QR code before you pay</div>
-          <div className="mt-1 text-xs sm:text-sm text-white/80">
-            Print it, tape it into a letter, or keep it for the perfect delivery moment.
-          </div>
+          <div className="text-[10px] sm:text-[11px] text-white/55">Save this QR code</div>
+          <div className="mt-1 text-xs sm:text-sm text-white/80">Print it or keep it for the perfect delivery moment.</div>
         </div>
         <Button
           type="button"
@@ -573,12 +625,14 @@ function QrCodeBlock({ value }: { value: string }) {
         )}
       </div>
 
-      <div className="mt-2 sm:mt-3 text-[10px] sm:text-[11px] text-white/55">Tip: on iPhone, long-press the QR image and save it.</div>
+      <div className="mt-2 sm:mt-3 text-[10px] sm:text-[11px] text-white/55">Tip: on iPhone, long-press the image to save.</div>
     </div>
   );
 }
 
-/** ===== LinkReady popup (footer sticky on mobile) ===== */
+/* =============================================================================
+   LinkReady popup (clean)
+============================================================================= */
 
 function LinkReadyPopup({
   open,
@@ -636,16 +690,15 @@ function LinkReadyPopup({
             transition={{ duration: reduceAll ? 0.14 : 0.30, ease: "easeOut" }}
           >
             <div className="relative max-h-[85svh] overflow-hidden flex flex-col">
-              {/* Header */}
               <div className="p-4 sm:p-6 border-b border-white/10">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70">
                       <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                      Link ready ✨
+                      Link ready
                     </div>
-                    <div className="mt-2 text-xl sm:text-2xl font-semibold tracking-tight text-white/90">Your moment is live.</div>
-                    <div className="text-xs sm:text-sm text-white/60">Save QR, then pay to unlock the premium reveal.</div>
+                    <div className="mt-2 text-xl sm:text-2xl font-semibold tracking-tight text-white/90">Your gift link is live.</div>
+                    <div className="text-xs sm:text-sm text-white/60">Save the QR, then unlock the premium spin → reveal.</div>
                     <div className="text-[10px] sm:text-[11px] text-white/55">{PRICE_MICROCOPY}</div>
                   </div>
 
@@ -653,7 +706,7 @@ function LinkReadyPopup({
                     type="button"
                     onClick={() => onOpenChange(false)}
                     className={cx(
-                      "inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 backdrop-blur transition",
+                      "inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-white/12 bg-white/6 text-white/70 transition",
                       "hover:bg-white/10 hover:text-white active:scale-[0.98]",
                       "focus:outline-none focus:ring-2 focus:ring-white/15"
                     )}
@@ -664,7 +717,6 @@ function LinkReadyPopup({
                 </div>
               </div>
 
-              {/* Body */}
               <div className="flex-1 overflow-auto p-4 sm:p-6 overscroll-contain" style={{ WebkitOverflowScrolling: "touch" } as any}>
                 <div className="rounded-2xl border border-white/12 bg-white/6 p-3">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -686,13 +738,8 @@ function LinkReadyPopup({
                 </div>
 
                 <QrCodeBlock value={fullLink} />
-
-                <div className="mt-3 text-[10px] sm:text-[11px] text-white/55">
-                  Pro tip: after payment, add a 2–3s "premium" animation before the reveal. It makes the moment land.
-                </div>
               </div>
 
-              {/* Footer sticky */}
               <div className="sticky bottom-0 border-t border-white/10 bg-[#070A1B]/92 backdrop-blur p-3 sm:p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <Button
@@ -723,7 +770,9 @@ function LinkReadyPopup({
   );
 }
 
-/** ===== BuilderModal (real mobile modal: header fixed, body scroll, footer) ===== */
+/* =============================================================================
+   BuilderModal (mobile-safe)
+============================================================================= */
 
 function BuilderModal({
   open,
@@ -787,7 +836,9 @@ function BuilderModal({
   );
 }
 
-/** ===== Confirm preview ===== */
+/* =============================================================================
+   Confirm preview (clean)
+============================================================================= */
 
 function ConfirmPreview({
   red,
@@ -805,66 +856,37 @@ function ConfirmPreview({
   reduceAll: boolean;
 }) {
   const lines = letter.trim() ? letter.trim().split("\n").filter(Boolean).slice(0, 10) : [];
-
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 shadow-sm backdrop-blur">
-        <div className="mb-2 flex items-center justify-between text-xs text-white/60">
-          <span className="inline-flex items-center gap-2">
-            <IconHeart className="h-4 w-4 text-fuchsia-300" />
-            Your line
-          </span>
-          <span className="h-2 w-2 rounded-full bg-fuchsia-400/80" />
-        </div>
-        <div className="text-lg sm:text-2xl font-semibold leading-snug tracking-tight text-white/90">{red.trim() ? `"${red.trim()}"` : "—"}</div>
-        <div className="mt-2 text-[11px] text-white/60">Make it specific. One private detail beats ten generic compliments.</div>
+      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 backdrop-blur">
+        <div className="text-xs text-white/60">Your line</div>
+        <div className="mt-2 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">{red.trim() ? `"${red.trim()}"` : "—"}</div>
       </div>
 
-      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 shadow-sm backdrop-blur">
-        <div className="mb-2 flex items-center justify-between text-xs text-white/60">
-          <span className="inline-flex items-center gap-2">
-            <IconSpark className="h-4 w-4 text-emerald-300" />
-            Time together
-          </span>
-          <span className="h-2 w-2 rounded-full bg-emerald-300/80" />
-        </div>
-        <div className="text-xs text-white/60">Since {startDate || "—"}</div>
+      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 backdrop-blur">
+        <div className="text-xs text-white/60">Time together</div>
+        <div className="mt-2 text-xs text-white/60">Since {startDate || "—"}</div>
         <div className="mt-1 text-2xl sm:text-4xl font-semibold tracking-tight text-white/90">{duration}</div>
-        <div className="mt-2 text-[11px] text-white/60">This number is simple — and it lands every time.</div>
       </div>
 
-      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 shadow-sm backdrop-blur">
-        <div className="mb-3 flex items-center justify-between text-xs text-white/60">
-          <span className="inline-flex items-center gap-2">
-            <IconPhoto className="h-4 w-4 text-sky-300" />
-            The photo
-          </span>
-          <span className="h-2 w-2 rounded-full bg-sky-300/80" />
+      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 backdrop-blur">
+        <div className="text-xs text-white/60">Photo</div>
+        <div className="mt-3">
+          {photoPreviewUrl ? (
+            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/12 bg-white/5">
+              <img src={photoPreviewUrl} alt="Selected photo preview" className="h-[190px] sm:h-[230px] w-full object-cover" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+              <div className="pointer-events-none absolute bottom-2 left-2 text-xs text-white/85">Revealed after payment.</div>
+            </div>
+          ) : (
+            <div className="rounded-xl sm:rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 text-sm text-white/60">—</div>
+          )}
         </div>
-
-        {photoPreviewUrl ? (
-          <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/12 bg-white/5">
-            <img src={photoPreviewUrl} alt="Couple photo preview" className="h-[180px] sm:h-[220px] w-full object-cover" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
-            <div className="pointer-events-none absolute bottom-2 left-2 text-xs text-white/85">Revealed after payment.</div>
-          </div>
-        ) : (
-          <div className="rounded-xl sm:rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 text-sm text-white/60">—</div>
-        )}
-
-        <div className="mt-2 text-xs text-white/60">Tip: pick a photo that instantly brings you back.</div>
       </div>
 
-      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 shadow-sm backdrop-blur">
-        <div className="mb-2 flex items-center justify-between text-xs text-white/60">
-          <span className="inline-flex items-center gap-2">
-            <IconSpark className="h-4 w-4 text-amber-200" />
-            The letter
-          </span>
-          <span className="h-2 w-2 rounded-full bg-amber-200/80" />
-        </div>
-
-        <div className="space-y-2">
+      <div className="rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 backdrop-blur">
+        <div className="text-xs text-white/60">Letter</div>
+        <div className="mt-3 space-y-2">
           {lines.map((l, i) =>
             reduceAll ? (
               <div key={i} className="text-sm leading-relaxed text-white/85">
@@ -883,16 +905,14 @@ function ConfirmPreview({
             )
           )}
         </div>
-
-        <div className="mt-4 text-xs text-white/60">
-          The premium <span className="text-white/80">spin → reveal</span> unlocks after payment.
-        </div>
       </div>
     </div>
   );
 }
 
-/** ===== Main page ===== */
+/* =============================================================================
+   Main page
+============================================================================= */
 
 export default function CreatePage() {
   const reduceMotion = useReducedMotion();
@@ -911,6 +931,7 @@ export default function CreatePage() {
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [created, setCreated] = React.useState<{ id: string; slug: string } | null>(null);
+  const [linkPopupOpen, setLinkPopupOpen] = React.useState(false);
 
   const [typing, setTyping] = React.useState(false);
   const typingTimer = React.useRef<number | null>(null);
@@ -919,19 +940,19 @@ export default function CreatePage() {
   const [photoPreviewUrl, setPhotoPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  const [linkPopupOpen, setLinkPopupOpen] = React.useState(false);
-
-  // Info popup
+  // Info modal
   const [infoOpen, setInfoOpen] = React.useState(false);
   const [infoTitle, setInfoTitle] = React.useState("Info");
   const [infoBody, setInfoBody] = React.useState<React.ReactNode>(null);
   const [infoCta, setInfoCta] = React.useState<{ label?: string; onClick?: () => void }>({});
 
-  // Section refs
+  // Sections
   const faqRef = React.useRef<HTMLDivElement | null>(null);
-  const howItWorksRef = React.useRef<HTMLDivElement | null>(null);
+  const howRef = React.useRef<HTMLDivElement | null>(null);
 
-  // Form (useWatch: less re-render trash than form.watch())
+  // FAQ accordion
+  const [faqOpenKey, setFaqOpenKey] = React.useState<string | null>(null);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { redPhrase: "", relationshipStartAt: "", loveLetter: "" },
@@ -986,7 +1007,6 @@ export default function CreatePage() {
       if (step === "red") await form.trigger("redPhrase");
       if (step === "green") await form.trigger("relationshipStartAt");
       if (step === "yellow") await form.trigger("loveLetter");
-      // removed all “toast.message” micro-notifications
       softHaptic(18);
       return;
     }
@@ -1001,7 +1021,7 @@ export default function CreatePage() {
     await doStepChange(prev);
   }
 
-  // Focus inputs (small delay avoids layout thrash)
+  // Focus inputs
   React.useEffect(() => {
     const t = window.setTimeout(() => {
       if (!builderOpen) return;
@@ -1081,13 +1101,11 @@ export default function CreatePage() {
 
     setPhotoFile(file);
 
-    // IMPORTANT: compress preview for mobile smoothness (removed “Preparing preview…” toast)
     try {
       const blob = await compressForPreview(file, 1280, 0.82);
       const url = URL.createObjectURL(blob);
       setPhotoPreviewUrl(url);
     } catch {
-      // fallback
       const url = URL.createObjectURL(file);
       setPhotoPreviewUrl(url);
     }
@@ -1105,34 +1123,18 @@ export default function CreatePage() {
   );
 
   const quickLine = React.useMemo(
-    () => [
-      "I'd choose you again. Every time.",
-      "You feel like home — even in chaos.",
-      "My favorite plan is still: you.",
-      "You're the calm I didn't know I needed.",
-      "If I could replay one thing, it'd be us.",
-      "I'm proud of us. Always.",
-    ],
+    () => ["I'd choose you again.", "You feel like home.", "My favorite plan is still: you.", "Somehow, it's always you."],
     []
   );
 
   const quickPrompts = React.useMemo(
-    () => [
-      "The moment I knew it was you was…",
-      "My favorite memory with you is…",
-      "Thank you for…",
-      "I love the way you…",
-      "Here's what I promise you…",
-      "If we're old someday, I hope we still…",
-    ],
+    () => ["The moment I knew it was you was…", "Thank you for…", "I love the way you…", "Here's what I promise you…"],
     []
   );
 
   const handleQuickLineClick = React.useCallback(
     (text: string) => {
-      // avoid validation + heavy rerender while tapping chips
       form.setValue("redPhrase", text, { shouldDirty: true, shouldTouch: true, shouldValidate: false });
-      // validate after a tick
       window.setTimeout(() => void form.trigger("redPhrase"), 0);
       pingTyping();
       window.setTimeout(() => redRef.current?.focus(), 40);
@@ -1253,7 +1255,6 @@ export default function CreatePage() {
           LoveWheel costs <span className="text-white font-semibold">{PRICE_USD}</span> to unlock the premium spin → reveal.
         </div>
         <div>One-time payment. No subscription.</div>
-        <div className="text-white/80">After unlock, the reveal becomes part of the surprise.</div>
       </div>,
       "Start creating",
       openBuilder
@@ -1262,146 +1263,48 @@ export default function CreatePage() {
 
   function openQrReader() {
     openInfo(
-      "QR Reader",
+      "QR code",
       <div className="space-y-3">
-        <div>We generate a QR code for your LoveWheel link, so you can print it and place it inside a real letter.</div>
-        <div className="text-white/80">Digital surprise. Physical delivery. Unfair combo.</div>
+        <div>We generate a QR code for your gift link so you can print it and deliver it in a real note.</div>
+        <div className="text-white/80">Digital surprise. Physical delivery.</div>
       </div>,
       "Create a moment",
       openBuilder
     );
   }
 
-  function openFaqItem(which: string) {
-    const map: Record<string, { title: string; body: React.ReactNode }> = {
-      "what-is": {
-        title: "What exactly is LoveWheel?",
-        body: (
-          <div className="space-y-3">
-            <div>
-              It's a private gift page you create in minutes: a short line, a "time together" counter, a photo reveal, and a love
-              letter.
-            </div>
-            <div>Your partner spins the wheel and discovers each piece. It feels like a game, but lands like a memory.</div>
-          </div>
-        ),
-      },
-      "is-it-private": {
-        title: "Is it private?",
-        body: (
-          <div className="space-y-3">
-            <div>Yes. The link is unlisted (only people with the link can open it).</div>
-            <div className="text-white/80">Pro tip: send it at the exact moment you want it to land.</div>
-          </div>
-        ),
-      },
-      "what-if-they-share": {
-        title: "What if they share the link?",
-        body: (
-          <div className="space-y-3">
-            <div>Most people keep it between you two. If you want, you can create a new moment anytime.</div>
-          </div>
-        ),
-      },
-      "does-it-expire": {
-        title: "Does it expire?",
-        body: (
-          <div className="space-y-3">
-            <div>No. The counter keeps running, and the page stays live.</div>
-            <div className="text-white/80">It's a gift that quietly gets better with time.</div>
-          </div>
-        ),
-      },
-    };
-    const item = map[which] ?? { title: "FAQ", body: <div>More answers coming soon.</div> };
-    openInfo(item.title, item.body);
-  }
+  const heroHeadline = "A premium spin → reveal gift.";
+  const heroSub = "One line, one date, one photo, one letter. Create in minutes. Share by link or QR.";
 
-  function openHowItWorksItem(which: string) {
-    const map: Record<string, { title: string; body: React.ReactNode }> = {
-      build: {
-        title: "How it works: Build",
-        body: (
-          <div className="space-y-3">
-            <div>You write four things:</div>
-            <ul className="list-disc pl-5 space-y-1 text-white/80">
-              <li>A short line that hits.</li>
-              <li>The date your story began (we turn it into a live counter).</li>
-              <li>A photo (the "oh wow" reveal).</li>
-              <li>A letter they'll keep.</li>
-            </ul>
-            <div className="text-white/80">You don't need to be poetic. You just need one true detail.</div>
-          </div>
-        ),
-      },
-      share: {
-        title: "How it works: Share",
-        body: (
-          <div className="space-y-3">
-            <div>You get a link instantly. Send it however you want:</div>
-            <ul className="list-disc pl-5 space-y-1 text-white/80">
-              <li>Text message</li>
-              <li>DM</li>
-              <li>A note inside a gift</li>
-              <li>A printed QR code in a letter</li>
-            </ul>
-            <div className="text-white/80">The best delivery is the unexpected one.</div>
-          </div>
-        ),
-      },
-      reveal: {
-        title: "How it works: Reveal",
-        body: (
-          <div className="space-y-3">
-            <div>Your partner spins. Each slice reveals a piece. The premium unlock makes the moment feel cinematic.</div>
-            <div className="text-white/80">A tiny pause before the reveal turns "cute" into "I'm not crying, you are."</div>
-          </div>
-        ),
-      },
-    };
-    const item = map[which] ?? { title: "How it works", body: <div>More details soon.</div> };
-    openInfo(item.title, item.body);
-  }
-
-  const headline =
-    step === "hero"
-      ? "Turn your story into a premium reveal."
-      : step === "red"
-      ? "Write the line that stops them."
-      : step === "green"
-      ? "Pick the day your story began."
-      : step === "photo"
-      ? "Choose the photo that says everything."
-      : step === "yellow"
-      ? "Write the letter they'll keep."
-      : "Preview it like it's already theirs.";
-
-  const sub =
-    step === "hero"
-      ? "One line. One date. One photo. One letter. We turn it into a cinematic spin → reveal moment."
-      : step === "red"
-      ? "Not generic. Not polite. Something only you could say."
-      : step === "green"
-      ? "This powers the live counter — a detail that hits hard."
-      : step === "photo"
-      ? "Pick the most meaningful one. This is the moment they'll remember."
-      : step === "yellow"
-      ? "One memory + one gratitude + one promise. Keep it real."
-      : "If it feels right, create the link — we'll open your unlock popup immediately.";
-
-  const heroPhrases = React.useMemo(
-    () => ["I'd choose you again.", "You feel like home.", "My favorite plan is still: you.", "I'll never stop choosing us.", "Somehow, it's always you."],
-    []
-  );
-  const heroPhrase = heroPhrases[clamp(redLen % heroPhrases.length, 0, heroPhrases.length - 1)];
-
-  // Scene motion
   const scene = {
     initial: reduceAll ? { opacity: 0 } : { opacity: 0, y: 14, filter: "blur(8px)", scale: 0.994 },
     animate: reduceAll ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)", scale: 1 },
     exit: reduceAll ? { opacity: 0 } : { opacity: 0, y: -8, filter: "blur(8px)", scale: 0.994 },
-    transition: { duration: reduceAll ? 0.14 : 0.34, ease: "easeOut" as const },
+    transition: { duration: reduceAll ? 0.14 : 0.30, ease: "easeOut" as const },
   };
+
+  const faqItems = [
+    {
+      key: "what",
+      q: "What is LoveWheel?",
+      a: "A private gift page that reveals your story through a cinematic spin: a short line, a live counter, a photo reveal, and a letter.",
+    },
+    {
+      key: "private",
+      q: "Is it private?",
+      a: "Yes. The link is unlisted — only people with the link can open it.",
+    },
+    {
+      key: "expire",
+      q: "Does it expire?",
+      a: "No. The page stays live and the counter keeps running.",
+    },
+    {
+      key: "payment",
+      q: "What does payment unlock?",
+      a: "It unlocks the premium spin → reveal flow that makes the moment land (the reveal becomes part of the surprise).",
+    },
+  ];
 
   return (
     <div className="min-h-screen text-white overflow-x-hidden">
@@ -1434,22 +1337,34 @@ export default function CreatePage() {
         />
       )}
 
-      {/* Top nav */}
+      {/* Top nav (minimal) */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/85 backdrop-blur supports-[backdrop-filter]:bg-[#050816]/55">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-2xl bg-white/8 ring-1 ring-white/12 flex items-center justify-center">
-              <span className="text-fuchsia-300">
+              <span className="text-fuchsia-200">
                 <IconHeart className="h-4 w-4" />
               </span>
             </div>
             <div className="text-sm font-semibold tracking-tight">
-              Love<span className="text-fuchsia-300">Wheel</span>
+              Love<span className="text-fuchsia-200">Wheel</span>
             </div>
           </div>
 
-          <nav className="hidden items-center gap-4 text-sm text-white/70 md:flex">
-            <button type="button" className="hover:text-white transition" onClick={openPricing}>Pricing</button>
+          <nav className="hidden items-center gap-6 text-sm text-white/70 md:flex">
+            <button type="button" className="hover:text-white transition" onClick={openPricing}>
+              Pricing
+            </button>
+            <button
+              type="button"
+              className="hover:text-white transition"
+              onClick={() => {
+                howRef.current?.scrollIntoView({ behavior: "smooth" });
+                softHaptic(8);
+              }}
+            >
+              How it works
+            </button>
             <button
               type="button"
               className="hover:text-white transition"
@@ -1460,17 +1375,9 @@ export default function CreatePage() {
             >
               FAQ
             </button>
-            <button
-              type="button"
-              className="hover:text-white transition"
-              onClick={() => {
-                howItWorksRef.current?.scrollIntoView({ behavior: "smooth" });
-                softHaptic(8);
-              }}
-            >
-              How it works
+            <button type="button" className="hover:text-white transition" onClick={openQrReader}>
+              QR
             </button>
-            <button type="button" className="hover:text-white transition" onClick={openQrReader}>QR Reader</button>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -1488,7 +1395,24 @@ export default function CreatePage() {
                 openInfo(
                   "Menu",
                   <div className="space-y-2">
-                    <button className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition" onClick={openPricing}>Pricing</button>
+                    <button
+                      className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
+                      onClick={() => {
+                        setInfoOpen(false);
+                        openPricing();
+                      }}
+                    >
+                      Pricing
+                    </button>
+                    <button
+                      className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
+                      onClick={() => {
+                        setInfoOpen(false);
+                        setTimeout(() => howRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
+                      }}
+                    >
+                      How it works
+                    </button>
                     <button
                       className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
                       onClick={() => {
@@ -1502,15 +1426,15 @@ export default function CreatePage() {
                       className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
                       onClick={() => {
                         setInfoOpen(false);
-                        setTimeout(() => howItWorksRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
+                        openQrReader();
                       }}
                     >
-                      How it works
+                      QR
                     </button>
-                    <button className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition" onClick={openQrReader}>QR Reader</button>
                   </div>
                 );
               }}
+              aria-label="Open menu"
             >
               <IconMenu className="h-5 w-5 text-white/70" />
             </button>
@@ -1518,32 +1442,26 @@ export default function CreatePage() {
         </div>
       </header>
 
-      {/* HERO */}
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
-        <div className="grid items-center gap-8 lg:grid-cols-2">
+      {/* HERO (clean) */}
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
+        <div className="grid items-center gap-10 lg:grid-cols-2">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70">
               <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-              Designed to land like a memory
+              Designed to feel premium
             </div>
 
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
-              Surprise{" "}
-              <span className="bg-gradient-to-r from-white via-fuchsia-200 to-pink-200 bg-clip-text text-transparent">
-                your love
-              </span>
+            <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-white/90">
+              {heroHeadline}
             </h1>
 
-            <p className="mt-3 max-w-xl text-white/65 text-sm sm:text-base">
-              Create a live relationship counter, a private line, a photo reveal, and a letter. Share via link or QR — then unlock
-              the premium spin → reveal.
-            </p>
+            <p className="mt-4 max-w-xl text-white/65 text-sm sm:text-base leading-relaxed">{heroSub}</p>
 
-            <div className="mt-5 flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2">
+            <div className="mt-6 flex flex-col sm:flex-row gap-2 sm:items-center">
               <Button
                 type="button"
                 onClick={openBuilder}
-                className="h-11 rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_20px_80px_-40px_rgba(255,64,169,0.75)] hover:opacity-95 w-full sm:w-auto"
+                className="h-11 rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_20px_80px_-40px_rgba(255,64,169,0.70)] hover:opacity-95"
               >
                 Start creating
               </Button>
@@ -1551,172 +1469,139 @@ export default function CreatePage() {
               <Button
                 type="button"
                 variant="secondary"
-                className="h-11 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 w-full sm:w-auto text-sm px-4"
-                onClick={() =>
-                  openInfo(
-                    "Quick tip",
-                    <div className="space-y-3">
-                      <div>Start with one private detail.</div>
-                      <div className="text-white/80">Specific beats poetic — every time.</div>
-                    </div>,
-                    "Start creating",
-                    openBuilder
-                  )
-                }
+                className="h-11 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 px-5"
+                onClick={openPricing}
               >
-                Quick tip
+                Pricing
               </Button>
-
-              <button
-                type="button"
-                onClick={openPricing}
-                className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-[11px] text-white/70 backdrop-blur transition hover:bg-white/10 w-full sm:w-auto justify-center"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                {PRICE_MICROCOPY}
-              </button>
             </div>
 
-            <div className="mt-6 grid max-w-xl gap-2 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={() =>
-                  openInfo(
-                    "How long does it take?",
-                    <div className="space-y-3">
-                      <div>Usually 2–3 minutes.</div>
-                      <div className="text-white/80">The best version is the honest one.</div>
-                    </div>,
-                    "Start now",
-                    openBuilder
-                  )
-                }
-                className="text-left rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4 backdrop-blur hover:bg-white/10 transition"
-              >
-                <div className="text-[11px] text-white/55">Takes</div>
-                <div className="mt-1 text-base sm:text-lg font-semibold text-white/90">2–3 min</div>
-              </button>
+            <div className="mt-3 text-[11px] text-white/55">{PRICE_MICROCOPY}</div>
 
-              <button
-                type="button"
-                onClick={openQrReader}
-                className="text-left rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4 backdrop-blur hover:bg-white/10 transition"
-              >
-                <div className="text-[11px] text-white/55">Share</div>
-                <div className="mt-1 text-base sm:text-lg font-semibold text-white/90">Link + QR</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={openPricing}
-                className="text-left rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4 backdrop-blur hover:bg-white/10 transition"
-              >
-                <div className="text-[11px] text-white/55">Unlock</div>
-                <div className="mt-1 text-base sm:text-lg font-semibold text-white/90">{PRICE_USD}</div>
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile preview (lightweight) */}
-          <div className="lg:hidden rounded-3xl border border-white/12 bg-white/6 p-4 backdrop-blur">
-            <div className="text-sm text-white/70 mb-2">Preview</div>
-            <div className="text-2xl font-semibold text-white/90">"{heroPhrase}"</div>
-            <div className="text-xs text-white/55 mt-2">Build → Share → Pay → Reveal</div>
-          </div>
-
-          {/* Desktop placeholder */}
-          <div className="hidden lg:block rounded-[34px] border border-white/12 bg-white/6 p-6 backdrop-blur">
-            <div className="text-xs text-white/60">Hero mock</div>
-            <div className="mt-2 text-2xl font-semibold text-white/90">"{heroPhrase}"</div>
-            <div className="mt-3 text-sm text-white/65">Keep desktop fancy. Keep mobile fast.</div>
-          </div>
-        </div>
-
-        <div className="mt-8 flex items-center justify-center gap-6 text-white/55">
-          <div className="hidden sm:block text-xs">+723 happy couples</div>
-        </div>
-
-        {/* Pricing/QR tiles */}
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <button
-            type="button"
-            onClick={openPricing}
-            className="text-left rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 backdrop-blur transition hover:bg-white/10"
-          >
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
-              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-              Pricing
-            </div>
-            <div className="mt-3 text-xl sm:text-2xl font-semibold text-white/90">{PRICE_USD} to unlock</div>
-            <div className="mt-2 text-sm text-white/65">One-time. No subscription.</div>
-          </button>
-
-          <button
-            type="button"
-            onClick={openQrReader}
-            className="text-left rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6 backdrop-blur transition hover:bg-white/10"
-          >
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-              QR Reader
-            </div>
-            <div className="mt-3 text-xl sm:text-2xl font-semibold text-white/90">Print it. Seal it. Deliver it.</div>
-            <div className="mt-2 text-sm text-white/65">We generate a QR code for your link.</div>
-          </button>
-        </div>
-
-        {/* FAQ */}
-        <div ref={faqRef} className="mt-8 sm:mt-10 scroll-mt-24">
-          <div className="text-lg sm:text-xl font-semibold text-white/90">FAQ</div>
-          <div className="mt-3 grid gap-2 sm:gap-3 md:grid-cols-2">
-            {[
-              { id: "what-is", q: "What exactly is LoveWheel?" },
-              { id: "is-it-private", q: "Is it private?" },
-              { id: "what-if-they-share", q: "What if they share the link?" },
-              { id: "does-it-expire", q: "Does it expire?" },
-            ].map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => openFaqItem(item.id)}
-                className="text-left rounded-xl sm:rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4 backdrop-blur transition hover:bg-white/10"
-              >
-                <div className="text-sm font-semibold text-white/90">{item.q}</div>
-                <div className="mt-1 text-xs text-white/60">Click to open the full answer.</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* How it works */}
-        <div ref={howItWorksRef} className="mt-8 sm:mt-10 scroll-mt-24">
-          <div className="text-lg sm:text-xl font-semibold text-white/90">How it works</div>
-          <div className="mt-3 grid gap-2 sm:gap-3 md:grid-cols-3">
-            {[
-              { id: "build", title: "Build", desc: "Write the four pieces that make it real." },
-              { id: "share", title: "Share", desc: "Send by link or a printed QR in a letter." },
-              { id: "reveal", title: "Reveal", desc: "They spin. They discover. It lands." },
-            ].map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => openHowItWorksItem(item.id)}
-                className="text-left rounded-xl sm:rounded-2xl border border-white/12 bg-white/6 p-4 backdrop-blur transition hover:bg-white/10"
-              >
-                <div className="inline-flex items-center gap-2 text-xs text-white/60">
-                  <IconSpark className="h-4 w-4 text-white/55" />
-                  Step
+            {/* Minimal highlights */}
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              {[
+                { title: "Build", desc: "Write four pieces." },
+                { title: "Share", desc: "Link or QR." },
+                { title: "Reveal", desc: "Spin → discover." },
+              ].map((x) => (
+                <div key={x.title} className="rounded-2xl border border-white/10 bg-white/6 p-4 backdrop-blur">
+                  <div className="text-sm font-semibold text-white/90">{x.title}</div>
+                  <div className="mt-1 text-xs text-white/60">{x.desc}</div>
                 </div>
-                <div className="mt-2 text-base sm:text-lg font-semibold text-white/90">{item.title}</div>
-                <div className="mt-1 text-sm text-white/65">{item.desc}</div>
-                <div className="mt-2 text-xs text-white/60">Click to open details.</div>
-              </button>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:justify-self-end">
+            <HeroVisual reduceAll={reduceAll} />
           </div>
         </div>
+
+        {/* How it works (clean section) */}
+        <section ref={howRef} className="mt-14 sm:mt-16 scroll-mt-24">
+          <div className="text-sm font-semibold text-white/85">How it works</div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/6 p-5 backdrop-blur">
+              <div className="inline-flex items-center gap-2 text-xs text-white/60">
+                <IconHeart className="text-fuchsia-200" />
+                Step 1
+              </div>
+              <div className="mt-2 text-base font-semibold text-white/90">Write</div>
+              <div className="mt-2 text-sm text-white/65 leading-relaxed">
+                A line, a date, a photo, and a letter — simple and personal.
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/6 p-5 backdrop-blur">
+              <div className="inline-flex items-center gap-2 text-xs text-white/60">
+                <IconLink className="text-sky-200" />
+                Step 2
+              </div>
+              <div className="mt-2 text-base font-semibold text-white/90">Share</div>
+              <div className="mt-2 text-sm text-white/65 leading-relaxed">
+                Send the link, or print a QR code and deliver it in a real note.
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/6 p-5 backdrop-blur">
+              <div className="inline-flex items-center gap-2 text-xs text-white/60">
+                <IconSpark className="text-violet-200" />
+                Step 3
+              </div>
+              <div className="mt-2 text-base font-semibold text-white/90">Reveal</div>
+              <div className="mt-2 text-sm text-white/65 leading-relaxed">
+                They spin the wheel and discover each part — premium unlock makes it cinematic.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ (accordion, clean) */}
+        <section ref={faqRef} className="mt-14 sm:mt-16 scroll-mt-24">
+          <div className="text-sm font-semibold text-white/85">FAQ</div>
+          <div className="mt-4 space-y-2">
+            {faqItems.map((item) => {
+              const open = faqOpenKey === item.key;
+              return (
+                <div key={item.key} className="rounded-2xl border border-white/10 bg-white/6 backdrop-blur">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-4 px-4 sm:px-5 py-4 text-left"
+                    onClick={() => {
+                      setFaqOpenKey((prev) => (prev === item.key ? null : item.key));
+                      softHaptic(6);
+                    }}
+                  >
+                    <div className="text-sm font-semibold text-white/90">{item.q}</div>
+                    <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18 }}>
+                      <IconChevron className="text-white/60" />
+                    </motion.div>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {open && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: "easeOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 sm:px-5 pb-4 text-sm text-white/70 leading-relaxed">{item.a}</div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row gap-2 sm:items-center">
+            <Button
+              type="button"
+              onClick={openBuilder}
+              className="h-11 rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95"
+            >
+              Create your gift
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 px-5"
+              onClick={openQrReader}
+            >
+              How QR works
+            </Button>
+          </div>
+        </section>
+
+        {/* Footer (minimal) */}
+        <footer className="mt-16 pb-10 text-center text-xs text-white/50">
+          <div>LoveWheel · {PRICE_MICROCOPY}</div>
+        </footer>
       </main>
 
-      {/* BUILDER MODAL */}
+      {/* BUILDER MODAL (same flow, cleaner spacing) */}
       <BuilderModal
         open={builderOpen}
         onOpenChange={(v) => {
@@ -1730,12 +1615,32 @@ export default function CreatePage() {
         <div className="px-4 sm:px-6 py-4 border-b border-white/10">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70">
                 <span className={cx("h-1.5 w-1.5 rounded-full", a.dot)} />
-                Premium builder
+                Builder
               </div>
-              <h2 className="mt-3 text-xl sm:text-2xl font-semibold tracking-tight text-white/90">{headline}</h2>
-              <p className="mt-2 text-xs sm:text-sm text-white/60">{sub}</p>
+              <h2 className="mt-3 text-xl sm:text-2xl font-semibold tracking-tight text-white/90">
+                {step === "red"
+                  ? "Write the line."
+                  : step === "green"
+                  ? "Pick the date."
+                  : step === "photo"
+                  ? "Choose the photo."
+                  : step === "yellow"
+                  ? "Write the letter."
+                  : "Preview."}
+              </h2>
+              <p className="mt-2 text-xs sm:text-sm text-white/60">
+                {step === "red"
+                  ? "Short, specific, real."
+                  : step === "green"
+                  ? "This powers the live counter."
+                  : step === "photo"
+                  ? "This is the reveal moment."
+                  : step === "yellow"
+                  ? "One memory, one gratitude, one promise."
+                  : "If it feels right, create the link."}
+              </p>
             </div>
 
             <button
@@ -1755,47 +1660,35 @@ export default function CreatePage() {
         <div className="flex-1 overflow-auto px-4 sm:px-6 py-4 overscroll-contain" style={{ WebkitOverflowScrolling: "touch" } as any}>
           <div className="relative">
             {!reduceAll && typing && (
-              <div className="pointer-events-none absolute -inset-2 rounded-[34px] blur-2xl bg-gradient-to-r from-fuchsia-500/[0.12] via-pink-500/[0.08] to-violet-500/[0.08]" />
+              <div className="pointer-events-none absolute -inset-2 rounded-[34px] blur-2xl bg-gradient-to-r from-fuchsia-500/[0.10] via-pink-500/[0.06] to-violet-500/[0.06]" />
             )}
 
             <div className={cx("relative rounded-[24px] sm:rounded-[32px] ring-1", a.ring)}>
-              <Card className="border border-white/12 bg-white/6 shadow-[0_30px_140px_-80px_rgba(0,0,0,0.9)] backdrop-blur">
+              <Card className="border border-white/12 bg-white/6 shadow-[0_30px_140px_-90px_rgba(0,0,0,0.95)] backdrop-blur">
                 <CardContent className="relative p-4 sm:p-6">
                   <AnimatePresence mode="wait">
                     {/* STEP: RED */}
                     {step === "red" && (
                       <motion.div key="red" {...scene} className="space-y-4 sm:space-y-6">
-                        <div className="flex items-end justify-between gap-3">
-                          <div>
-                            <div className="text-xs text-white/55">Step 1 of 4</div>
-                            <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Write the line that stops them.</div>
-                            <div className="mt-2 text-xs sm:text-sm text-white/60">
-                              Aim for <span className="text-white/85">specific</span>, not perfect.
-                            </div>
-                          </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-white/90">Your line</div>
                           <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
                             <span className="text-white/85">{redLen}</span>/80
                           </div>
                         </div>
 
                         <div className={cx("rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6", a.stroke)}>
-                          <Label htmlFor="redPhrase" className="text-xs text-white/60">Your line</Label>
+                          <Label htmlFor="redPhrase" className="text-xs text-white/60">
+                            Write something only you could say.
+                          </Label>
 
                           <div className="relative mt-2">
-                            {!reduceAll && (
-                              <motion.div
-                                className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-r from-fuchsia-500/[0.12] via-pink-500/[0.08] to-violet-500/[0.08] blur-xl"
-                                animate={{ opacity: [0.10, 0.20, 0.10] }}
-                                transition={{ duration: 2.8, ease: "easeInOut", repeat: Infinity }}
-                              />
-                            )}
-
                             {(() => {
                               const { ref: rhfRef, ...redReg } = form.register("redPhrase");
                               return (
                                 <Input
                                   id="redPhrase"
-                                  placeholder='e.g. "You feel like home — even in chaos."'
+                                  placeholder='e.g. "You feel like home."'
                                   {...redReg}
                                   ref={(el) => {
                                     rhfRef(el);
@@ -1828,19 +1721,17 @@ export default function CreatePage() {
                     {/* STEP: GREEN */}
                     {step === "green" && (
                       <motion.div key="green" {...scene} className="space-y-4 sm:space-y-6">
-                        <div className="flex items-end justify-between gap-3">
-                          <div>
-                            <div className="text-xs text-white/55">Step 2 of 4</div>
-                            <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Pick the day it began.</div>
-                            <div className="mt-2 text-xs sm:text-sm text-white/60">This powers the live counter.</div>
-                          </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-white/90">Start date</div>
                           <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
                             <span className="text-white/85">{duration}</span>
                           </div>
                         </div>
 
                         <div className={cx("rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6", a.stroke)}>
-                          <Label htmlFor="relationshipStartAt" className="text-xs text-white/60">Relationship start date</Label>
+                          <Label htmlFor="relationshipStartAt" className="text-xs text-white/60">
+                            Pick the day your story began.
+                          </Label>
 
                           <div className="relative mt-2">
                             {(() => {
@@ -1873,12 +1764,8 @@ export default function CreatePage() {
                     {/* STEP: PHOTO */}
                     {step === "photo" && (
                       <motion.div key="photo" {...scene} className="space-y-4 sm:space-y-6">
-                        <div className="flex items-end justify-between gap-3">
-                          <div>
-                            <div className="text-xs text-white/55">Step 3 of 4</div>
-                            <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Choose the photo that says everything.</div>
-                            <div className="mt-2 text-xs sm:text-sm text-white/60">This is the reveal. Pick the most meaningful one.</div>
-                          </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-white/90">Photo</div>
                           <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
                             <span className="text-white/85">{photoFile ? "Selected" : "Missing"}</span>
                           </div>
@@ -1887,9 +1774,10 @@ export default function CreatePage() {
                         <div className={cx("rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6", a.stroke)}>
                           <div className="flex items-center justify-between gap-2">
                             <div>
-                              <div className="text-sm font-semibold tracking-tight text-white/90">Couple photo</div>
+                              <div className="text-sm font-semibold tracking-tight text-white/90">Choose a photo</div>
                               <div className="mt-1 text-xs text-white/55">JPG/PNG/WebP • up to {MAX_PHOTO_MB}MB</div>
                             </div>
+
                             <div className="flex items-center gap-2">
                               <GhostChip step={step} icon={<IconPhoto className="h-4 w-4" />} onClick={() => fileInputRef.current?.click()}>
                                 Choose
@@ -1904,7 +1792,7 @@ export default function CreatePage() {
 
                           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
 
-                          {/* ✅ CLICK ANYWHERE to open picker */}
+                          {/* click anywhere */}
                           <div
                             role="button"
                             tabIndex={0}
@@ -1933,16 +1821,16 @@ export default function CreatePage() {
                           >
                             {!photoPreviewUrl ? (
                               <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-                                <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70 backdrop-blur">
-                                  <IconPhoto className="h-4 w-4 text-sky-300" />
-                                  Click anywhere, drag & drop, or use “Choose”
+                                <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70">
+                                  <IconPhoto className="h-4 w-4 text-sky-200" />
+                                  Click, drag & drop, or choose
                                 </div>
-                                <div className="max-w-sm text-xs text-white/60">Pick the photo that makes your chest feel warm.</div>
+                                <div className="max-w-sm text-xs text-white/60">Pick one that instantly brings you back.</div>
                               </div>
                             ) : (
                               <div className="space-y-3">
                                 <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/12 bg-white/5">
-                                  <img src={photoPreviewUrl} alt="Selected couple photo preview" className="h-[220px] w-full object-cover" />
+                                  <img src={photoPreviewUrl} alt="Selected photo preview" className="h-[220px] w-full object-cover" />
                                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
                                   <div className="pointer-events-none absolute bottom-2 left-2 text-xs text-white/85">Revealed after payment.</div>
                                 </div>
@@ -1963,19 +1851,17 @@ export default function CreatePage() {
                     {/* STEP: YELLOW */}
                     {step === "yellow" && (
                       <motion.div key="yellow" {...scene} className="space-y-4 sm:space-y-6">
-                        <div className="flex items-end justify-between gap-3">
-                          <div>
-                            <div className="text-xs text-white/55">Step 4 of 4</div>
-                            <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Write the letter they'll keep.</div>
-                            <div className="mt-2 text-xs sm:text-sm text-white/60">One memory + one gratitude + one promise. Keep it real.</div>
-                          </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-white/90">Letter</div>
                           <div className="rounded-2xl border border-white/12 bg-white/6 px-3 py-2 text-xs text-white/60">
                             <span className="text-white/85">{letterLen}</span>/4000
                           </div>
                         </div>
 
                         <div className={cx("rounded-2xl sm:rounded-3xl border border-white/12 bg-white/6 p-4 sm:p-6", a.stroke)}>
-                          <Label htmlFor="loveLetter" className="text-xs text-white/60">Your letter</Label>
+                          <Label htmlFor="loveLetter" className="text-xs text-white/60">
+                            Keep it honest.
+                          </Label>
 
                           <div className="relative mt-2">
                             {(() => {
@@ -2022,19 +1908,25 @@ export default function CreatePage() {
                       <motion.div key="confirm" {...scene} className="space-y-4 sm:space-y-6">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="text-xs text-white/55">Preview</div>
-                            <div className="mt-1 text-lg sm:text-2xl font-semibold tracking-tight text-white/90">Preview it like it's already theirs.</div>
-                            <div className="mt-2 text-xs sm:text-sm text-white/60">If it hits, create the link.</div>
+                            <div className="text-sm font-semibold text-white/90">Preview</div>
                             <button type="button" onClick={openPricing} className="mt-2 text-[11px] text-white/55 hover:text-white transition">
                               {PRICE_MICROCOPY}
                             </button>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            <GhostChip step={step} onClick={() => void doStepChange("red")} icon={<IconHeart className="h-4 w-4" />}>Edit line</GhostChip>
-                            <GhostChip step={step} onClick={() => void doStepChange("green")} icon={<IconSpark className="h-4 w-4" />}>Edit date</GhostChip>
-                            <GhostChip step={step} onClick={() => void doStepChange("photo")} icon={<IconPhoto className="h-4 w-4" />}>Edit photo</GhostChip>
-                            <GhostChip step={step} onClick={() => void doStepChange("yellow")} icon={<IconSpark className="h-4 w-4" />}>Edit letter</GhostChip>
+                            <GhostChip step={step} onClick={() => void doStepChange("red")} icon={<IconHeart className="h-4 w-4" />}>
+                              Edit line
+                            </GhostChip>
+                            <GhostChip step={step} onClick={() => void doStepChange("green")} icon={<IconSpark className="h-4 w-4" />}>
+                              Edit date
+                            </GhostChip>
+                            <GhostChip step={step} onClick={() => void doStepChange("photo")} icon={<IconPhoto className="h-4 w-4" />}>
+                              Edit photo
+                            </GhostChip>
+                            <GhostChip step={step} onClick={() => void doStepChange("yellow")} icon={<IconSpark className="h-4 w-4" />}>
+                              Edit letter
+                            </GhostChip>
                           </div>
                         </div>
 
@@ -2055,7 +1947,7 @@ export default function CreatePage() {
           </div>
         </div>
 
-        {/* Footer sticky controls */}
+        {/* Footer controls */}
         <div className="sticky bottom-0 border-t border-white/10 bg-[#070A1B]/92 backdrop-blur px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between gap-2">
             <Button
@@ -2069,26 +1961,23 @@ export default function CreatePage() {
 
             <div className="flex items-center gap-2">
               {step !== "confirm" ? (
-                <>
-                  {!isMobile && <KeyHint><span className="font-mono">Enter</span> to continue</KeyHint>}
-                  <Button
-                    type="button"
-                    onClick={next}
-                    disabled={!canAdvanceFrom(step)}
-                    className={cx(
-                      "rounded-full px-5 sm:px-6 text-white hover:opacity-95 disabled:opacity-60 text-sm py-2",
-                      step === "red"
-                        ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500"
-                        : step === "green"
-                        ? "bg-gradient-to-r from-emerald-400 via-sky-400 to-fuchsia-500"
-                        : step === "photo"
-                        ? "bg-gradient-to-r from-sky-400 via-violet-500 to-fuchsia-500"
-                        : "bg-gradient-to-r from-amber-300 via-fuchsia-500 to-sky-400 text-[#050816]"
-                    )}
-                  >
-                    Continue
-                  </Button>
-                </>
+                <Button
+                  type="button"
+                  onClick={next}
+                  disabled={!canAdvanceFrom(step)}
+                  className={cx(
+                    "rounded-full px-5 sm:px-6 text-white hover:opacity-95 disabled:opacity-60 text-sm py-2",
+                    step === "red"
+                      ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500"
+                      : step === "green"
+                      ? "bg-gradient-to-r from-emerald-400 via-sky-400 to-fuchsia-500"
+                      : step === "photo"
+                      ? "bg-gradient-to-r from-sky-400 via-violet-500 to-fuchsia-500"
+                      : "bg-gradient-to-r from-amber-300 via-fuchsia-500 to-sky-400 text-[#050816]"
+                  )}
+                >
+                  Continue
+                </Button>
               ) : (
                 <div className="flex flex-col items-end gap-1">
                   <Button
@@ -2100,14 +1989,14 @@ export default function CreatePage() {
                     {isSubmitting ? "Creating…" : "Create gift link"}
                   </Button>
                   <button type="button" onClick={openPricing} className="text-[11px] text-white/55 hover:text-white transition">
-                    You'll pay to unlock next · <span className="text-white/85">{PRICE_USD}</span>
+                    Pay to unlock next · <span className="text-white/85">{PRICE_USD}</span>
                   </button>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="mt-2 text-center text-[11px] text-white/55">You're not filling a form — you're setting up a moment.</div>
+          <div className="mt-2 text-center text-[11px] text-white/55">Clean inputs. Big impact.</div>
         </div>
       </BuilderModal>
     </div>
