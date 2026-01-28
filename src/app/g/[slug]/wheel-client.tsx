@@ -79,7 +79,8 @@ const SLICE_PUBLIC: Record<
     vibe: "Visual memory",
     emoji: "📸",
     briefDesc: "Cherished photo memory",
-    whatYouGet: "You'll see a special photo of the couple that captures their love story in a single moment.",
+    whatYouGet:
+      "You'll see a special photo of the couple that captures their love story in a single moment.",
   },
   red: {
     colorName: "Rose",
@@ -88,7 +89,8 @@ const SLICE_PUBLIC: Record<
     vibe: "Heartfelt whisper",
     emoji: "💖",
     briefDesc: "Special phrase for you",
-    whatYouGet: "You'll discover a unique love phrase or quote that holds special meaning for this relationship.",
+    whatYouGet:
+      "You'll discover a unique love phrase or quote that holds special meaning for this relationship.",
   },
   green: {
     colorName: "Emerald",
@@ -97,7 +99,8 @@ const SLICE_PUBLIC: Record<
     vibe: "Growing love",
     emoji: "⏳",
     briefDesc: "Relationship timeline",
-    whatYouGet: "You'll see how long this couple has been together, with a beautiful timeline breakdown of their journey.",
+    whatYouGet:
+      "You'll see how long this couple has been together, with a beautiful timeline breakdown of their journey.",
   },
   yellow: {
     colorName: "Gold",
@@ -106,7 +109,8 @@ const SLICE_PUBLIC: Record<
     vibe: "Deep connection",
     emoji: "💌",
     briefDesc: "Personal love letter",
-    whatYouGet: "You'll read a heartfelt love letter written from the heart, expressing deep feelings and memories.",
+    whatYouGet:
+      "You'll read a heartfelt love letter written from the heart, expressing deep feelings and memories.",
   },
 };
 
@@ -132,7 +136,11 @@ function msToParts(ms: number) {
 }
 
 /** Avoid hydration mismatch: fixed locale + stable formatting */
-const dateFmt = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "2-digit" });
+const dateFmt = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+});
 function formatDate(d: Date) {
   try {
     return dateFmt.format(d);
@@ -177,7 +185,10 @@ function buildWheelLayout(keys: SliceKey[]) {
   const n = safe.length;
   const step = 360 / n;
 
-  const map = new Map<SliceKey, { start: number; end: number; center: number; index: number }>();
+  const map = new Map<
+    SliceKey,
+    { start: number; end: number; center: number; index: number }
+  >();
   safe.forEach((k, i) => {
     const start = i * step;
     const end = (i + 1) * step;
@@ -198,7 +209,10 @@ function buildConicGradient(keys: SliceKey[]) {
   return `conic-gradient(from 0deg, ${stops.join(",")})`;
 }
 
-function angleFromTopClockwiseFromEvent(e: React.MouseEvent, el: HTMLElement): number {
+function angleFromTopClockwiseFromEvent(
+  e: React.MouseEvent,
+  el: HTMLElement
+): number {
   const rect = el.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
@@ -272,7 +286,7 @@ function useLowEndMode() {
   return low;
 }
 
-/** ✅ “mobile feel”: mesmo em iPhone top, deixa a roleta mais cinematográfica no fim */
+/** ✅ “mobile feel” */
 function useIsMobile() {
   const [mobile, setMobile] = React.useState(false);
 
@@ -322,7 +336,8 @@ function normalizeGift(raw: GiftLike): Gift {
 
   const id = findProp(raw, ["id", "giftId", "uid"]) || "";
   const slug = findProp(raw, ["slug", "giftSlug", "urlSlug"]) || "";
-  const status = (findProp(raw, ["status", "giftStatus", "state"]) || "draft") as Gift["status"];
+  const status = (findProp(raw, ["status", "giftStatus", "state"]) ||
+    "draft") as Gift["status"];
 
   const couple_photo_url =
     findProp(raw, [
@@ -338,9 +353,19 @@ function normalizeGift(raw: GiftLike): Gift {
     ]) || null;
 
   const love_letter =
-    findProp(raw, ["love_letter", "loveLetter", "letter", "loveletter", "message", "text", "content"]) || "";
+    findProp(raw, [
+      "love_letter",
+      "loveLetter",
+      "letter",
+      "loveletter",
+      "message",
+      "text",
+      "content",
+    ]) || "";
 
-  const red_phrase = findProp(raw, ["red_phrase", "redPhrase", "phrase", "tagline", "quote"]) || "";
+  const red_phrase =
+    findProp(raw, ["red_phrase", "redPhrase", "phrase", "tagline", "quote"]) ||
+    "";
 
   const relationship_start_at =
     findProp(raw, [
@@ -388,7 +413,11 @@ function GlowBg({ lowEnd }: { lowEnd: boolean }) {
           <m.div
             className="absolute -inset-14 opacity-[0.30]"
             animate={{ y: [0, -10, 0], x: [0, 6, 0] }}
-            transition={{ duration: 10, ease: "easeInOut", repeat: Infinity }}
+            transition={{
+              duration: 10,
+              ease: "easeInOut",
+              repeat: Infinity,
+            }}
           >
             <div className="absolute left-[10%] top-[25%] h-32 w-32 rounded-full bg-fuchsia-500/15 blur-3xl" />
             <div className="absolute left-[72%] top-[18%] h-36 w-36 rounded-full bg-violet-500/18 blur-3xl" />
@@ -529,11 +558,20 @@ function useTickAudio(enabled: boolean, lowEnd: boolean) {
   const lastRef = React.useRef(0);
 
   const play = React.useCallback(
-    (kind: "tick" | "land" | "success" | "reveal" | "spin_start" | "segment_pass") => {
+    (
+      kind:
+        | "tick"
+        | "land"
+        | "success"
+        | "reveal"
+        | "spin_start"
+        | "segment_pass"
+    ) => {
       if (!enabled || prefersReducedMotion || lowEnd) return;
 
       try {
-        const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as
+        const AudioCtx = (window.AudioContext ||
+          (window as any).webkitAudioContext) as
           | typeof AudioContext
           | undefined;
         if (!AudioCtx) return;
@@ -693,14 +731,32 @@ function ConfettiExplosion({
 /* =============================================================================
    Story Intro (keep, but lighter)
 ============================================================================= */
-function StoryIntro({ onComplete, lowEnd }: { onComplete: () => void; lowEnd: boolean }) {
+function StoryIntro({
+  onComplete,
+  lowEnd,
+}: {
+  onComplete: () => void;
+  lowEnd: boolean;
+}) {
   const [step, setStep] = React.useState(0);
 
   const steps = React.useMemo(
     () => [
-      { emoji: "🎁", title: "A Personalized Experience", text: "This isn't just a wheel—it's a journey through your story." },
-      { emoji: "💝", title: "Four Heartfelt Surprises", text: "Each color hides something meaningful." },
-      { emoji: "🎯", title: "Choose a Color", text: "Pick what speaks to you, then spin." },
+      {
+        emoji: "🎁",
+        title: "A Personalized Experience",
+        text: "This isn't just a wheel—it's a journey through your story.",
+      },
+      {
+        emoji: "💝",
+        title: "Four Heartfelt Surprises",
+        text: "Each color hides something meaningful.",
+      },
+      {
+        emoji: "🎯",
+        title: "Choose a Color",
+        text: "Pick what speaks to you, then spin.",
+      },
       { emoji: "✨", title: "Ready?", text: "Let’s begin." },
     ],
     []
@@ -734,8 +790,12 @@ function StoryIntro({ onComplete, lowEnd }: { onComplete: () => void; lowEnd: bo
           <div className="rounded-3xl border border-white/15 bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-2xl p-6 sm:p-8 text-center">
             <div className="space-y-5">
               <div className="text-5xl">{steps[step].emoji}</div>
-              <h3 className="text-xl sm:text-2xl font-semibold text-white/95">{steps[step].title}</h3>
-              <p className="text-white/70 text-sm sm:text-base">{steps[step].text}</p>
+              <h3 className="text-xl sm:text-2xl font-semibold text-white/95">
+                {steps[step].title}
+              </h3>
+              <p className="text-white/70 text-sm sm:text-base">
+                {steps[step].text}
+              </p>
 
               <div className="pt-2">
                 <div className="flex justify-center gap-2 mb-5">
@@ -756,7 +816,11 @@ function StoryIntro({ onComplete, lowEnd }: { onComplete: () => void; lowEnd: bo
                   {step === steps.length - 1 ? "Begin" : "Continue"}
                 </Button>
 
-                {!lowEnd && <p className="mt-3 text-xs text-white/60">Tip: press Space/Enter to spin</p>}
+                {!lowEnd && (
+                  <p className="mt-3 text-xs text-white/60">
+                    Tip: press Space/Enter to spin
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -774,7 +838,10 @@ function useLiveTimeCounter(startDate: Date | null, lowEnd: boolean) {
 
   React.useEffect(() => {
     if (!startDate) return;
-    const interval = setInterval(() => setCurrentTime(new Date()), lowEnd ? 2000 : 1000);
+    const interval = setInterval(
+      () => setCurrentTime(new Date()),
+      lowEnd ? 2000 : 1000
+    );
     return () => clearInterval(interval);
   }, [startDate, lowEnd]);
 
@@ -784,7 +851,7 @@ function useLiveTimeCounter(startDate: Date | null, lowEnd: boolean) {
 }
 
 /* =============================================================================
-   Reveal Overlay (kept, but fewer expensive animations)
+   Reveal Overlay
 ============================================================================= */
 function RevealOverlay({
   open,
@@ -856,8 +923,14 @@ function RevealOverlay({
           role="dialog"
           aria-modal="true"
         >
-          <button type="button" className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
-          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${sliceTheme} opacity-35`} />
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <div
+            className={`pointer-events-none absolute inset-0 bg-gradient-to-b ${sliceTheme} opacity-35`}
+          />
 
           <m.div
             className="relative w-full max-w-3xl"
@@ -878,8 +951,12 @@ function RevealOverlay({
                         {publicInfo?.emoji} {SLICE_LABEL[slice]}
                       </span>
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-white/95">{publicInfo?.title}</h2>
-                    <p className="mt-2 text-white/60 text-sm sm:text-base">{SLICE_HINT[slice]}</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white/95">
+                      {publicInfo?.title}
+                    </h2>
+                    <p className="mt-2 text-white/60 text-sm sm:text-base">
+                      {SLICE_HINT[slice]}
+                    </p>
                   </div>
 
                   <Button
@@ -889,8 +966,18 @@ function RevealOverlay({
                     onClick={onClose}
                   >
                     <span className="sr-only">Close</span>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </Button>
                 </div>
@@ -905,26 +992,40 @@ function RevealOverlay({
                       className="space-y-5"
                     >
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
-                        <div className="text-[11px] sm:text-sm text-white/60 mb-2">WHAT YOU'LL DISCOVER</div>
-                        <div className="text-lg sm:text-xl font-semibold text-white/90 mb-2">{publicInfo?.whatYouGet}</div>
+                        <div className="text-[11px] sm:text-sm text-white/60 mb-2">
+                          WHAT YOU&apos;LL DISCOVER
+                        </div>
+                        <div className="text-lg sm:text-xl font-semibold text-white/90 mb-2">
+                          {publicInfo?.whatYouGet}
+                        </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <div className="text-[10px] sm:text-xs text-white/60">THEME COLOR</div>
+                            <div className="text-[10px] sm:text-xs text-white/60">
+                              THEME COLOR
+                            </div>
                             <div className="text-white/90 flex items-center gap-2 text-sm sm:text-base">
                               <span className={`h-2 w-2 rounded-full ${dot}`} />
                               {publicInfo?.colorName}
                             </div>
                           </div>
                           <div className="space-y-1">
-                            <div className="text-[10px] sm:text-xs text-white/60">VIBE</div>
-                            <div className="text-white/90 text-sm sm:text-base">{publicInfo?.vibe}</div>
+                            <div className="text-[10px] sm:text-xs text-white/60">
+                              VIBE
+                            </div>
+                            <div className="text-white/90 text-sm sm:text-base">
+                              {publicInfo?.vibe}
+                            </div>
                           </div>
                         </div>
 
                         <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10">
-                          <div className="text-[10px] sm:text-xs text-white/60 mb-1">PREVIEW</div>
-                          <div className="text-white/80 text-sm sm:text-base">{publicInfo?.preview}</div>
+                          <div className="text-[10px] sm:text-xs text-white/60 mb-1">
+                            PREVIEW
+                          </div>
+                          <div className="text-white/80 text-sm sm:text-base">
+                            {publicInfo?.preview}
+                          </div>
                         </div>
                       </div>
 
@@ -937,7 +1038,9 @@ function RevealOverlay({
                           <IconSpark className="w-5 h-5 mr-2" />
                           Reveal Now
                         </Button>
-                        <p className="mt-3 text-xs sm:text-sm text-white/60">Press Enter or tap to unveil</p>
+                        <p className="mt-3 text-xs sm:text-sm text-white/60">
+                          Press Enter or tap to unveil
+                        </p>
                       </div>
                     </m.div>
                   ) : (
@@ -950,20 +1053,31 @@ function RevealOverlay({
                     >
                       {slice === "red" && (
                         <div className="text-center py-4 sm:py-7">
-                          <div className="text-[11px] sm:text-sm text-white/60 mb-4">A SPECIAL LINE FOR YOU</div>
-                          <div className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
-                            "{gift.red_phrase || "A special phrase just for you"}"
+                          <div className="text-[11px] sm:text-sm text-white/60 mb-4">
+                            A SPECIAL LINE FOR YOU
                           </div>
-                          <p className="mt-4 text-white/70 text-sm sm:text-base">Words meant only for your heart</p>
+                          <div className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
+                            &quot;
+                            {gift.red_phrase || "A special phrase just for you"}
+                            &quot;
+                          </div>
+                          <p className="mt-4 text-white/70 text-sm sm:text-base">
+                            Words meant only for your heart
+                          </p>
                         </div>
                       )}
 
                       {slice === "green" && liveParts && (
                         <div className="space-y-5">
                           <div className="text-center">
-                            <div className="text-[11px] sm:text-sm text-white/60">LOVE TIMELINE</div>
+                            <div className="text-[11px] sm:text-sm text-white/60">
+                              LOVE TIMELINE
+                            </div>
                             <div className="text-xl sm:text-2xl font-semibold text-white/90 mt-2">
-                              Since {formatDate(new Date(gift.relationship_start_at))}
+                              Since{" "}
+                              {formatDate(
+                                new Date(gift.relationship_start_at)
+                              )}
                             </div>
                           </div>
 
@@ -978,8 +1092,12 @@ function RevealOverlay({
                                 key={item.label}
                                 className="rounded-2xl bg-white/5 border border-white/10 p-3 text-center"
                               >
-                                <div className="text-2xl sm:text-3xl font-bold text-white">{item.value}</div>
-                                <div className="text-xs sm:text-sm text-white/70 mt-1">{item.label}</div>
+                                <div className="text-2xl sm:text-3xl font-bold text-white">
+                                  {item.value}
+                                </div>
+                                <div className="text-xs sm:text-sm text-white/70 mt-1">
+                                  {item.label}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -987,7 +1105,9 @@ function RevealOverlay({
                           <div className="text-center mt-2">
                             <div className="inline-block px-4 py-2 bg-white/5 rounded-full border border-white/10">
                               <div className="text-xs sm:text-sm text-white/70">
-                                Total: {liveParts.totalSeconds.toLocaleString()} seconds
+                                Total:{" "}
+                                {liveParts.totalSeconds.toLocaleString()}{" "}
+                                seconds
                               </div>
                             </div>
                           </div>
@@ -997,23 +1117,34 @@ function RevealOverlay({
                       {slice === "yellow" && (
                         <div className="space-y-5">
                           <div className="text-center">
-                            <div className="text-[11px] sm:text-sm text-white/60">LOVE LETTER</div>
-                            <h3 className="text-xl sm:text-2xl font-semibold text-white/90 mt-2">Words From The Heart</h3>
+                            <div className="text-[11px] sm:text-sm text-white/60">
+                              LOVE LETTER
+                            </div>
+                            <h3 className="text-xl sm:text-2xl font-semibold text-white/90 mt-2">
+                              Words From The Heart
+                            </h3>
                           </div>
 
                           <div className="max-h-[52vh] sm:max-h-[420px] overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
                             {gift.love_letter ? (
                               <div className="space-y-4">
-                                {safeSplitLines(gift.love_letter).map((line, i) => (
-                                  <p key={i} className="text-white/90 leading-relaxed text-sm sm:text-base">
-                                    {line}
-                                  </p>
-                                ))}
+                                {safeSplitLines(gift.love_letter).map(
+                                  (line, i) => (
+                                    <p
+                                      key={i}
+                                      className="text-white/90 leading-relaxed text-sm sm:text-base"
+                                    >
+                                      {line}
+                                    </p>
+                                  )
+                                )}
                               </div>
                             ) : (
                               <div className="text-center py-10">
                                 <div className="text-5xl mb-4">💌</div>
-                                <p className="text-white/70 text-sm sm:text-base">A heartfelt letter will appear here</p>
+                                <p className="text-white/70 text-sm sm:text-base">
+                                  A heartfelt letter will appear here
+                                </p>
                               </div>
                             )}
                           </div>
@@ -1023,8 +1154,12 @@ function RevealOverlay({
                       {slice === "blue" && (
                         <div className="space-y-5">
                           <div className="text-center">
-                            <div className="text-[11px] sm:text-sm text-white/60">CAPTURED MOMENT</div>
-                            <h3 className="text-xl sm:text-2xl font-semibold text-white/90 mt-2">A Memory In Time</h3>
+                            <div className="text-[11px] sm:text-sm text-white/60">
+                              CAPTURED MOMENT
+                            </div>
+                            <h3 className="text-xl sm:text-2xl font-semibold text-white/90 mt-2">
+                              A Memory In Time
+                            </h3>
                           </div>
 
                           {gift.couple_photo_url ? (
@@ -1038,13 +1173,17 @@ function RevealOverlay({
                                 decoding="async"
                               />
                               <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 text-white">
-                                <div className="text-xs sm:text-sm opacity-90">A moment to remember forever</div>
+                                <div className="text-xs sm:text-sm opacity-90">
+                                  A moment to remember forever
+                                </div>
                               </div>
                             </div>
                           ) : (
                             <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
                               <div className="text-5xl mb-4">📸</div>
-                              <div className="text-white/70 text-sm sm:text-base">A beautiful memory awaits here</div>
+                              <div className="text-white/70 text-sm sm:text-base">
+                                A beautiful memory awaits here
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1072,7 +1211,7 @@ function RevealOverlay({
 }
 
 /* =============================================================================
-   Final Celebration (lighter)
+   Final Celebration
 ============================================================================= */
 function FinalCelebration({
   open,
@@ -1100,7 +1239,11 @@ function FinalCelebration({
 
   return (
     <>
-      <ConfettiExplosion trigger={confettiTrigger} intensity={2} lowEnd={lowEnd} />
+      <ConfettiExplosion
+        trigger={confettiTrigger}
+        intensity={2}
+        lowEnd={lowEnd}
+      />
       <AnimatePresence>
         {open && (
           <m.div
@@ -1121,21 +1264,33 @@ function FinalCelebration({
                   <IconGift className="w-12 h-12 text-white" />
                 </div>
 
-                <h2 className="text-3xl sm:text-4xl font-bold text-white/95 mb-4">Experience Complete! ✨</h2>
-                <p className="text-base sm:text-xl text-white/80 mb-2">You've uncovered all the beautiful memories</p>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white/95 mb-4">
+                  Experience Complete! ✨
+                </h2>
+                <p className="text-base sm:text-xl text-white/80 mb-2">
+                  You&apos;ve uncovered all the beautiful memories
+                </p>
 
                 {gift.couple_names && (
-                  <p className="text-white/70 mb-8 text-sm sm:text-base">For {gift.couple_names} • Created with love</p>
+                  <p className="text-white/70 mb-8 text-sm sm:text-base">
+                    For {gift.couple_names} • Created with love
+                  </p>
                 )}
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
                   <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
                     <div className="text-2xl font-bold text-white/95">4</div>
-                    <div className="text-sm text-white/70">Surprises Revealed</div>
+                    <div className="text-sm text-white/70">
+                      Surprises Revealed
+                    </div>
                   </div>
                   <div className="rounded-2xl bg-white/5 p-4 border border-white/10">
-                    <div className="text-2xl font-bold text-white/95">100%</div>
-                    <div className="text-sm text-white/70">Emotional Journey</div>
+                    <div className="text-2xl font-bold text-white/95">
+                      100%
+                    </div>
+                    <div className="text-sm text-white/70">
+                      Emotional Journey
+                    </div>
                   </div>
                 </div>
 
@@ -1168,7 +1323,9 @@ function FinalCelebration({
                   </Button>
                 </div>
 
-                <p className="mt-8 text-xs sm:text-sm text-white/60">Made with LoveWheel • Share the love 💝</p>
+                <p className="mt-8 text-xs sm:text-sm text-white/60">
+                  Made with LoveWheel • Share the love 💝
+                </p>
               </div>
             </m.div>
           </m.div>
@@ -1214,7 +1371,10 @@ function Wheel({
   const wheelRef = React.useRef<HTMLDivElement>(null);
 
   const layout = React.useMemo(() => buildWheelLayout(remaining), [remaining]);
-  const wheelBg = React.useMemo(() => buildConicGradient(remaining), [remaining]);
+  const wheelBg = React.useMemo(
+    () => buildConicGradient(remaining),
+    [remaining]
+  );
 
   const spinScale = useSpring(spinning && !prefersReducedMotion ? 1.015 : 1, {
     stiffness: 200,
@@ -1250,13 +1410,17 @@ function Wheel({
 
       if (key && key !== bet) {
         setBet(key);
-        toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, { description: "Choice set" });
+        toast.success(`Chose ${SLICE_PUBLIC[key].colorName}`, {
+          description: "Choice set",
+        });
       }
     },
     [remaining, spinning, disabled, rotationMV, layout.step, bet, setBet]
   );
 
-  const wheelMax = lowEnd ? "max-w-[360px] sm:max-w-[460px]" : "max-w-[420px] sm:max-w-[520px] lg:max-w-[600px]";
+  const wheelMax = lowEnd
+    ? "max-w-[360px] sm:max-w-[460px]"
+    : "max-w-[420px] sm:max-w-[520px] lg:max-w-[600px]";
   const topPillsOffset = "-top-16 sm:-top-20";
 
   const ambientDotCount = React.useMemo(() => {
@@ -1266,11 +1430,18 @@ function Wheel({
 
   return (
     <div className="relative">
-      <div className={`absolute ${topPillsOffset} left-0 right-0 flex flex-wrap justify-center gap-2 sm:gap-4 px-2`}>
+      <div
+        className={`absolute ${topPillsOffset} left-0 right-0 flex flex-wrap justify-center gap-2 sm:gap-4 px-2`}
+      >
         <Pill dotClassName="bg-fuchsia-400" glow={remaining.length === 1}>
-          {remaining.length} {remaining.length === 1 ? "Surprise Left" : "Surprises Left"}
+          {remaining.length}{" "}
+          {remaining.length === 1 ? "Surprise Left" : "Surprises Left"}
         </Pill>
-        <Pill dotClassName="bg-sky-400">{bet ? `${SLICE_PUBLIC[bet].emoji} ${SLICE_PUBLIC[bet].colorName}` : "Pick a Color"}</Pill>
+        <Pill dotClassName="bg-sky-400">
+          {bet
+            ? `${SLICE_PUBLIC[bet].emoji} ${SLICE_PUBLIC[bet].colorName}`
+            : "Pick a Color"}
+        </Pill>
         <Pill dotClassName="bg-amber-400">Spin #{spinCount + 1}</Pill>
       </div>
 
@@ -1315,7 +1486,9 @@ function Wheel({
             background: wheelBg,
             transformStyle: "preserve-3d",
           }}
-          whileHover={!spinning && !disabled && remaining.length > 0 ? { scale: 1.01 } : {}}
+          whileHover={
+            !spinning && !disabled && remaining.length > 0 ? { scale: 1.01 } : {}
+          }
         >
           <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.14)_0%,transparent_70%)]" />
 
@@ -1345,11 +1518,21 @@ function Wheel({
               <div
                 key={key}
                 className="absolute pointer-events-none"
-                style={{ left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)" }}
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
               >
                 <m.div style={{ rotate: counterRotate }}>
                   <div className="flex flex-col items-center gap-1">
-                    <span className={lowEnd ? "text-2xl drop-shadow" : "text-xl sm:text-2xl drop-shadow-lg"}>
+                    <span
+                      className={
+                        lowEnd
+                          ? "text-2xl drop-shadow"
+                          : "text-xl sm:text-2xl drop-shadow-lg"
+                      }
+                    >
                       {SLICE_PUBLIC[key].emoji}
                     </span>
                     {!lowEnd && (
@@ -1375,7 +1558,11 @@ function Wheel({
               <m.div
                 className="absolute -top-3 left-1/2 -translate-x-1/2 h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-gradient-to-br from-white to-amber-200"
                 animate={spinning ? { scale: [1, 1.22, 1] } : {}}
-                transition={spinning ? { duration: 0.45, repeat: Infinity, ease: "easeInOut" } : {}}
+                transition={
+                  spinning
+                    ? { duration: 0.45, repeat: Infinity, ease: "easeInOut" }
+                    : {}
+                }
               />
             )}
           </div>
@@ -1383,8 +1570,16 @@ function Wheel({
 
         <div className="absolute inset-0 flex items-center justify-center">
           <m.div
-            whileHover={!spinning && !disabled && remaining.length > 0 && bet ? { scale: 1.04 } : {}}
-            whileTap={!spinning && !disabled && remaining.length > 0 && bet ? { scale: 0.96 } : {}}
+            whileHover={
+              !spinning && !disabled && remaining.length > 0 && bet
+                ? { scale: 1.04 }
+                : {}
+            }
+            whileTap={
+              !spinning && !disabled && remaining.length > 0 && bet
+                ? { scale: 0.96 }
+                : {}
+            }
           >
             <button
               onClick={onSpin}
@@ -1397,9 +1592,15 @@ function Wheel({
                 "transition-all duration-300 will-change-transform",
               ].join(" ")}
             >
-              <div className="text-3xl sm:text-4xl">{spinning ? "🌀" : remaining.length === 0 ? "🎉" : "✨"}</div>
+              <div className="text-3xl sm:text-4xl">
+                {spinning ? "🌀" : remaining.length === 0 ? "🎉" : "✨"}
+              </div>
               <div className="text-[10px] sm:text-xs font-semibold tracking-wider">
-                {spinning ? "SPINNING..." : remaining.length === 0 ? "COMPLETE!" : "SPIN NOW!"}
+                {spinning
+                  ? "SPINNING..."
+                  : remaining.length === 0
+                  ? "COMPLETE!"
+                  : "SPIN NOW!"}
               </div>
             </button>
           </m.div>
@@ -1432,11 +1633,15 @@ function Wheel({
               className={[
                 "relative px-3 sm:px-4 py-2 rounded-full border backdrop-blur-sm",
                 "flex items-center gap-2 transition-all duration-200",
-                bet === key ? "border-fuchsia-500/50 bg-fuchsia-500/20" : "border-white/20 bg-white/5 hover:bg-white/10",
+                bet === key
+                  ? "border-fuchsia-500/50 bg-fuchsia-500/20"
+                  : "border-white/20 bg-white/5 hover:bg-white/10",
               ].join(" ")}
             >
               <span className={`h-2 w-2 rounded-full ${colorDotClass(key)}`} />
-              <span className="font-semibold text-sm">{SLICE_PUBLIC[key].colorName}</span>
+              <span className="font-semibold text-sm">
+                {SLICE_PUBLIC[key].colorName}
+              </span>
               <span className="opacity-70">{SLICE_PUBLIC[key].emoji}</span>
             </button>
           ))}
@@ -1482,14 +1687,23 @@ function Wheel({
             <div
               className={[
                 "inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm border",
-                lastResult.guessedRight ? "bg-emerald-500/20 text-emerald-200 border-emerald-500/30" : "bg-white/10 text-white/80 border-white/20",
+                lastResult.guessedRight
+                  ? "bg-emerald-500/20 text-emerald-200 border-emerald-500/30"
+                  : "bg-white/10 text-white/80 border-white/20",
               ].join(" ")}
             >
-              <span className={`h-2 w-2 rounded-full ${colorDotClass(lastResult.slice)}`} />
+              <span
+                className={`h-2 w-2 rounded-full ${colorDotClass(
+                  lastResult.slice
+                )}`}
+              />
               {lastResult.guessedRight ? (
                 <>🎯 Perfect match! You chose right!</>
               ) : (
-                <>Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫</>
+                <>
+                  Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next
+                  time! 💫
+                </>
               )}
             </div>
           </m.div>
@@ -1502,14 +1716,24 @@ function Wheel({
 /* =============================================================================
    Main component (hydration-safe + mobile performance)
 ============================================================================= */
-export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelClientProps) {
+export default function GiftWheelClient({
+  slug,
+  gift,
+  needsPayment,
+}: GiftWheelClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const lowEnd = useLowEndMode();
   const isMobile = useIsMobile();
 
-  const normalizedGift = React.useMemo(() => (gift ? normalizeGift(gift as any) : null), [gift]);
+  const normalizedGift = React.useMemo(
+    () => (gift ? normalizeGift(gift as any) : null),
+    [gift]
+  );
 
-  const [audioOn, setAudioOn, mounted] = useLocalStorageBooleanHydrated("lw_audio_on", true);
+  const [audioOn, setAudioOn, mounted] = useLocalStorageBooleanHydrated(
+    "lw_audio_on",
+    true
+  );
   const audio = useTickAudio(audioOn, lowEnd);
 
   const [showStory, setShowStory] = React.useState(true);
@@ -1523,7 +1747,10 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
   const [revealOpen, setRevealOpen] = React.useState(false);
   const [spotlight, setSpotlight] = React.useState<SliceKey | null>(null);
   const [bet, setBet] = React.useState<SliceKey | null>(null);
-  const [lastResult, setLastResult] = React.useState<{ slice: SliceKey; guessedRight: boolean } | null>(null);
+  const [lastResult, setLastResult] = React.useState<{
+    slice: SliceKey;
+    guessedRight: boolean;
+  } | null>(null);
   const [pointerPulse, setPointerPulse] = React.useState(0);
 
   const [confettiTrigger, setConfettiTrigger] = React.useState(false);
@@ -1544,10 +1771,7 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
     };
   }, []);
 
-  /** ✅ FIX “inverter” no reset:
-   *  anima SEMPRE no sentido horário até fechar no próximo múltiplo de 360,
-   *  e depois seta pra 0.
-   */
+  /** ✅ FIX “inverter” no reset */
   const resetRotation = useEvent(() => {
     const current = rotationMV.get();
     const currMod = mod360(current);
@@ -1559,7 +1783,10 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
       return;
     }
 
-    const ctrl = animate(rotationMV, target, { duration: 0.45, ease: "easeInOut" });
+    const ctrl = animate(rotationMV, target, {
+      duration: 0.45,
+      ease: "easeInOut",
+    });
     ctrl.finished
       .then(() => {
         rotationMV.set(0);
@@ -1589,22 +1816,30 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
                   <div className="inline-block p-4 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 mb-4">
                     <IconHeart className="w-12 h-12 text-white" />
                   </div>
-                  <h1 className="text-3xl font-bold text-white/95 mb-2">Special Gift</h1>
-                  <p className="text-white/70">"I'd choose you again. Every time."</p>
+                  <h1 className="text-3xl font-bold text-white/95 mb-2">
+                    Special Gift
+                  </h1>
+                  <p className="text-white/70">
+                    &quot;I&apos;d choose you again. Every time.&quot;
+                  </p>
                 </div>
 
                 <div className="space-y-6 mb-8">
                   {giftObj.red_phrase && (
                     <div className="rounded-2xl border border-white/15 bg-white/5 p-6 text-center">
                       <div className="text-sm text-white/60 mb-2">PREVIEW</div>
-                      <p className="text-xl text-white/90 italic">"{giftObj.red_phrase}"</p>
+                      <p className="text-xl text-white/90 italic">
+                        &quot;{giftObj.red_phrase}&quot;
+                      </p>
                     </div>
                   )}
 
                   {giftObj.relationship_start_at && (
                     <div className="flex items-center justify-center gap-2 text-white/80">
                       <span className="text-sm">Together since:</span>
-                      <span className="font-semibold">{formatDate(new Date(giftObj.relationship_start_at))}</span>
+                      <span className="font-semibold">
+                        {formatDate(new Date(giftObj.relationship_start_at))}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1613,9 +1848,15 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
                 <div className="text-center space-y-6">
                   <div>
-                    <h2 className="text-xl font-bold text-white/95 mb-2">Unlock the Full Experience</h2>
+                    <h2 className="text-xl font-bold text-white/95 mb-2">
+                      Unlock the Full Experience
+                    </h2>
                     <p className="text-white/70 mb-4">
-                      Pay only <strong className="text-2xl text-fuchsia-400">$4.99</strong> to reveal everything
+                      Pay only{" "}
+                      <strong className="text-2xl text-fuchsia-400">
+                        $4.99
+                      </strong>{" "}
+                      to reveal everything
                     </p>
                   </div>
 
@@ -1676,7 +1917,9 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
           <div className="text-center space-y-6">
             <div className="text-6xl">😔</div>
             <h1 className="text-3xl font-bold text-white/95">Gift Not Found</h1>
-            <p className="text-white/70">This Love Wheel may have been removed or the link is incorrect</p>
+            <p className="text-white/70">
+              This Love Wheel may have been removed or the link is incorrect
+            </p>
             <Button
               onClick={() => (window.location.href = "/create")}
               size="lg"
@@ -1691,6 +1934,13 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
   }
 
   /* ------------------------------ Spin logic ------------------------------ */
+
+  /**
+   * ✅ Giro 100% contínuo (sem “parar e voltar a girar”):
+   * - 1 única animação com easing “power ease-out”
+   * - Começa bem rápido e desacelera sempre, até ficar bem devagar no final
+   * - Sem fases/Promises encadeadas => sem micro-pausas
+   */
   const spin = useEvent(async () => {
     if (spinning || !bet || remaining.length === 0) return;
 
@@ -1711,86 +1961,100 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
     const START_ROTATION = rotationMV.get();
 
-    // ✅ NOVO: “FAST START → SLOW END” (mais emoção, especialmente no celular)
-    // Ideia: 2 fases:
-    //  - Fase 1: gira rápido (linear-ish)
-    //  - Fase 2: desacelera bastante e “encaixa” no resultado
-    const spins = (() => {
-      if (prefersReducedMotion || lowEnd) return 2;
-      // no mobile, menos voltas mas duração maior = menos “furadeira”, mais controle
-      if (isMobile) return Math.floor(7 + Math.min(3, spinCount * 0.45)); // ~7..10
-      return Math.floor(9 + Math.min(5, spinCount * 0.55)); // ~9..14
+    // easing “power”: velocidade alta no começo, queda contínua e cauda longa
+    const easeOutPow = (power: number) => (t: number) =>
+      1 - Math.pow(1 - t, power);
+
+    // perfis por device: mais duração no mobile pra ficar “bem devagar” no fim
+    const profile = (() => {
+      if (prefersReducedMotion || lowEnd) {
+        return {
+          spins: 2,
+          duration: 1.9,
+          ease: easeOutPow(5),
+          fxThrottleMs: 92,
+        };
+      }
+      if (isMobile) {
+        const spins = clamp(Math.round(6 + spinCount * 0.25), 6, 9);
+        const duration = clamp(7.4 + spinCount * 0.18, 7.4, 9.4);
+        return {
+          spins,
+          duration,
+          ease: easeOutPow(7),
+          fxThrottleMs: 104,
+        };
+      }
+      const spins = clamp(Math.round(9 + spinCount * 0.35), 9, 13);
+      const duration = clamp(5.8 + spinCount * 0.2, 5.8, 7.9);
+      return {
+        spins,
+        duration,
+        ease: easeOutPow(6),
+        fxThrottleMs: 86,
+      };
     })();
 
+    // alinhar ponteiro no centro do segmento escolhido (sempre “pra frente”)
     const targetMod = mod360(360 - seg.center);
     const currentMod = mod360(START_ROTATION);
     const delta = mod360(targetMod - currentMod);
 
-    const totalDelta = spins * 360 + delta;
+    const totalDelta = profile.spins * 360 + delta;
     const totalDegrees = START_ROTATION + totalDelta;
 
+    // cancelar giro anterior
     if (spinAnimationRef.current) spinAnimationRef.current.stop();
     lastSegmentIndex.current = -1;
 
-    const duration = (() => {
-      if (prefersReducedMotion || lowEnd) return 1.6;
-      if (isMobile) return clamp(7.8 + spinCount * 0.25, 7.8, 10.8); // MAIS lento no mobile
-      return clamp(6.6 + spinCount * 0.22, 6.6, 9.2);
-    })();
-
-    // quanto do tempo fica na fase lenta (fim)
-    const slowFrac = prefersReducedMotion || lowEnd ? 1 : isMobile ? 0.78 : 0.70;
-    const d2 = clamp(duration * slowFrac, 0.9, duration);
-    const d1 = clamp(duration - d2, 0.2, duration);
-
-    // ponto intermediário (não precisa alinhar em slice — é só estética)
-    const midDegrees = START_ROTATION + totalDelta * (1 - slowFrac);
-
-    const phase1Ease: any = prefersReducedMotion || lowEnd ? "easeOut" : "linear";
-    // fase 2 bem “cinematográfica”: desacelera MUITO no final
-    const phase2Ease: any = prefersReducedMotion || lowEnd ? "easeOut" : [0.08, 0.9, 0.12, 0.995];
+    // FX throttle (som + pulse)
+    let lastFxAt = 0;
 
     const onUpdate = (latest: number) => {
+      const now = performance.now();
+      if (now - lastFxAt < profile.fxThrottleMs) return;
+      lastFxAt = now;
+
       const wheelAtPointer = mod360(-latest);
-      const idx = Math.floor(wheelAtPointer / step) % remainingBefore.length;
+      const idx =
+        Math.floor(wheelAtPointer / step) % remainingBefore.length;
 
       if (idx !== lastSegmentIndex.current) {
         lastSegmentIndex.current = idx;
 
-        const progress = (latest - START_ROTATION) / (totalDegrees - START_ROTATION);
+        const denom = totalDegrees - START_ROTATION || 1;
+        const progress = clamp((latest - START_ROTATION) / denom, 0, 1);
 
-        // ticks normais no começo, e “segment_pass” mais frequente no final
-        if (progress > 0.78) audio.segmentPass();
+        if (progress > 0.72) audio.segmentPass();
         else audio.tick();
 
         setPointerPulse((p) => p + 1);
       }
     };
 
-    // Fase 1 (rápido)
-    const ctrl1 = animate(rotationMV, midDegrees, {
-      duration: d1,
-      ease: phase1Ease,
+    const ctrl = animate(rotationMV, totalDegrees, {
+      duration: profile.duration,
+      ease: profile.ease as any,
       onUpdate,
     });
-    spinAnimationRef.current = ctrl1;
-    await ctrl1.finished;
+    spinAnimationRef.current = ctrl;
 
-    // Fase 2 (lento / suspense)
-    const ctrl2 = animate(rotationMV, totalDegrees, {
-      duration: d2,
-      ease: phase2Ease,
-      onUpdate,
-    });
-    spinAnimationRef.current = ctrl2;
-    await ctrl2.finished;
+    try {
+      await ctrl.finished;
+    } catch {
+      // stop() / cancel
+      setSpinning(false);
+      return;
+    }
 
     rotationMV.set(mod360(totalDegrees));
 
     audio.land();
     setPointerPulse((p) => p + 1);
 
-    if (!lowEnd && navigator.vibrate) navigator.vibrate([90, 30, 90]);
+    if (!lowEnd && navigator.vibrate) {
+      navigator.vibrate(isMobile ? [40, 30, 70] : [90, 30, 90]);
+    }
 
     const guessedRight = chosen === bet;
     setLastResult({ slice: chosen, guessedRight });
@@ -1813,7 +2077,7 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
       setBet(null);
 
       if (nextRemainingLen > 1) resetRotation();
-    }, lowEnd ? 650 : isMobile ? 1050 : 950);
+    }, lowEnd ? 650 : isMobile ? 1150 : 950);
   });
 
   const reset = useEvent(() => {
@@ -1857,7 +2121,11 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
   React.useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
 
       switch (e.key) {
         case " ":
@@ -1873,7 +2141,9 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
         case "M":
           setAudioOn((v) => {
             const next = !v;
-            toast.success(`Sound ${next ? "On" : "Off"}`, { description: "Audio settings updated" });
+            toast.success(`Sound ${next ? "On" : "Off"}`, {
+              description: "Audio settings updated",
+            });
             return next;
           });
           break;
@@ -1898,20 +2168,45 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [spin, reset, revealOpen, finalOpen, remaining, closeReveal, spinning, bet, setAudioOn]);
+  }, [
+    spin,
+    reset,
+    revealOpen,
+    finalOpen,
+    remaining,
+    closeReveal,
+    spinning,
+    bet,
+    setAudioOn,
+  ]);
 
   return (
     <LazyMotion features={domAnimation}>
       <div
         className="min-h-screen text-white overflow-hidden"
-        style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
       >
         <GlowBg lowEnd={lowEnd} />
-        <ConfettiExplosion trigger={confettiTrigger} intensity={remaining.length === 1 ? 2 : 1} lowEnd={lowEnd} />
+        <ConfettiExplosion
+          trigger={confettiTrigger}
+          intensity={remaining.length === 1 ? 2 : 1}
+          lowEnd={lowEnd}
+        />
 
-        {showStory && <StoryIntro lowEnd={lowEnd} onComplete={() => setShowStory(false)} />}
+        {showStory && (
+          <StoryIntro lowEnd={lowEnd} onComplete={() => setShowStory(false)} />
+        )}
 
-        <RevealOverlay open={revealOpen} slice={active} onClose={closeReveal} gift={normalizedGift} lowEnd={lowEnd} />
+        <RevealOverlay
+          open={revealOpen}
+          slice={active}
+          onClose={closeReveal}
+          gift={normalizedGift}
+          lowEnd={lowEnd}
+        />
 
         <FinalCelebration
           open={finalOpen}
@@ -1927,9 +2222,13 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
                 Love Wheel
               </h1>
-              <p className="text-white/70 mt-2 text-sm sm:text-base">Spin to reveal heartfelt surprises</p>
+              <p className="text-white/70 mt-2 text-sm sm:text-base">
+                Spin to reveal heartfelt surprises
+              </p>
               {normalizedGift.couple_names && (
-                <p className="text-white/60 text-sm mt-1">For {normalizedGift.couple_names}</p>
+                <p className="text-white/60 text-sm mt-1">
+                  For {normalizedGift.couple_names}
+                </p>
               )}
             </div>
 
@@ -1938,7 +2237,9 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
                 onClick={() =>
                   setAudioOn((v) => {
                     const next = !v;
-                    toast.success(`Sound ${next ? "On" : "Off"}`, { description: "Audio settings updated" });
+                    toast.success(`Sound ${next ? "On" : "Off"}`, {
+                      description: "Audio settings updated",
+                    });
                     return next;
                   })
                 }
@@ -1950,7 +2251,11 @@ export default function GiftWheelClient({ slug, gift, needsPayment }: GiftWheelC
                 ].join(" ")}
                 suppressHydrationWarning
               >
-                {audioOn ? <IconVolumeOn className="w-4 h-4" /> : <IconVolumeOff className="w-4 h-4" />}
+                {audioOn ? (
+                  <IconVolumeOn className="w-4 h-4" />
+                ) : (
+                  <IconVolumeOff className="w-4 h-4" />
+                )}
                 Sound {audioOn ? "On" : "Off"}
               </button>
 
