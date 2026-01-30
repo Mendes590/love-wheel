@@ -1601,7 +1601,7 @@ function ShareSheetModal({
                       Share this Love Wheel
                     </h3>
                     <p className="text-sm text-white/65 mt-1">
-                      Copy the link or open a QR code to print.
+                      Copy the link or show a QR code.
                     </p>
                   </div>
 
@@ -1681,7 +1681,7 @@ function ShareSheetModal({
                 </div>
 
                 <p className="mt-4 text-[11px] text-white/55 text-center">
-                  Tip: QR is great for printing or sharing in person.
+                  Tip: QR is great for in-person sharing.
                 </p>
               </div>
             </div>
@@ -1693,7 +1693,8 @@ function ShareSheetModal({
 }
 
 /* =============================================================================
-   ✅ QR Code Modal (print / download)
+   ✅ QR Code Modal (copy / download)
+   ✅ Removed Print option (as requested)
 ============================================================================= */
 function QrCodeModal({
   open,
@@ -1781,52 +1782,6 @@ function QrCodeModal({
     }
   }, [url]);
 
-  const printQr = React.useCallback(async () => {
-    if (!url) return;
-    try {
-      const dataUrl = await QRCode.toDataURL(url, {
-        margin: 2,
-        width: 1024,
-        color: { dark: "#000000", light: "#ffffff" },
-      });
-
-      const w = window.open("", "_blank", "noopener,noreferrer,width=800,height=900");
-      if (!w) return;
-
-      w.document.open();
-      w.document.write(`<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Print QR</title>
-  <style>
-    html, body { height: 100%; margin: 0; }
-    body { display: grid; place-items: center; background: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    .wrap { text-align: center; padding: 24px; }
-    img { width: 360px; height: 360px; }
-    .url { margin-top: 14px; font-size: 12px; color: #222; word-break: break-all; max-width: 520px; }
-    @media print {
-      .url { font-size: 10px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <img src="${dataUrl}" alt="QR Code" />
-    <div class="url">${url}</div>
-  </div>
-  <script>
-    window.focus();
-    setTimeout(() => { window.print(); }, 150);
-  </script>
-</body>
-</html>`);
-      w.document.close();
-    } catch {
-      // ignore
-    }
-  }, [url]);
-
   return (
     <AnimatePresence>
       {open && (
@@ -1859,10 +1814,10 @@ function QrCodeModal({
                       QR CODE
                     </div>
                     <h3 className="text-xl font-bold text-white/95 mt-1">
-                      Print / Screenshot
+                      Save or share
                     </h3>
                     <p className="text-sm text-white/65 mt-1">
-                      Open this on-screen, print it, or save as PNG.
+                      Copy the link or download the QR as PNG.
                     </p>
                   </div>
 
@@ -1938,13 +1893,6 @@ function QrCodeModal({
                   </Button>
 
                   <Button
-                    onClick={printQr}
-                    className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 sm:col-span-2"
-                  >
-                    <span className="mr-2">🖨️</span> Print
-                  </Button>
-
-                  <Button
                     onClick={onClose}
                     variant="ghost"
                     className="rounded-2xl border border-white/12 bg-white/0 hover:bg-white/5 sm:col-span-2"
@@ -1954,7 +1902,7 @@ function QrCodeModal({
                 </div>
 
                 <p className="mt-4 text-[11px] text-white/55 text-center">
-                  Tip: you can also just take a screenshot and print it.
+                  Tip: you can also just take a screenshot.
                 </p>
               </div>
             </div>
@@ -2303,7 +2251,9 @@ function Wheel({
                   : "PICK COLOR"}
               </div>
               {isMobile && !bet && (
-                <div className="mt-1 text-[10px] text-white/55">Tap to choose</div>
+                <div className="mt-1 text-[10px] text-white/55">
+                  Tap to choose
+                </div>
               )}
             </button>
           </m.div>
@@ -2317,7 +2267,10 @@ function Wheel({
             <span>{4 - remaining.length} of 4</span>
           </div>
           <div className="relative">
-            <Progress value={((4 - remaining.length) / 4) * 100} className="h-2" />
+            <Progress
+              value={((4 - remaining.length) / 4) * 100}
+              className="h-2"
+            />
             {!lowEnd && !isMobile && (
               <m.div
                 className="absolute top-0 left-0 h-2 w-1 bg-white/70 rounded-full"
@@ -2397,12 +2350,17 @@ function Wheel({
               ].join(" ")}
             >
               <span
-                className={`h-2 w-2 rounded-full ${colorDotClass(lastResult.slice)}`}
+                className={`h-2 w-2 rounded-full ${colorDotClass(
+                  lastResult.slice
+                )}`}
               />
               {lastResult.guessedRight ? (
                 <>🎯 Perfect match! You chose right!</>
               ) : (
-                <>Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time! 💫</>
+                <>
+                  Landed on {SLICE_PUBLIC[lastResult.slice].colorName}. Next time!
+                  💫
+                </>
               )}
             </div>
           </m.div>
