@@ -12,6 +12,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
+import * as QRCode from "qrcode";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -522,6 +523,17 @@ function IconShare({ className }: { className?: string }) {
       <path
         d="M18 16c-.79 0-1.5.31-2.03.81L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.53.5 1.24.81 2.03.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.51 9.31 6.8 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.8 0 1.51-.31 2.04-.81l7.05 4.11c-.05.23-.09.46-.09.7 0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3z"
         fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconQr({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        fill="currentColor"
+        d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm10 0h-2v-2h4v4h-2v-2zm0 8h-2v-4h4v2h-2v2zm6-10h-4v2h2v2h-2v2h4v-6zm-2 10h2v-2h-2v2z"
       />
     </svg>
   );
@@ -1521,6 +1533,439 @@ function ColorPickerModal({
 }
 
 /* =============================================================================
+   ✅ Share Sheet Modal (Share / Copy / View QR)
+============================================================================= */
+function ShareSheetModal({
+  open,
+  url,
+  canNativeShare,
+  onNativeShare,
+  onCopy,
+  onShowQr,
+  onClose,
+  shareCopied,
+}: {
+  open: boolean;
+  url: string;
+  canNativeShare: boolean;
+  onNativeShare: () => void;
+  onCopy: () => void;
+  onShowQr: () => void;
+  onClose: () => void;
+  shareCopied: boolean;
+}) {
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <m.div
+          className="fixed inset-0 z-[60] grid place-items-center px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={onClose}
+            aria-label="Close share"
+          />
+          <m.div
+            className="relative w-full max-w-md"
+            initial={{ y: 14, scale: 0.99 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: 10, scale: 0.99 }}
+            transition={{ type: "spring", damping: 22 }}
+          >
+            <div className="rounded-3xl border border-white/15 bg-gradient-to-b from-white/12 to-white/6 backdrop-blur-2xl shadow-2xl overflow-hidden">
+              <div className="p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <div className="text-xs text-white/60 tracking-wider">
+                      SHARE
+                    </div>
+                    <h3 className="text-xl font-bold text-white/95 mt-1">
+                      Share this Love Wheel
+                    </h3>
+                    <p className="text-sm text-white/65 mt-1">
+                      Copy the link or open a QR code to print.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="h-10 w-10 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 grid place-items-center"
+                    aria-label="Close"
+                  >
+                    <svg
+                      className="w-5 h-5 text-white/80"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[10px] text-white/60 mb-1">LINK</div>
+                  <div className="text-xs sm:text-sm text-white/85 break-all">
+                    {url}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-3">
+                  {canNativeShare && (
+                    <Button
+                      onClick={() => {
+                        onClose();
+                        onNativeShare();
+                      }}
+                      size="lg"
+                      className="rounded-2xl bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90"
+                    >
+                      <IconShare className="w-5 h-5 mr-2" />
+                      Share…
+                    </Button>
+                  )}
+
+                  <Button
+                    onClick={onCopy}
+                    variant="outline"
+                    size="lg"
+                    className="rounded-2xl border-white/20 bg-white/5 hover:bg-white/10"
+                  >
+                    <span className="mr-2">{shareCopied ? "✅" : "📋"}</span>
+                    {shareCopied ? "Copied!" : "Copy Link"}
+                  </Button>
+
+                  <Button
+                    onClick={() => {
+                      onClose();
+                      onShowQr();
+                    }}
+                    size="lg"
+                    className="rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90"
+                  >
+                    <IconQr className="w-5 h-5 mr-2" />
+                    View QR Code
+                  </Button>
+
+                  <Button
+                    onClick={onClose}
+                    variant="ghost"
+                    className="rounded-2xl border border-white/12 bg-white/0 hover:bg-white/5"
+                  >
+                    Close
+                  </Button>
+                </div>
+
+                <p className="mt-4 text-[11px] text-white/55 text-center">
+                  Tip: QR is great for printing or sharing in person.
+                </p>
+              </div>
+            </div>
+          </m.div>
+        </m.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* =============================================================================
+   ✅ QR Code Modal (print / download)
+============================================================================= */
+function QrCodeModal({
+  open,
+  url,
+  onClose,
+  onCopy,
+  lowEnd,
+}: {
+  open: boolean;
+  url: string;
+  onClose: () => void;
+  onCopy: () => void;
+  lowEnd: boolean;
+}) {
+  const [svg, setSvg] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (!url) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setErr(null);
+        setSvg(null);
+        setLoading(true);
+
+        const size = lowEnd ? 240 : 320;
+
+        const svgStr = await QRCode.toString(url, {
+          type: "svg",
+          margin: 2,
+          width: size,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+
+        if (cancelled) return;
+        setSvg(svgStr);
+      } catch {
+        if (cancelled) return;
+        setErr("Could not generate QR code.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, url, lowEnd]);
+
+  const downloadPng = React.useCallback(async () => {
+    if (!url) return;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        margin: 2,
+        width: 1024,
+        color: { dark: "#000000", light: "#ffffff" },
+      });
+
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = "love-wheel-qr.png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch {
+      // ignore
+    }
+  }, [url]);
+
+  const printQr = React.useCallback(async () => {
+    if (!url) return;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        margin: 2,
+        width: 1024,
+        color: { dark: "#000000", light: "#ffffff" },
+      });
+
+      const w = window.open("", "_blank", "noopener,noreferrer,width=800,height=900");
+      if (!w) return;
+
+      w.document.open();
+      w.document.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Print QR</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: grid; place-items: center; background: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    .wrap { text-align: center; padding: 24px; }
+    img { width: 360px; height: 360px; }
+    .url { margin-top: 14px; font-size: 12px; color: #222; word-break: break-all; max-width: 520px; }
+    @media print {
+      .url { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <img src="${dataUrl}" alt="QR Code" />
+    <div class="url">${url}</div>
+  </div>
+  <script>
+    window.focus();
+    setTimeout(() => { window.print(); }, 150);
+  </script>
+</body>
+</html>`);
+      w.document.close();
+    } catch {
+      // ignore
+    }
+  }, [url]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <m.div
+          className="fixed inset-0 z-[70] grid place-items-center px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            onClick={onClose}
+            aria-label="Close QR code"
+          />
+          <m.div
+            className="relative w-full max-w-md"
+            initial={{ y: 14, scale: 0.99 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: 10, scale: 0.99 }}
+            transition={{ type: "spring", damping: 22 }}
+          >
+            <div className="rounded-3xl border border-white/15 bg-gradient-to-b from-white/12 to-white/6 backdrop-blur-2xl shadow-2xl overflow-hidden">
+              <div className="p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <div className="text-xs text-white/60 tracking-wider">
+                      QR CODE
+                    </div>
+                    <h3 className="text-xl font-bold text-white/95 mt-1">
+                      Print / Screenshot
+                    </h3>
+                    <p className="text-sm text-white/65 mt-1">
+                      Open this on-screen, print it, or save as PNG.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="h-10 w-10 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 grid place-items-center"
+                    aria-label="Close"
+                  >
+                    <svg
+                      className="w-5 h-5 text-white/80"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="grid place-items-center">
+                  <div className="rounded-2xl border border-white/15 bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+                    {loading && (
+                      <div className="h-[260px] w-[260px] sm:h-[320px] sm:w-[320px] grid place-items-center">
+                        <div className="flex items-center gap-2 text-black/70">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black/60" />
+                          Generating…
+                        </div>
+                      </div>
+                    )}
+
+                    {!loading && err && (
+                      <div className="h-[260px] w-[260px] sm:h-[320px] sm:w-[320px] grid place-items-center text-black/70 text-sm">
+                        {err}
+                      </div>
+                    )}
+
+                    {!loading && !err && svg && (
+                      <div
+                        className="w-[260px] h-[260px] sm:w-[320px] sm:h-[320px]"
+                        dangerouslySetInnerHTML={{ __html: svg }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-[10px] text-white/60 mb-1">LINK</div>
+                  <div className="text-xs sm:text-sm text-white/85 break-all">
+                    {url}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Button
+                    onClick={onCopy}
+                    variant="outline"
+                    className="rounded-2xl border-white/20 bg-white/5 hover:bg-white/10"
+                  >
+                    <span className="mr-2">📋</span> Copy Link
+                  </Button>
+
+                  <Button
+                    onClick={downloadPng}
+                    className="rounded-2xl bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90"
+                  >
+                    <span className="mr-2">⬇️</span> Download PNG
+                  </Button>
+
+                  <Button
+                    onClick={printQr}
+                    className="rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 sm:col-span-2"
+                  >
+                    <span className="mr-2">🖨️</span> Print
+                  </Button>
+
+                  <Button
+                    onClick={onClose}
+                    variant="ghost"
+                    className="rounded-2xl border border-white/12 bg-white/0 hover:bg-white/5 sm:col-span-2"
+                  >
+                    Close
+                  </Button>
+                </div>
+
+                <p className="mt-4 text-[11px] text-white/55 text-center">
+                  Tip: you can also just take a screenshot and print it.
+                </p>
+              </div>
+            </div>
+          </m.div>
+        </m.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* =============================================================================
    Wheel (heavy part optimized)
    ✅ Changes:
    - Removed ALL corner-toasts (Sonner).
@@ -1898,7 +2343,9 @@ function Wheel({
               ].join(" ")}
             >
               <span className={`h-2 w-2 rounded-full ${colorDotClass(key)}`} />
-              <span className="font-semibold text-sm">{SLICE_PUBLIC[key].colorName}</span>
+              <span className="font-semibold text-sm">
+                {SLICE_PUBLIC[key].colorName}
+              </span>
               <span className="opacity-70">{SLICE_PUBLIC[key].emoji}</span>
             </button>
           ))}
@@ -1922,7 +2369,7 @@ function Wheel({
             className="rounded-full border-white/20 bg-white/5 hover:bg-white/10 w-full sm:w-auto"
           >
             <IconShare className="w-4 h-4 mr-2" />
-            {shareCopied ? "Copied!" : "Share"}
+            Share
           </Button>
 
           <Button
@@ -2027,8 +2474,12 @@ export default function GiftWheelClient({
   const [spinCount, setSpinCount] = React.useState(0);
   const lastSegmentIndex = React.useRef(-1);
 
+  // ✅ share UI
   const [shareCopied, setShareCopied] = React.useState(false);
   const shareTimerRef = React.useRef<number | null>(null);
+  const [shareSheetOpen, setShareSheetOpen] = React.useState(false);
+  const [qrOpen, setQrOpen] = React.useState(false);
+  const [shareUrl, setShareUrl] = React.useState<string>("");
 
   React.useEffect(() => {
     return () => {
@@ -2391,31 +2842,55 @@ export default function GiftWheelClient({
     }
   });
 
-  const shareExperience = useEvent(() => {
-    const url = window.location.href;
-    const text = `Just experienced this Love Wheel journey! 💝`;
+  /* ------------------------------ Share logic (sheet + QR) ------------------------------ */
+  const shareText = `Just experienced this Love Wheel journey! 💝`;
 
-    const flashCopied = () => {
-      setShareCopied(true);
-      if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
-      shareTimerRef.current = window.setTimeout(() => setShareCopied(false), 1200);
-    };
+  const flashCopied = React.useCallback(() => {
+    setShareCopied(true);
+    if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
+    shareTimerRef.current = window.setTimeout(() => setShareCopied(false), 1200);
+  }, []);
+
+  const ensureShareUrl = React.useCallback(() => {
+    try {
+      const url = window.location.href;
+      setShareUrl(url);
+      return url;
+    } catch {
+      setShareUrl("");
+      return "";
+    }
+  }, []);
+
+  const doCopyShare = useEvent(() => {
+    const url = shareUrl || ensureShareUrl();
+    if (!url) return;
+
+    navigator.clipboard
+      .writeText(`${shareText} ${url}`)
+      .then(flashCopied)
+      .catch(() => {
+        // ignore
+      });
+  });
+
+  const doNativeShare = useEvent(() => {
+    const url = shareUrl || ensureShareUrl();
+    if (!url) return;
 
     if (navigator.share) {
       navigator
-        .share({ title: "Love Wheel", text, url })
+        .share({ title: "Love Wheel", text: shareText, url })
         .catch(() => {
           // ignore
         });
-      return;
     }
+  });
 
-    navigator.clipboard
-      .writeText(`${text} ${url}`)
-      .then(flashCopied)
-      .catch(() => {
-        // if clipboard fails, do nothing (no corner messages)
-      });
+  // ✅ NEW: clicking Share opens options (incl. QR)
+  const shareExperience = useEvent(() => {
+    ensureShareUrl();
+    setShareSheetOpen(true);
   });
 
   React.useEffect(() => {
@@ -2441,6 +2916,8 @@ export default function GiftWheelClient({
           setAudioOn((v) => !v);
           break;
         case "Escape":
+          if (shareSheetOpen) setShareSheetOpen(false);
+          if (qrOpen) setQrOpen(false);
           if (revealOpen) closeReveal();
           if (finalOpen) setFinalOpen(false);
           break;
@@ -2461,9 +2938,22 @@ export default function GiftWheelClient({
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [spin, reset, revealOpen, finalOpen, closeReveal, spinning, bet, setAudioOn, opened]);
+  }, [
+    spin,
+    reset,
+    revealOpen,
+    finalOpen,
+    closeReveal,
+    spinning,
+    bet,
+    setAudioOn,
+    opened,
+    shareSheetOpen,
+    qrOpen,
+  ]);
 
   const soundLabel = mounted ? `Sound ${audioOn ? "On" : "Off"}` : "Sound";
+  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
 
   return (
     <LazyMotion features={domAnimation}>
@@ -2478,6 +2968,25 @@ export default function GiftWheelClient({
         <ConfettiExplosion
           trigger={confettiTrigger}
           intensity={remaining.length === 1 ? 2 : 1}
+          lowEnd={lowEnd}
+        />
+
+        {/* ✅ Share sheet + QR modal */}
+        <ShareSheetModal
+          open={shareSheetOpen}
+          url={shareUrl}
+          canNativeShare={canNativeShare}
+          onNativeShare={doNativeShare}
+          onCopy={doCopyShare}
+          onShowQr={() => setQrOpen(true)}
+          onClose={() => setShareSheetOpen(false)}
+          shareCopied={shareCopied}
+        />
+        <QrCodeModal
+          open={qrOpen}
+          url={shareUrl}
+          onClose={() => setQrOpen(false)}
+          onCopy={doCopyShare}
           lowEnd={lowEnd}
         />
 
@@ -2549,7 +3058,7 @@ export default function GiftWheelClient({
                 className="rounded-full bg-gradient-to-r from-sky-500 to-violet-500 hover:opacity-90 w-full"
               >
                 <IconShare className="w-4 h-4 mr-2" />
-                {shareCopied ? "Copied!" : "Share"}
+                Share
               </Button>
             </div>
           </div>
