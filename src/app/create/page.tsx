@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from "framer-motion";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,13 +15,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 /**
- * CLEAN redesign inspired by your reference print:
- * - Minimal top nav
- * - Clean hero (headline + short sub + 1 primary CTA)
- * - Right-side premium visual (QR + phone mock)
- * - Fewer tiles / less noise
- * - Builder flow preserved (steps, upload, create link, QR, checkout)
- * - All UI in English
+ * Updates requested:
+ * ✅ Removed the big QR code from HERO (keeps only "Share by QR" text)
+ * ✅ Phone wheel preview now alternates between:
+ *    - short phrase
+ *    - relationship time
+ *    - a photo
+ *    - the long letter
+ * ✅ Mobile-first: responsive, keeps the cinematic preview on mobile
+ *    (only disables motion for prefers-reduced-motion)
  */
 
 const PRICE_USD = "$4.90";
@@ -38,10 +40,6 @@ type StepKey = "hero" | "red" | "green" | "photo" | "yellow" | "confirm";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
-}
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
 }
 
 function dateToStableIso(dateStr: string) {
@@ -67,7 +65,8 @@ function formatDuration(from: Date, to: Date) {
   const parts: string[] = [];
   if (years) parts.push(`${years}y`);
   if (months) parts.push(`${months}m`);
-  if (!years && !months) parts.push(`${days}d`);
+  if (days) parts.push(`${days}d`);
+  if (!parts.length) parts.push("0d");
   return parts.join(" ");
 }
 
@@ -81,6 +80,10 @@ function softHaptic(pattern: number | number[] = 10) {
   } catch {
     // ignore
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 /* =============================================================================
@@ -160,14 +163,7 @@ const IconMenu = React.memo(function IconMenu({ className }: { className?: strin
 const IconChevron = React.memo(function IconChevron({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={cx("h-4 w-4", className)}>
-      <path
-        d="M6 9l6 6 6-6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 });
@@ -214,7 +210,6 @@ function stepAccent(step: StepKey) {
       icon: "text-violet-200/90",
     };
 
-  // default / red / hero
   return {
     dot: "bg-fuchsia-500",
     ring: "ring-fuchsia-500/[0.16]",
@@ -226,83 +221,438 @@ function stepAccent(step: StepKey) {
 }
 
 /* =============================================================================
-   Background + hero visual (clean, premium)
+   Background + hero (premium)
 ============================================================================= */
 
-function NeonBg({ reduceAll }: { reduceAll: boolean }) {
+function NeonBg({ reduceAll, isMobile }: { reduceAll: boolean; isMobile: boolean }) {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_18%,rgba(255,255,255,0.06),transparent_60%),radial-gradient(900px_circle_at_78%_26%,rgba(255,64,169,0.10),transparent_60%),radial-gradient(900px_circle_at_70%_85%,rgba(155,81,224,0.10),transparent_60%),linear-gradient(180deg,#050816_0%,#050816_55%,#040513_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_50%_40%,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
-      <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:11px_11px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_18%_8%,rgba(255,255,255,0.06),transparent_55%),radial-gradient(1100px_circle_at_82%_18%,rgba(255,64,169,0.14),transparent_55%),radial-gradient(900px_circle_at_68%_86%,rgba(155,81,224,0.14),transparent_55%),linear-gradient(180deg,#050816_0%,#050816_55%,#040513_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(1200px_circle_at_50%_40%,transparent_38%,rgba(0,0,0,0.78)_100%)]" />
+      <div className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:12px_12px]" />
 
-      {!reduceAll && (
+      {!reduceAll && !isMobile && (
         <motion.div
-          className="absolute -inset-20 opacity-[0.20]"
-          animate={{ y: [0, -8, 0], x: [0, 6, 0] }}
-          transition={{ duration: 12, ease: "easeInOut", repeat: Infinity }}
+          className="absolute -inset-24 opacity-[0.22]"
+          animate={{ y: [0, -10, 0], x: [0, 8, 0] }}
+          transition={{ duration: 13, ease: "easeInOut", repeat: Infinity }}
         >
-          <div className="absolute left-[12%] top-[18%] h-40 w-40 rounded-full bg-fuchsia-500/10 blur-3xl" />
-          <div className="absolute left-[72%] top-[16%] h-44 w-44 rounded-full bg-violet-500/12 blur-3xl" />
-          <div className="absolute left-[60%] top-[74%] h-52 w-52 rounded-full bg-pink-500/10 blur-3xl" />
+          <div className="absolute left-[10%] top-[14%] h-44 w-44 rounded-full bg-fuchsia-500/12 blur-3xl" />
+          <div className="absolute left-[72%] top-[12%] h-48 w-48 rounded-full bg-violet-500/14 blur-3xl" />
+          <div className="absolute left-[60%] top-[72%] h-56 w-56 rounded-full bg-pink-500/12 blur-3xl" />
+          <div className="absolute left-[16%] top-[72%] h-44 w-44 rounded-full bg-sky-400/10 blur-3xl" />
         </motion.div>
       )}
     </div>
   );
 }
 
-function HeroVisual({ reduceAll }: { reduceAll: boolean }) {
+function QrFrame({ children, label = "Scan to open" }: { children: React.ReactNode; label?: string }) {
   return (
-    <div className="relative mx-auto w-full max-w-[520px]">
-      <div className="absolute -inset-10 rounded-[48px] bg-gradient-to-r from-fuchsia-500/18 via-pink-500/10 to-violet-500/14 blur-3xl" />
-      <div className="relative rounded-[34px] border border-white/10 bg-white/[0.05] p-6 backdrop-blur">
-        {!reduceAll && (
-          <motion.div
-            className="pointer-events-none absolute left-1/2 top-1/2 h-[380px] w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-fuchsia-500/18 via-pink-500/10 to-violet-500/18 blur-2xl"
-            animate={{ rotate: [0, 360] }}
-            transition={{ duration: 18, ease: "linear", repeat: Infinity }}
-          />
-        )}
+    <div className="relative">
+      <div className="rounded-[22px] bg-gradient-to-r from-fuchsia-500/60 via-pink-500/45 to-violet-500/55 p-[1px] shadow-[0_22px_120px_-60px_rgba(255,64,169,0.60)]">
+        <div className="relative rounded-[21px] bg-white p-3">
+          <div className="pointer-events-none absolute left-2 top-2 h-5 w-5 border-l-2 border-t-2 border-black/55" />
+          <div className="pointer-events-none absolute right-2 top-2 h-5 w-5 border-r-2 border-t-2 border-black/55" />
+          <div className="pointer-events-none absolute left-2 bottom-2 h-5 w-5 border-l-2 border-b-2 border-black/55" />
+          <div className="pointer-events-none absolute right-2 bottom-2 h-5 w-5 border-r-2 border-b-2 border-black/55" />
 
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] text-white/70">
-            <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-            Share by QR
-          </div>
+          <div className="rounded-[16px] bg-white">{children}</div>
 
-          <div className="mt-3 grid grid-cols-9 gap-[3px] rounded-2xl bg-white p-3 shadow-[0_18px_80px_-40px_rgba(255,64,169,0.55)]">
-            {Array.from({ length: 81 }).map((_, i) => {
-              const on = (i * 17 + 11) % 7 < 3 || (i % 9 === 0 && i % 2 === 0) || (i % 5 === 0 && i % 7 === 0);
-              return <div key={i} className={cx("h-[10px] w-[10px] rounded-[2px]", on ? "bg-black" : "bg-white")} />;
-            })}
+          <div className="mt-2 flex items-center justify-between px-1">
+            <div className="text-[10px] font-medium text-black/65">{label}</div>
+            <div className="text-[10px] text-black/40">LoveWheel</div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <div className="relative mt-6 flex justify-end">
-          <div className="relative w-[245px] rotate-[10deg] rounded-[28px] border border-white/14 bg-[#0B0E22]/70 p-3 shadow-[0_40px_160px_-90px_rgba(0,0,0,0.95)]">
-            <div className="mb-2 flex items-center justify-between px-2 text-[10px] text-white/55">
-              <span>19:47</span>
-              <span className="h-1 w-8 rounded-full bg-white/15" />
+/* =============================================================================
+   NEW: Cinematic spin preview (wheel spins + alternates: phrase / time / photo / letter)
+============================================================================= */
+
+type DemoGift = {
+  phrase: string;
+  letter: string;
+  startAtIso: string; // ISO date
+  photoDataUri: string; // data uri "photo" for preview
+};
+
+const DEMO_PHOTO_DATA_URI =
+  "data:image/svg+xml;charset=utf-8," +
+  encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ff40a9" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#9b51e0" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0.85"/>
+    </linearGradient>
+    <radialGradient id="r1" cx="35%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="r2" cx="70%" cy="70%" r="70%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#g1)"/>
+  <rect width="1200" height="800" fill="url(#r1)"/>
+  <rect width="1200" height="800" fill="url(#r2)"/>
+
+  <g filter="url(#blur)" opacity="0.35">
+    <circle cx="220" cy="640" r="220" fill="#050816"/>
+    <circle cx="980" cy="170" r="240" fill="#050816"/>
+  </g>
+
+  <g opacity="0.18">
+    <circle cx="210" cy="170" r="5" fill="#fff"/>
+    <circle cx="255" cy="220" r="3" fill="#fff"/>
+    <circle cx="320" cy="180" r="4" fill="#fff"/>
+    <circle cx="880" cy="650" r="4" fill="#fff"/>
+    <circle cx="940" cy="610" r="3" fill="#fff"/>
+    <circle cx="1010" cy="640" r="5" fill="#fff"/>
+  </g>
+
+  <g opacity="0.32">
+    <path d="M600 560c-68-46-148-104-148-176 0-52 38-86 88-86 28 0 54 14 60 36 6-22 32-36 60-36 50 0 88 34 88 86 0 72-80 130-148 176z" fill="#fff"/>
+  </g>
+
+  <g opacity="0.55">
+    <text x="60" y="730" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto" font-size="36" fill="#ffffff">
+      premium reveal
+    </text>
+  </g>
+</svg>
+`.trim());
+
+const DEMO_GIFT: DemoGift = {
+  phrase: "You feel like home.",
+  letter:
+    "I keep replaying the little moments — the way you smile when you’re trying not to, the quiet support you give without making it a big deal, and how everything feels lighter when you’re close. Thank you for choosing me on the ordinary days too. I promise to keep showing up, keep learning you, and keep building something that feels safe and real — with you.",
+  startAtIso: "2022-02-14T12:00:00.000Z",
+  photoDataUri: DEMO_PHOTO_DATA_URI,
+};
+
+type RevealKind = "phrase" | "time" | "photo" | "letter";
+
+const REVEAL_SEQUENCE: Array<{ kind: RevealKind; title: string; tag: string }> = [
+  { kind: "phrase", title: "Reveal", tag: "💗" },
+  { kind: "time", title: "Reveal", tag: "⏳" },
+  { kind: "photo", title: "Reveal", tag: "📷" },
+  { kind: "letter", title: "Reveal", tag: "✍️" },
+];
+
+function SpinPreview({
+  reduceAll,
+  isMobile,
+  demo = DEMO_GIFT,
+}: {
+  reduceAll: boolean;
+  isMobile: boolean;
+  demo?: DemoGift;
+}) {
+  const wheel = useAnimationControls();
+  const pointer = useAnimationControls();
+
+  const [idx, setIdx] = React.useState(0);
+  const [revealed, setRevealed] = React.useState(true);
+
+  const rotationRef = React.useRef(0);
+  const mountedRef = React.useRef(true);
+
+  const startDate = React.useMemo(() => new Date(demo.startAtIso), [demo.startAtIso]);
+
+  // live counter (for the preview)
+  const [now, setNow] = React.useState<Date>(() => new Date());
+  React.useEffect(() => {
+    if (reduceAll) return;
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, [reduceAll]);
+
+  const liveDuration = React.useMemo(() => formatDuration(startDate, now), [startDate, now]);
+
+  React.useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (reduceAll) return;
+
+    let cancelled = false;
+
+    async function loop() {
+      await sleep(350);
+
+      while (!cancelled && mountedRef.current) {
+        setRevealed(false);
+
+        const extra = 980 + Math.floor(Math.random() * 240);
+        rotationRef.current += extra;
+
+        pointer.start({
+          rotate: [0, -8, 0, -6, 0],
+          transition: { duration: isMobile ? 0.85 : 1.0, ease: "easeOut" },
+        });
+
+        await wheel.start({
+          rotate: rotationRef.current,
+          transition: { duration: isMobile ? 2.45 : 2.9, ease: [0.12, 0.9, 0.18, 1] },
+        });
+
+        if (!mountedRef.current) return;
+
+        setIdx((p) => (p + 1) % REVEAL_SEQUENCE.length);
+        setRevealed(true);
+        softHaptic([8, 12, 8]);
+
+        await sleep(isMobile ? 1300 : 1800);
+      }
+    }
+
+    loop();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reduceAll, wheel, pointer, isMobile]);
+
+  const step = REVEAL_SEQUENCE[idx];
+
+  const letterLines = React.useMemo(() => {
+    const lines = demo.letter.trim().split("\n").filter(Boolean);
+    const merged = lines.length ? lines : [demo.letter.trim()];
+    const short = merged.join(" ").replace(/\s+/g, " ").trim();
+    // keep preview short but still "textão"
+    return short;
+  }, [demo.letter]);
+
+  function RevealCard() {
+    if (step.kind === "phrase") {
+      return (
+        <div className="mt-2 text-sm sm:text-[15px] font-semibold tracking-tight text-white/90 leading-snug">
+          “{demo.phrase}”
+        </div>
+      );
+    }
+
+    if (step.kind === "time") {
+      const since = startDate.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
+      return (
+        <div className="mt-2">
+          <div className="text-[11px] text-white/60">Since {since}</div>
+          <div className="mt-1 text-2xl sm:text-3xl font-semibold tracking-tight text-white/92">{liveDuration}</div>
+          <div className="mt-1 text-[11px] text-white/55">live counter</div>
+        </div>
+      );
+    }
+
+    if (step.kind === "photo") {
+      return (
+        <div className="mt-3 overflow-hidden rounded-xl border border-white/12 bg-white/5">
+          <div className="relative">
+            <img src={demo.photoDataUri} alt="Photo preview" className="h-[140px] sm:h-[155px] w-full object-cover" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute bottom-2 left-2 text-[11px] text-white/85">photo reveal</div>
+          </div>
+        </div>
+      );
+    }
+
+    // letter
+    return (
+      <div className="mt-2 text-[12px] sm:text-[13px] text-white/85 leading-relaxed">
+        {letterLines.length > 260 ? letterLines.slice(0, 260) + "…" : letterLines}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* reveal card */}
+      <div className="absolute -top-4 left-1/2 z-20 w-[94%] -translate-x-1/2">
+        <AnimatePresence mode="wait">
+          {revealed ? (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 10, scale: 0.985, filter: "blur(6px)" }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -6, scale: 0.99, filter: "blur(6px)" }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
+              className="rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur px-4 py-3 shadow-[0_22px_90px_-60px_rgba(0,0,0,0.85)]"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 text-[11px] text-white/65">
+                  <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                  {step.title} ·{" "}
+                  <span className="text-white/80">
+                    {step.kind === "phrase" ? "line" : step.kind === "time" ? "time" : step.kind === "photo" ? "photo" : "letter"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-white/55">{step.tag}</div>
+              </div>
+
+              <RevealCard />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur px-4 py-3"
+            >
+              <div className="h-3 w-24 rounded-full bg-white/10" />
+              <div className="mt-2 h-3 w-[70%] rounded-full bg-white/10" />
+              <div className="mt-2 h-3 w-[55%] rounded-full bg-white/10" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* wheel */}
+      <div className="relative mx-auto mt-10 flex items-center justify-center">
+        <div className="pointer-events-none absolute -inset-10 rounded-full bg-gradient-to-r from-fuchsia-500/14 via-pink-500/10 to-violet-500/14 blur-2xl" />
+
+        <motion.div animate={pointer} className="pointer-events-none absolute top-[-6px] z-30 flex h-10 w-10 items-center justify-center">
+          <div className="h-0 w-0 border-x-[10px] border-x-transparent border-b-[18px] border-b-white/85 drop-shadow-[0_8px_18px_rgba(0,0,0,0.6)]" />
+        </motion.div>
+
+        <motion.div
+          animate={wheel}
+          style={{ rotate: reduceAll ? 0 : undefined }}
+          className={cx(
+            "relative h-[210px] w-[210px] sm:h-[240px] sm:w-[240px] rounded-full p-[1px]",
+            "shadow-[0_50px_160px_-120px_rgba(0,0,0,0.95)]"
+          )}
+        >
+          <div
+            className={cx(
+              "h-full w-full rounded-full p-[10px]",
+              "bg-[conic-gradient(from_90deg,rgba(255,64,169,0.95),rgba(155,81,224,0.95),rgba(56,189,248,0.92),rgba(251,191,36,0.92),rgba(52,211,153,0.92),rgba(255,64,169,0.95))]"
+            )}
+          >
+            <div className="relative h-full w-full rounded-full bg-[#050816]">
+              <div className="pointer-events-none absolute inset-0 rounded-full opacity-[0.22] [background-image:radial-gradient(rgba(255,255,255,0.7)_1px,transparent_1px)] [background-size:10px_10px]" />
+              <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(140px_circle_at_35%_30%,rgba(255,255,255,0.10),transparent_60%),radial-gradient(140px_circle_at_70%_70%,rgba(255,64,169,0.12),transparent_60%)]" />
+
+              <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12 bg-white/6 backdrop-blur shadow-[0_18px_70px_-40px_rgba(255,64,169,0.55)]" />
+              <div className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 shadow-[0_16px_60px_-35px_rgba(255,64,169,0.65)]" />
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      <div className="mt-3 text-center text-[11px] text-white/60">
+        <span className="text-white/85">spin</span> → slow down → <span className="text-white/85">reveal</span>
+      </div>
+    </div>
+  );
+}
+
+function PhoneMock({ reduceAll, isMobile }: { reduceAll: boolean; isMobile: boolean }) {
+  return (
+    <div className="relative w-full max-w-[420px] mx-auto">
+      <div className="absolute -inset-10 rounded-[44px] bg-gradient-to-r from-fuchsia-500/14 via-pink-500/8 to-violet-500/14 blur-2xl" />
+
+      <div className="relative rounded-[34px] border border-white/12 bg-white/[0.05] backdrop-blur p-5 sm:p-6 shadow-[0_70px_240px_-140px_rgba(0,0,0,0.95)]">
+        <div className="mb-3 flex items-center justify-between px-1 text-[10px] text-white/55">
+          <span>19:47</span>
+          <span className="h-1 w-10 rounded-full bg-white/15" />
+        </div>
+
+        <div className="overflow-hidden rounded-[26px] border border-white/10 bg-[#0B0E22]/65">
+          <div className="relative px-4 pt-4 pb-5">
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] text-white/70">
+                <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                LoveWheel
+              </div>
+              <div className="text-[11px] text-white/55">gift</div>
             </div>
 
-            <div className="overflow-hidden rounded-[18px] border border-white/10 bg-white/5">
-              <div className="h-[210px] bg-[radial-gradient(120px_circle_at_30%_25%,rgba(255,255,255,0.10),transparent_55%),linear-gradient(180deg,rgba(255,64,169,0.10),rgba(155,81,224,0.08))]">
-                <div className="p-3">
-                  <div className="h-2 w-24 rounded-full bg-white/12" />
-                  <div className="mt-2 h-2 w-40 rounded-full bg-white/10" />
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <SpinPreview reduceAll={reduceAll} isMobile={isMobile} />
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-white/60">
+              <span className="h-2 w-2 rounded-full bg-pink-300/85" />
+              <span>preview: line · time · photo · letter</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * HERO visual: removed QR image, keeps only text "Share by QR"
+ */
+function HeroVisual({ reduceAll, isMobile }: { reduceAll: boolean; isMobile: boolean }) {
+  return (
+    <div className="relative mx-auto w-full max-w-[620px]">
+      <div className="absolute -inset-10 rounded-[60px] bg-gradient-to-r from-fuchsia-500/16 via-pink-500/8 to-violet-500/16 blur-3xl" />
+
+      <div className="relative rounded-[40px] border border-white/12 bg-white/[0.05] p-5 sm:p-7 backdrop-blur">
+        {!reduceAll && !isMobile && (
+          <>
+            <motion.div
+              className="pointer-events-none absolute right-10 top-8 h-4 w-4 rounded-full bg-pink-300/65 blur-[1px]"
+              animate={{ y: [0, -10, 0], opacity: [0.5, 0.95, 0.5] }}
+              transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="pointer-events-none absolute left-10 bottom-12 h-3 w-3 rounded-full bg-sky-200/70 blur-[1px]"
+              animate={{ y: [0, 9, 0], opacity: [0.35, 0.75, 0.35] }}
+              transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+            />
+          </>
+        )}
+
+        <div className="grid gap-5 md:grid-cols-[240px_1fr] md:items-start">
+          {/* Share by QR (text-only) */}
+          <div className="relative">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] text-white/70">
+              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+              Share by QR
+            </div>
+
+            <div className="mt-3 rounded-2xl border border-white/12 bg-white/6 p-4">
+              <div className="text-sm font-semibold text-white/90">Shared by QR code</div>
+              <div className="mt-2 text-[12px] text-white/65 leading-relaxed">
+                After you create the link, you can share it — and also deliver it as a QR (print or show on-screen).
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] text-white/70">
+                  <IconLink className="h-4 w-4 text-white/55" />
+                  link
                 </div>
-                <div className="mx-3 mt-4 h-[130px] rounded-2xl bg-white/8 border border-white/10" />
-                <div className="px-3 py-3">
-                  <div className="h-2 w-28 rounded-full bg-white/12" />
-                  <div className="mt-2 h-2 w-20 rounded-full bg-white/10" />
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] text-white/70">
+                  <IconSpark className="h-4 w-4 text-white/55" />
+                  premium reveal
                 </div>
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-white/55">
-              <span className="h-2 w-2 rounded-full bg-pink-300/80" />
-              <span>spin → reveal</span>
-            </div>
+            <div className="mt-3 text-[11px] text-white/55">No QR shown here — just the promise: it’s shareable by QR.</div>
+          </div>
+
+          {/* Phone preview */}
+          <div className="md:justify-self-end">
+            <PhoneMock reduceAll={reduceAll} isMobile={isMobile} />
           </div>
         </div>
       </div>
@@ -358,15 +708,7 @@ function GhostChip({
 
 function MinimalProgress({ step, progress, reduceAll }: { step: StepKey; progress: number; reduceAll: boolean }) {
   const label =
-    step === "red"
-      ? "Line"
-      : step === "green"
-      ? "Date"
-      : step === "photo"
-      ? "Photo"
-      : step === "yellow"
-      ? "Letter"
-      : "Preview";
+    step === "red" ? "Line" : step === "green" ? "Date" : step === "photo" ? "Photo" : step === "yellow" ? "Letter" : "Preview";
 
   const a = stepAccent(step);
 
@@ -549,13 +891,14 @@ function InfoModal({
 }
 
 /* =============================================================================
-   QR generator block
+   QR generator block (download) — kept for actual product flow in popup
 ============================================================================= */
 
 function QrCodeBlock({ value }: { value: string }) {
-  const [dataUrl, setDataUrl] = React.useState<string | null>(null);
+  const [pngDataUrl, setPngDataUrl] = React.useState<string | null>(null);
+  const [svgText, setSvgText] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
-  const [saved, setSaved] = React.useState(false);
+  const [saved, setSaved] = React.useState<"none" | "png" | "svg">("none");
 
   React.useEffect(() => {
     let cancelled = false;
@@ -563,69 +906,118 @@ function QrCodeBlock({ value }: { value: string }) {
       if (!value) return;
       setLoading(true);
       try {
-        const url = await QRCode.toDataURL(value, {
-          width: 240,
-          margin: 1,
-          errorCorrectionLevel: "M",
-        });
-        if (!cancelled) setDataUrl(url);
+        const [svg, png] = await Promise.all([
+          QRCode.toString(value, {
+            type: "svg",
+            margin: 1,
+            errorCorrectionLevel: "M",
+            color: { dark: "#0B0E22", light: "#FFFFFF" },
+          }),
+          QRCode.toDataURL(value, {
+            width: 900,
+            margin: 1,
+            errorCorrectionLevel: "M",
+            color: { dark: "#0B0E22", light: "#FFFFFF" },
+          }),
+        ]);
+
+        if (!cancelled) {
+          setSvgText(svg);
+          setPngDataUrl(png);
+        }
       } catch {
-        if (!cancelled) setDataUrl(null);
+        if (!cancelled) {
+          setSvgText(null);
+          setPngDataUrl(null);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     run();
     return () => {
       cancelled = true;
     };
   }, [value]);
 
-  function download() {
-    if (!dataUrl) return;
+  function downloadPng() {
+    if (!pngDataUrl) return;
     const a = document.createElement("a");
-    a.href = dataUrl;
+    a.href = pngDataUrl;
     a.download = "LoveWheel-QR.png";
     document.body.appendChild(a);
     a.click();
     a.remove();
 
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2200);
+    setSaved("png");
+    window.setTimeout(() => setSaved("none"), 2200);
     softHaptic([8, 12, 8]);
   }
 
+  function downloadSvg() {
+    if (!svgText) return;
+    const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "LoveWheel-QR.svg";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    setSaved("svg");
+    window.setTimeout(() => setSaved("none"), 2200);
+    softHaptic([8, 12, 8]);
+  }
+
+  const svgDataUri = React.useMemo(() => {
+    if (!svgText) return null;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+  }, [svgText]);
+
   return (
-    <div className="mt-4 sm:mt-5 rounded-2xl border border-white/12 bg-white/6 p-3 sm:p-4">
+    <div className="mt-4 sm:mt-5 rounded-2xl border border-white/12 bg-white/6 p-4 sm:p-5">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] sm:text-[11px] text-white/55">Save this QR code</div>
-          <div className="mt-1 text-xs sm:text-sm text-white/80">Print it or keep it for the perfect delivery moment.</div>
+          <div className="text-[11px] text-white/55">Save this QR code</div>
+          <div className="mt-1 text-sm text-white/80">Print it, add it to a note, and deliver the surprise.</div>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          className="rounded-full mt-2 sm:mt-0 text-sm px-3 py-2"
-          onClick={download}
-          disabled={!dataUrl}
-        >
-          {saved ? "Saved ✓" : dataUrl ? "Download QR" : loading ? "Generating…" : "QR unavailable"}
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="secondary" className="rounded-full text-sm px-3 py-2" onClick={downloadPng} disabled={!pngDataUrl}>
+            {saved === "png" ? "Saved ✓" : pngDataUrl ? "Download PNG" : loading ? "Generating…" : "Unavailable"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full border-white/15 bg-white/0 text-white hover:bg-white/10 text-sm px-3 py-2"
+            onClick={downloadSvg}
+            disabled={!svgText}
+          >
+            {saved === "svg" ? "Saved ✓" : "SVG"}
+          </Button>
+        </div>
       </div>
 
-      <div className="mt-3 sm:mt-4 flex items-center justify-center">
-        {dataUrl ? (
-          <div className="rounded-xl sm:rounded-2xl bg-white p-2 sm:p-3">
-            <img src={dataUrl} alt="QR code for your LoveWheel link" className="h-[180px] w-[180px] sm:h-[220px] sm:w-[220px]" />
-          </div>
+      <div className="mt-4 flex items-center justify-center">
+        {svgDataUri ? (
+          <QrFrame label="Scan to open">
+            <img
+              src={svgDataUri}
+              alt="QR code for your LoveWheel link"
+              className="h-[210px] w-[210px] sm:h-[240px] sm:w-[240px] rounded-[16px]"
+            />
+          </QrFrame>
         ) : (
-          <div className="w-full rounded-2xl border border-white/12 bg-white/5 p-3 sm:p-4 text-xs text-white/60">
+          <div className="w-full rounded-2xl border border-white/12 bg-white/5 p-4 text-xs text-white/60">
             {loading ? "Generating your QR code…" : "Couldn't generate QR code on this device."}
           </div>
         )}
       </div>
 
-      <div className="mt-2 sm:mt-3 text-[10px] sm:text-[11px] text-white/55">Tip: on iPhone, long-press the image to save.</div>
+      <div className="mt-3 text-[11px] text-white/55">Tip: print it small and tape it inside a card.</div>
     </div>
   );
 }
@@ -698,7 +1090,7 @@ function LinkReadyPopup({
                       Link ready
                     </div>
                     <div className="mt-2 text-xl sm:text-2xl font-semibold tracking-tight text-white/90">Your gift link is live.</div>
-                    <div className="text-xs sm:text-sm text-white/60">Save the QR, then unlock the premium spin → reveal.</div>
+                    <div className="text-xs sm:text-sm text-white/60">Share the link — and if you want, download the QR.</div>
                     <div className="text-[10px] sm:text-[11px] text-white/55">{PRICE_MICROCOPY}</div>
                   </div>
 
@@ -718,10 +1110,10 @@ function LinkReadyPopup({
               </div>
 
               <div className="flex-1 overflow-auto p-4 sm:p-6 overscroll-contain" style={{ WebkitOverflowScrolling: "touch" } as any}>
-                <div className="rounded-2xl border border-white/12 bg-white/6 p-3">
+                <div className="rounded-2xl border border-white/12 bg-white/6 p-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-[10px] sm:text-[11px] text-white/55">Shareable link</div>
+                      <div className="text-[11px] text-white/55">Shareable link</div>
                       <div className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-white/80">
                         <IconLink className="h-4 w-4 text-white/55" />
                         <div className="min-w-0 truncate">
@@ -837,7 +1229,7 @@ function BuilderModal({
 }
 
 /* =============================================================================
-   Confirm preview (clean)
+   Confirm preview
 ============================================================================= */
 
 function ConfirmPreview({
@@ -916,9 +1308,9 @@ function ConfirmPreview({
 
 export default function CreatePage() {
   const reduceMotion = useReducedMotion();
-  const [isMobile, setIsMobile] = React.useState(false);
-  const reduceAll = !!reduceMotion || isMobile;
+  const reduceAll = !!reduceMotion;
 
+  const [isMobile, setIsMobile] = React.useState(false);
   React.useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -1021,7 +1413,6 @@ export default function CreatePage() {
     await doStepChange(prev);
   }
 
-  // Focus inputs
   React.useEffect(() => {
     const t = window.setTimeout(() => {
       if (!builderOpen) return;
@@ -1032,7 +1423,6 @@ export default function CreatePage() {
     return () => window.clearTimeout(t);
   }, [step, builderOpen]);
 
-  // Keyboard nav
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!builderOpen) return;
@@ -1069,7 +1459,6 @@ export default function CreatePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [builderOpen, step, linkPopupOpen]);
 
-  // Cleanup preview URL
   React.useEffect(() => {
     return () => {
       if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
@@ -1263,7 +1652,7 @@ export default function CreatePage() {
 
   function openQrReader() {
     openInfo(
-      "QR code",
+      "QR sharing",
       <div className="space-y-3">
         <div>We generate a QR code for your gift link so you can print it and deliver it in a real note.</div>
         <div className="text-white/80">Digital surprise. Physical delivery.</div>
@@ -1289,16 +1678,8 @@ export default function CreatePage() {
       q: "What is LoveWheel?",
       a: "A private gift page that reveals your story through a cinematic spin: a short line, a live counter, a photo reveal, and a letter.",
     },
-    {
-      key: "private",
-      q: "Is it private?",
-      a: "Yes. The link is unlisted — only people with the link can open it.",
-    },
-    {
-      key: "expire",
-      q: "Does it expire?",
-      a: "No. The page stays live and the counter keeps running.",
-    },
+    { key: "private", q: "Is it private?", a: "Yes. The link is unlisted — only people with the link can open it." },
+    { key: "expire", q: "Does it expire?", a: "No. The page stays live and the counter keeps running." },
     {
       key: "payment",
       q: "What does payment unlock?",
@@ -1308,7 +1689,7 @@ export default function CreatePage() {
 
   return (
     <div className="min-h-screen text-white overflow-x-hidden">
-      <NeonBg reduceAll={reduceAll} />
+      <NeonBg reduceAll={reduceAll} isMobile={isMobile} />
 
       <InfoModal
         open={infoOpen}
@@ -1339,7 +1720,7 @@ export default function CreatePage() {
 
       {/* Top nav (minimal) */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/85 backdrop-blur supports-[backdrop-filter]:bg-[#050816]/55">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-2xl bg-white/8 ring-1 ring-white/12 flex items-center justify-center">
               <span className="text-fuchsia-200">
@@ -1384,7 +1765,7 @@ export default function CreatePage() {
             <Button
               type="button"
               onClick={openBuilder}
-              className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 text-sm px-4 py-2"
+              className="rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white hover:opacity-95 text-sm px-4 py-2 shadow-[0_18px_70px_-40px_rgba(255,64,169,0.60)]"
             >
               Create
             </Button>
@@ -1442,8 +1823,8 @@ export default function CreatePage() {
         </div>
       </header>
 
-      {/* HERO (clean) */}
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
+      {/* HERO */}
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:py-12">
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-1 text-xs text-white/70">
@@ -1451,8 +1832,11 @@ export default function CreatePage() {
               Designed to feel premium
             </div>
 
-            <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-white/90">
-              {heroHeadline}
+            <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight">
+              <span className="text-white/90">{heroHeadline.split(" ").slice(0, 2).join(" ")} </span>
+              <span className="bg-gradient-to-r from-fuchsia-300 via-pink-300 to-violet-300 bg-clip-text text-transparent">
+                {heroHeadline.split(" ").slice(2).join(" ")}
+              </span>
             </h1>
 
             <p className="mt-4 max-w-xl text-white/65 text-sm sm:text-base leading-relaxed">{heroSub}</p>
@@ -1461,7 +1845,7 @@ export default function CreatePage() {
               <Button
                 type="button"
                 onClick={openBuilder}
-                className="h-11 rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_20px_80px_-40px_rgba(255,64,169,0.70)] hover:opacity-95"
+                className="h-11 rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_22px_90px_-50px_rgba(255,64,169,0.75)] hover:opacity-95"
               >
                 Start creating
               </Button>
@@ -1478,7 +1862,6 @@ export default function CreatePage() {
 
             <div className="mt-3 text-[11px] text-white/55">{PRICE_MICROCOPY}</div>
 
-            {/* Minimal highlights */}
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
               {[
                 { title: "Build", desc: "Write four pieces." },
@@ -1494,11 +1877,11 @@ export default function CreatePage() {
           </div>
 
           <div className="lg:justify-self-end">
-            <HeroVisual reduceAll={reduceAll} />
+            <HeroVisual reduceAll={reduceAll} isMobile={isMobile} />
           </div>
         </div>
 
-        {/* How it works (clean section) */}
+        {/* How it works */}
         <section ref={howRef} className="mt-14 sm:mt-16 scroll-mt-24">
           <div className="text-sm font-semibold text-white/85">How it works</div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -1508,9 +1891,7 @@ export default function CreatePage() {
                 Step 1
               </div>
               <div className="mt-2 text-base font-semibold text-white/90">Write</div>
-              <div className="mt-2 text-sm text-white/65 leading-relaxed">
-                A line, a date, a photo, and a letter — simple and personal.
-              </div>
+              <div className="mt-2 text-sm text-white/65 leading-relaxed">A line, a date, a photo, and a letter — simple and personal.</div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/6 p-5 backdrop-blur">
@@ -1519,9 +1900,7 @@ export default function CreatePage() {
                 Step 2
               </div>
               <div className="mt-2 text-base font-semibold text-white/90">Share</div>
-              <div className="mt-2 text-sm text-white/65 leading-relaxed">
-                Send the link, or print a QR code and deliver it in a real note.
-              </div>
+              <div className="mt-2 text-sm text-white/65 leading-relaxed">Send the link, or print a QR code and deliver it in a real note.</div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/6 p-5 backdrop-blur">
@@ -1537,7 +1916,7 @@ export default function CreatePage() {
           </div>
         </section>
 
-        {/* FAQ (accordion, clean) */}
+        {/* FAQ */}
         <section ref={faqRef} className="mt-14 sm:mt-16 scroll-mt-24">
           <div className="text-sm font-semibold text-white/85">FAQ</div>
           <div className="mt-4 space-y-2">
@@ -1595,13 +1974,12 @@ export default function CreatePage() {
           </div>
         </section>
 
-        {/* Footer (minimal) */}
         <footer className="mt-16 pb-10 text-center text-xs text-white/50">
           <div>LoveWheel · {PRICE_MICROCOPY}</div>
         </footer>
       </main>
 
-      {/* BUILDER MODAL (same flow, cleaner spacing) */}
+      {/* BUILDER MODAL */}
       <BuilderModal
         open={builderOpen}
         onOpenChange={(v) => {
@@ -1747,7 +2125,10 @@ export default function CreatePage() {
                                   }}
                                   onChange={(e) => {
                                     dateReg.onChange(e);
-                                    form.setValue("relationshipStartAt", e.target.value, { shouldValidate: true, shouldDirty: true });
+                                    form.setValue("relationshipStartAt", e.target.value, {
+                                      shouldValidate: true,
+                                      shouldDirty: true,
+                                    });
                                     pingTyping();
                                   }}
                                   className="relative h-12 rounded-2xl text-sm sm:text-base bg-white/5 text-white border-white/12 focus-visible:ring-2 focus-visible:ring-white/15"
@@ -1792,7 +2173,6 @@ export default function CreatePage() {
 
                           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
 
-                          {/* click anywhere */}
                           <div
                             role="button"
                             tabIndex={0}
