@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// CONEXÃO DIRETA - SEM VARIÁVEIS DE AMBIENTE
+// CONEXÃO DIRETA - SEM VARIÁVEIS DE AMBIENTE teste
 const supabaseAdmin = createClient(
   "https://bkmabhybqioyxgpnnetd.supabase.co",
   "sb_secret_95QZWIfzgVKdnXHF3k6pNA_NUCLHDOZ",
