@@ -112,7 +112,7 @@ export async function POST(req: Request) {
           quantity: 1,
           price_data: {
             currency: "usd",
-            unit_amount: 499, // $4.99
+            unit_amount: 490, // $4.90
             product_data: {
               name: "Premium Reveal",
               description: "Unlock the wheel + reveal experience.",

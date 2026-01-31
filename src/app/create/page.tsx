@@ -24,6 +24,8 @@ import { Label } from "@/components/ui/label";
  *    - the long letter
  * ✅ Mobile-first: responsive, keeps the cinematic preview on mobile
  *    (only disables motion for prefers-reduced-motion)
+ * ✅ NEW: "Preview" button in HERO + NAV opens a video inside InfoModal
+ * ✅ FIX: Preview video no longer stretches/distorts (aspect-ratio wrapper + object-contain)
  */
 
 const PRICE_USD = "$4.90";
@@ -270,6 +272,36 @@ function QrFrame({ children, label = "Scan to open" }: { children: React.ReactNo
 }
 
 /* =============================================================================
+   NEW: Preview video component (NO STRETCH)
+============================================================================= */
+
+function PreviewVideo({ isMobile }: { isMobile: boolean }) {
+  // Mobile: show as "phone preview" (9:16)
+  // Desktop: cinematic container (16:9). Video itself never stretches because we use object-contain.
+  const ratio = isMobile ? "9 / 16" : "16 / 9";
+
+  return (
+    <div className="mx-auto w-full max-w-[420px] sm:max-w-[720px]">
+      <div
+        className="relative overflow-hidden rounded-2xl border border-white/12 bg-black shadow-[0_30px_140px_-90px_rgba(0,0,0,0.95)]"
+        style={{
+          aspectRatio: ratio as any,
+          maxHeight: "70vh",
+        }}
+      >
+        <video controls playsInline preload="metadata" className="absolute inset-0 h-full w-full object-contain">
+          {/* ✅ Best compatibility first */}
+          <source src="/videos/preview.mov" type="video/mp4" />
+          {/* ✅ MOV fallback */}
+          <source src="/videos/preview.mov" type="video/quicktime" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
+  );
+}
+
+/* =============================================================================
    NEW: Cinematic spin preview (wheel spins + alternates: phrase / time / photo / letter)
 ============================================================================= */
 
@@ -434,7 +466,6 @@ function SpinPreview({
     const lines = demo.letter.trim().split("\n").filter(Boolean);
     const merged = lines.length ? lines : [demo.letter.trim()];
     const short = merged.join(" ").replace(/\s+/g, " ").trim();
-    // keep preview short but still "textão"
     return short;
   }, [demo.letter]);
 
@@ -470,7 +501,6 @@ function SpinPreview({
       );
     }
 
-    // letter
     return (
       <div className="mt-2 text-[12px] sm:text-[13px] text-white/85 leading-relaxed">
         {letterLines.length > 260 ? letterLines.slice(0, 260) + "…" : letterLines}
@@ -1662,6 +1692,20 @@ export default function CreatePage() {
     );
   }
 
+  // ✅ NEW: Preview video modal (FIXED: no stretch)
+  function openPreview() {
+    openInfo(
+      "Preview",
+      <div className="space-y-3">
+        <div className="text-white/80 text-sm">Quick preview of the premium spin → reveal experience.</div>
+
+        <PreviewVideo isMobile={isMobile} />
+
+         
+      </div>
+    );
+  }
+
   const heroHeadline = "A premium spin → reveal gift.";
   const heroSub = "One line, one date, one photo, one letter. Create in minutes. Share by link or QR.";
 
@@ -1736,6 +1780,9 @@ export default function CreatePage() {
             <button type="button" className="hover:text-white transition" onClick={openPricing}>
               Pricing
             </button>
+            <button type="button" className="hover:text-white transition" onClick={openPreview}>
+              Preview
+            </button>
             <button
               type="button"
               className="hover:text-white transition"
@@ -1785,6 +1832,17 @@ export default function CreatePage() {
                     >
                       Pricing
                     </button>
+
+                    <button
+                      className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
+                      onClick={() => {
+                        setInfoOpen(false);
+                        openPreview();
+                      }}
+                    >
+                      Preview
+                    </button>
+
                     <button
                       className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 transition"
                       onClick={() => {
@@ -1848,6 +1906,16 @@ export default function CreatePage() {
                 className="h-11 rounded-full px-6 bg-gradient-to-r from-fuchsia-500 via-pink-500 to-violet-500 text-white shadow-[0_22px_90px_-50px_rgba(255,64,169,0.75)] hover:opacity-95"
               >
                 Start creating
+              </Button>
+
+              {/* ✅ NEW: Preview button (video) */}
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 px-5"
+                onClick={openPreview}
+              >
+                Preview
               </Button>
 
               <Button
@@ -1963,6 +2031,16 @@ export default function CreatePage() {
             >
               Create your gift
             </Button>
+
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11 rounded-full border border-white/12 bg-white/6 text-white hover:bg-white/10 px-5"
+              onClick={openPreview}
+            >
+              Preview video
+            </Button>
+
             <Button
               type="button"
               variant="secondary"
