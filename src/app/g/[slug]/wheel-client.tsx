@@ -2532,7 +2532,7 @@ export default function GiftWheelClient({
                     </h2>
                     <p className="text-white/70 mb-4">
                       Pay only{" "}
-                      <strong className="text-2xl text-fuchsia-400">$4.99</strong>{" "}
+                      <strong className="text-2xl text-fuchsia-400">$4.90</strong>{" "}
                       to reveal everything
                     </p>
                   </div>
@@ -2570,7 +2570,7 @@ export default function GiftWheelClient({
                     ) : (
                       <>
                         <IconGift className="w-5 h-5 mr-2" />
-                        Pay & Unlock ($4.99)
+                        Pay & Unlock ($4.90)
                       </>
                     )}
                   </Button>
